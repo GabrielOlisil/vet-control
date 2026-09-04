@@ -1,0 +1,57 @@
+# Use postgres/example user/password credentials
+
+services:
+
+  migrations:
+    build:
+      context: .
+      target: migrations
+    environment:
+      ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
+    command:
+    - "--connection"
+    - "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+
+
+  db:
+    image: postgres:18-alpine
+    restart: always
+    shm_size: 128mb
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql
+    environment:
+      POSTGRES_PASSWORD: "postgresssss"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vacinas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8000:8080
+
+
+volumes:
+  db-data:
