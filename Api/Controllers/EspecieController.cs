@@ -11,17 +11,17 @@ namespace Api.Controllers;
 public class EspecieController(IEspecieService especieService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EspecieReadResponseDto>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<List<EspecieReadResponseDto>>> GetAll([FromQuery] int? page, [FromQuery] EspecieSearchDto? search, CancellationToken cancellationToken)
     {
-        var especies = await especieService.GetAllAsync(cancellationToken);
+        var especies = await especieService.GetAllAsync(page, search, cancellationToken);
         var responses = especies.Select(EspecieMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    public async Task<ActionResult<int>> Count([FromQuery] EspecieSearchDto? search, CancellationToken cancellationToken)
     {
-        return Ok(await especieService.Count(cancellationToken));
+        return Ok(await especieService.Count(search, cancellationToken));
     }
 
     [HttpGet("{id:guid}")]

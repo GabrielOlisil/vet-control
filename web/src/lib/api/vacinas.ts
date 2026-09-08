@@ -1,15 +1,30 @@
 import { ApiClient } from './client';
-import type { Vacina, VacinaCreate, VacinaPatch } from '../types';
+import type { Vacina, VacinaCreateDto, VacinaPatchDto, VacinaDetailResponseDto } from '../types';
+
+export interface VacinaFilterParams {
+    name?: string;
+    reaplicarEmXDiasMin?: number;
+    reaplicarEmXDiasMax?: number;
+}
 
 export const vacinaService = {
-    list: (filters?: { name?: string; reaplicarEmXDiasMin?: number; reaplicarEmXDiasMax?: number }) =>
-        ApiClient.get<Vacina[]>(
-            '/vacinas' + (filters ? '?' + new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as any).toString() : '')
-        ),
-    get: (id: string) => ApiClient.get<Vacina>(`/vacinas/${id}`),
-    create: (data: VacinaCreate) => ApiClient.post<Vacina>('/vacinas', data),
-    update: (id: string, data: VacinaPatch) => ApiClient.patch<Vacina>(`/vacinas/${id}`, data),
-    delete: (id: string) => ApiClient.delete(`/vacinas/${id}`),
-    count: () => ApiClient.count('/vacinas'),
+    list: (filters?: VacinaFilterParams) => {
+        const params = new URLSearchParams();
+        if (filters?.name) params.set('Name', filters.name);
+        if (filters?.reaplicarEmXDiasMin !== undefined) params.set('ReaplicarEmXDiasMin', filters.reaplicarEmXDiasMin.toString());
+        if (filters?.reaplicarEmXDiasMax !== undefined) params.set('ReaplicarEmXDiasMax', filters.reaplicarEmXDiasMax.toString());
 
+        const qs = params.toString();
+        return ApiClient.get<Vacina[]>(`/vacinas${qs ? `?${qs}` : ''}`);
+    },
+
+    get: (id: string) => ApiClient.get<VacinaDetailResponseDto>(`/vacinas/${id}`),
+
+    create: (data: VacinaCreateDto) => ApiClient.post<VacinaDetailResponseDto>('/vacinas', data),
+
+    update: (id: string, data: VacinaPatchDto) => ApiClient.patch<VacinaDetailResponseDto>(`/vacinas/${id}`, data),
+
+    delete: (id: string) => ApiClient.delete(`/vacinas/${id}`),
+
+    count: () => ApiClient.count('/vacinas'),
 };

@@ -83,6 +83,7 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
         CancellationToken cancellationToken = default)
     {
         var query = context.AplicacoesVacina
+            .Include(aplicacao => aplicacao.Vacina)
             .AsNoTracking();
 
         if (search?.VacinaId is not null)

@@ -17,19 +17,17 @@
 
     function handleConfirm() {
         onConfirm();
-        isOpen = false;
     }
 
     function handleClose() {
         onClose();
-        isOpen = false;
     }
 </script>
 
 <Modal
     {isOpen}
     title="Confirmar exclusão"
-    message={`Tem certeza que deseja excluir este ${itemName}? Esta ação não pode ser desfeita.`}
+    message={`Tem certeza de que deseja excluir este(a) ${itemName}? Esta ação não pode ser desfeita.`}
     confirmText="Excluir"
     cancelText="Cancelar"
     onConfirm={handleConfirm}

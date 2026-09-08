@@ -1,11 +1,15 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
     import { especieService } from "$lib/api/especies";
-    import type { Especie, EspecieCreate } from "$lib/types";
+    import type { Especie, EspecieCreateDto } from "$lib/types";
+
+    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded.svelte";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
 
     let especies = $state<Especie[]>([]);
     let filteredEspecies = $state<Especie[]>([]);
@@ -14,7 +18,7 @@
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<EspecieCreate>({
+    let formData = $state<EspecieCreateDto>({
         nome: "",
         nomeCientifico: "",
     });
@@ -36,7 +40,6 @@
             filterEspecies();
         } catch (error) {
             console.error("Erro ao carregar espécies:", error);
-            alert("Erro ao carregar espécies");
         } finally {
             isLoading = false;
         }
@@ -67,7 +70,7 @@
     }
 
     async function handleSubmit() {
-        if (!formData.nome || !formData.nomeCientifico) {
+        if (!formData.nome.trim() || !formData.nomeCientifico.trim()) {
             formError = "Preencha todos os campos";
             return;
         }
@@ -111,99 +114,112 @@
     }
 </script>
 
-<div class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-2xl font-bold text-gray-900">Espécies</h2>
+<div class="space-y-6">
+    <!-- Header -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+    >
+        <div>
+            <h1
+                class="text-2xl font-black text-base-content flex items-center gap-2"
+            >
+                <IconBiotech width="24" height="24" class="text-primary" />
+                <span>Espécies Biológicas</span>
+            </h1>
+            <p class="text-xs text-base-content/70 mt-1">
+                Classificação taxonômica das espécies atendidas.
+            </p>
+        </div>
+        <button
+            type="button"
+            onclick={() => openFormModal()}
+            class="btn btn-primary btn-sm gap-1.5"
+        >
+            <IconAdd width="16" height="16" />
+            <span>Nova Espécie</span>
+        </button>
     </div>
 
-    <!-- Search and Create -->
-    <div class="px-6 py-4 border-b border-gray-200 flex gap-4">
-        <div class="flex-1">
+    <!-- Tabela e Filtros -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
+    >
+        <div class="p-4 border-b border-base-200 bg-base-100">
             <input
                 type="text"
-                placeholder="Pesquisar por nome..."
+                placeholder="Pesquisar por nome vulgar..."
                 value={searchName}
                 oninput={(e) => {
                     searchName = (e.target as HTMLInputElement).value;
                     filterEspecies();
                 }}
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
             />
         </div>
-        <button
-            onclick={() => openFormModal()}
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition whitespace-nowrap"
-        >
-            + Nova Espécie
-        </button>
-    </div>
 
-    <!-- Table -->
-    <div class="overflow-x-auto">
-        {#if isLoading}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Carregando...
-            </div>
-        {:else if filteredEspecies.length === 0}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Nenhuma espécie encontrada
-            </div>
-        {:else}
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr class="border-b border-gray-200">
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                            >Nome</th
-                        >
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                        >
-                            Nome Científico
-                        </th>
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                            >Raças</th
-                        >
-                        <th
-                            class="px-6 py-3 text-right text-sm font-semibold text-gray-700"
-                            >Ações</th
-                        >
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each filteredEspecies as especie (especie.id)}
-                        <tr
-                            class="border-b border-gray-200 hover:bg-gray-50 transition"
-                        >
-                            <td class="px-6 py-4 text-sm text-gray-900"
-                                >{especie.nome}</td
-                            >
-                            <td class="px-6 py-4 text-sm text-gray-600"
-                                >{especie.nomeCientifico}</td
-                            >
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                {especie.racas?.length || 0}
-                            </td>
-                            <td class="px-6 py-4 text-right text-sm">
-                                <button
-                                    onclick={() => openFormModal(especie)}
-                                    class="text-blue-600 hover:text-blue-800 mr-4 font-medium"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    onclick={() => openDeleteModal(especie)}
-                                    class="text-red-600 hover:text-red-800 font-medium"
-                                >
-                                    Excluir
-                                </button>
-                            </td>
+        <div class="overflow-x-auto">
+            {#if isLoading}
+                <div class="p-12 text-center text-base-content/60">
+                    <span
+                        class="loading loading-spinner loading-md text-primary"
+                    ></span>
+                    <p class="mt-2 text-xs">Carregando espécies...</p>
+                </div>
+            {:else if filteredEspecies.length === 0}
+                <div class="p-12 text-center text-base-content/60 space-y-2">
+                    <div class="flex justify-center opacity-40 text-primary">
+                        <IconBiotech width="48" height="48" />
+                    </div>
+                    <p class="font-bold">Nenhuma espécie encontrada</p>
+                </div>
+            {:else}
+                <table class="table table-zebra w-full">
+                    <thead class="bg-base-200 text-base-content font-bold">
+                        <tr>
+                            <th>Nome Vulgar</th>
+                            <th>Nome Científico</th>
+                            <th class="text-right">Ações</th>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
-        {/if}
+                    </thead>
+                    <tbody>
+                        {#each filteredEspecies as especie (especie.id)}
+                            <tr>
+                                <td
+                                    class="font-bold text-base text-base-content"
+                                >
+                                    {especie.nome}
+                                </td>
+                                <td>
+                                    <span
+                                        class="italic text-sm text-base-content/80 font-serif"
+                                    >
+                                        {especie.nomeCientifico}
+                                    </span>
+                                </td>
+                                <td class="text-right space-x-1">
+                                    <button
+                                        type="button"
+                                        onclick={() => openFormModal(especie)}
+                                        class="btn btn-ghost btn-xs text-primary font-bold inline-flex items-center gap-1"
+                                    >
+                                        <IconEdit width="14" height="14" />
+                                        <span>Editar</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => openDeleteModal(especie)}
+                                        class="btn btn-ghost btn-xs text-error font-bold inline-flex items-center gap-1"
+                                    >
+                                        <IconDelete width="14" height="14" />
+                                        <span>Excluir</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            {/if}
+        </div>
     </div>
 </div>
 
@@ -216,31 +232,32 @@
     isLoading={isSubmitting}
 >
     <Input
-        label="Nome"
+        label="Nome Vulgar"
         id="nome"
         value={formData.nome}
-        onChange={(v) => (formData.nome = v)}
-        placeholder="Ex: Cachorro"
+        onChange={(v: string) => (formData.nome = v)}
+        placeholder="Ex: Canino, Felino, Equino..."
         required
     />
     <Input
         label="Nome Científico"
         id="nomeCientifico"
         value={formData.nomeCientifico}
-        onChange={(v) => (formData.nomeCientifico = v)}
-        placeholder="Ex: Canis familiaris"
+        onChange={(v: string) => (formData.nomeCientifico = v)}
+        placeholder="Ex: Canis lupus familiaris, Felis catus..."
         required
     />
     {#if formError}
-        <div class="text-red-600 text-sm mt-2">{formError}</div>
+        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
+            {formError}
+        </div>
     {/if}
 </FormModal>
 
 <!-- Delete Modal -->
 <ConfirmDeleteModal
     isOpen={showDeleteModal}
-    item={deletingItem}
-    itemName="espécie"
+    itemName={deletingItem?.nome || "espécie"}
     onClose={() => (showDeleteModal = false)}
     onConfirm={handleDelete}
     isLoading={isDeleting}

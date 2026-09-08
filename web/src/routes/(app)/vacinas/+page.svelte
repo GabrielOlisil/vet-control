@@ -4,7 +4,16 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
     import { vacinaService } from "$lib/api/vacinas";
-    import type { Vacina, VacinaCreate } from "$lib/types";
+    import {
+        getVacinaName,
+        type Vacina,
+        type VacinaCreateDto,
+    } from "$lib/types";
+
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
 
     let vacinas = $state<Vacina[]>([]);
     let filteredVacinas = $state<Vacina[]>([]);
@@ -13,9 +22,9 @@
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<VacinaCreate>({
+    let formData = $state<VacinaCreateDto>({
         name: "",
-        reaplicarEmXDias: undefined,
+        reaplicarEmXDias: 365,
     });
     let formError = $state("");
     let isSubmitting = $state(false);
@@ -24,7 +33,6 @@
     let deletingItem = $state<Vacina | null>(null);
     let isDeleting = $state(false);
 
-    $inspect(showDeleteModal);
     onMount(() => {
         loadVacinas();
     });
@@ -36,7 +44,6 @@
             filterVacinas();
         } catch (error) {
             console.error("Erro ao carregar vacinas:", error);
-            alert("Erro ao carregar vacinas");
         } finally {
             isLoading = false;
         }
@@ -44,10 +51,10 @@
 
     function filterVacinas() {
         filteredVacinas = vacinas.filter((v) => {
-            if (!searchName) {
-                return true;
-            }
-            v.name.toLowerCase().includes(searchName.toLowerCase());
+            if (!searchName.trim()) return true;
+            return getVacinaName(v)
+                .toLowerCase()
+                .includes(searchName.trim().toLowerCase());
         });
     }
 
@@ -55,14 +62,14 @@
         if (vacina) {
             editingId = vacina.id;
             formData = {
-                name: vacina.name,
-                reaplicarEmXDias: vacina.reaplicarEmXDias,
+                name: getVacinaName(vacina),
+                reaplicarEmXDias: vacina.reaplicarEmXDias || 365,
             };
         } else {
             editingId = null;
             formData = {
                 name: "",
-                reaplicarEmXDias: undefined,
+                reaplicarEmXDias: 365,
             };
         }
         formError = "";
@@ -70,22 +77,29 @@
     }
 
     async function handleSubmit() {
-        if (!formData.name) {
-            formError = "Nome é obrigatório";
+        if (!formData.name.trim()) {
+            formError = "Nome da vacina é obrigatório";
             return;
         }
 
         try {
             isSubmitting = true;
+            const payload: VacinaCreateDto = {
+                name: formData.name.trim(),
+                reaplicarEmXDias: formData.reaplicarEmXDias
+                    ? Number(formData.reaplicarEmXDias)
+                    : 365,
+            };
+
             if (editingId) {
-                await vacinaService.update(editingId, formData);
+                await vacinaService.update(editingId, payload);
             } else {
-                await vacinaService.create(formData);
+                await vacinaService.create(payload);
             }
             showFormModal = false;
             await loadVacinas();
         } catch (error) {
-            formError = "Erro ao salvar vacina";
+            formError = "Erro ao salvar vacina na API";
             console.error(error);
         } finally {
             isSubmitting = false;
@@ -112,105 +126,137 @@
             isDeleting = false;
         }
     }
+
+    function formatDate(dateStr?: string): string {
+        if (!dateStr) return "-";
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("pt-BR");
+    }
 </script>
 
-<div class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-2xl font-bold text-gray-900">Vacinas</h2>
+<div class="space-y-6">
+    <!-- Header -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+    >
+        <div>
+            <h1
+                class="text-2xl font-black text-base-content flex items-center gap-2"
+            >
+                <IconVaccines width="24" height="24" class="text-primary" />
+                <span>Catálogo de Vacinas</span>
+            </h1>
+            <p class="text-xs text-base-content/70 mt-1">
+                Cadastre e defina o ciclo de reaplicação para cada tipo de
+                vacina.
+            </p>
+        </div>
+        <button
+            type="button"
+            onclick={() => openFormModal()}
+            class="btn btn-primary btn-sm gap-1.5"
+        >
+            <IconAdd width="16" height="16" />
+            <span>Nova Vacina</span>
+        </button>
     </div>
 
-    <!-- Search and Create -->
-    <div class="px-6 py-4 border-b border-gray-200 flex gap-4">
-        <div class="flex-1">
+    <!-- Tabela e Filtros -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
+    >
+        <!-- Search -->
+        <div class="p-4 border-b border-base-200 bg-base-100 flex gap-4">
             <input
                 type="text"
-                placeholder="Pesquisar por nome..."
+                placeholder="Pesquisar por nome da vacina..."
                 value={searchName}
                 oninput={(e) => {
                     searchName = (e.target as HTMLInputElement).value;
                     filterVacinas();
                 }}
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
             />
         </div>
-        <button
-            onclick={() => openFormModal()}
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition whitespace-nowrap"
-        >
-            + Nova Vacina
-        </button>
-    </div>
 
-    <!-- Table -->
-    <div class="overflow-x-auto">
-        {#if isLoading}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Carregando...
-            </div>
-        {:else if filteredVacinas.length === 0}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Nenhuma vacina encontrada
-            </div>
-        {:else}
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr class="border-b border-gray-200">
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                            >Nome</th
-                        >
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                        >
-                            Reaplicar em X Dias
-                        </th>
-                        <th
-                            class="px-6 py-3 text-left text-sm font-semibold text-gray-700"
-                            >Criado em</th
-                        >
-                        <th
-                            class="px-6 py-3 text-right text-sm font-semibold text-gray-700"
-                            >Ações</th
-                        >
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each filteredVacinas as vacina (vacina.id)}
-                        <tr
-                            class="border-b border-gray-200 hover:bg-gray-50 transition"
-                        >
-                            <td class="px-6 py-4 text-sm text-gray-900"
-                                >{vacina.name}</td
-                            >
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                {vacina.reaplicarEmXDias} dias
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                {vacina.criadoEm
-                                    ? new Date(
-                                          vacina.criadoEm,
-                                      ).toLocaleDateString("pt-BR")
-                                    : "-"}
-                            </td>
-                            <td class="px-6 py-4 text-right text-sm">
-                                <button
-                                    onclick={() => openFormModal(vacina)}
-                                    class="text-blue-600 hover:text-blue-800 mr-4 font-medium"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    onclick={() => openDeleteModal(vacina)}
-                                    class="text-red-600 hover:text-red-800 font-medium"
-                                >
-                                    Excluir
-                                </button>
-                            </td>
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            {#if isLoading}
+                <div class="p-12 text-center text-base-content/60">
+                    <span
+                        class="loading loading-spinner loading-md text-primary"
+                    ></span>
+                    <p class="mt-2 text-xs">Carregando vacinas...</p>
+                </div>
+            {:else if filteredVacinas.length === 0}
+                <div class="p-12 text-center text-base-content/60 space-y-2">
+                    <div class="flex justify-center opacity-40 text-primary">
+                        <IconVaccines width="48" height="48" />
+                    </div>
+                    <p class="font-bold">Nenhuma vacina encontrada</p>
+                </div>
+            {:else}
+                <table class="table table-zebra w-full">
+                    <thead class="bg-base-200 text-base-content font-bold">
+                        <tr>
+                            <th>Nome</th>
+                            <th>Reaplicação Recomendada</th>
+                            <th>Criada em</th>
+                            <th class="text-right">Ações</th>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
-        {/if}
+                    </thead>
+                    <tbody>
+                        {#each filteredVacinas as vacina (vacina.id)}
+                            <tr>
+                                <td
+                                    class="font-bold text-base text-base-content flex items-center gap-2"
+                                >
+                                    <IconVaccines
+                                        width="18"
+                                        height="18"
+                                        class="text-primary"
+                                    />
+                                    <span>{getVacinaName(vacina)}</span>
+                                </td>
+                                <td>
+                                    <span
+                                        class="badge badge-sm badge-outline font-semibold"
+                                    >
+                                        A cada {vacina.reaplicarEmXDias} dias
+                                        {#if vacina.reaplicarEmXDias === 365}
+                                            (1 ano)
+                                        {:else if vacina.reaplicarEmXDias === 180}
+                                            (6 meses)
+                                        {/if}
+                                    </span>
+                                </td>
+                                <td class="text-xs text-base-content/70">
+                                    {formatDate(vacina.criadoEm)}
+                                </td>
+                                <td class="text-right space-x-1">
+                                    <button
+                                        type="button"
+                                        onclick={() => openFormModal(vacina)}
+                                        class="btn btn-ghost btn-xs text-primary font-bold inline-flex items-center gap-1"
+                                    >
+                                        <IconEdit width="14" height="14" />
+                                        <span>Editar</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => openDeleteModal(vacina)}
+                                        class="btn btn-ghost btn-xs text-error font-bold inline-flex items-center gap-1"
+                                    >
+                                        <IconDelete width="14" height="14" />
+                                        <span>Excluir</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            {/if}
+        </div>
     </div>
 </div>
 
@@ -223,30 +269,33 @@
     isLoading={isSubmitting}
 >
     <Input
-        label="Nome"
+        label="Nome da Vacina"
         id="name"
         value={formData.name}
         onChange={(v: string) => (formData.name = v)}
-        placeholder="Ex: Raiva"
+        placeholder="Ex: Raiva, V8, V10..."
         required
     />
     <Input
-        label="Reaplicar em X dias"
+        label="Reaplicar em Quantos Dias"
         id="reaplicarEmXDias"
         type="number"
-        value={formData.reaplicarEmXDias || ""}
+        value={formData.reaplicarEmXDias || 365}
         onChange={(v: number) => (formData.reaplicarEmXDias = v)}
         placeholder="Ex: 365"
+        required
     />
     {#if formError}
-        <div class="text-red-600 text-sm mt-2">{formError}</div>
+        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
+            {formError}
+        </div>
     {/if}
 </FormModal>
 
 <!-- Delete Modal -->
 <ConfirmDeleteModal
     isOpen={showDeleteModal}
-    itemName="vacina"
+    itemName={deletingItem ? getVacinaName(deletingItem) : "vacina"}
     onClose={() => (showDeleteModal = false)}
     onConfirm={handleDelete}
     isLoading={isDeleting}

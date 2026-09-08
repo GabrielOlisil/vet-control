@@ -11,10 +11,10 @@ namespace Api.Controllers;
 public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetAll(
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetAll([FromQuery] int? page,
         [FromQuery] AplicacaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
-        var aplicacoes = await aplicacaoVacinaService.GetAllAsync(search, cancellationToken);
+        var aplicacoes = await aplicacaoVacinaService.GetAllAsync(page, search, cancellationToken);
         var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }
@@ -31,9 +31,9 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    public async Task<ActionResult<int>> Count([FromQuery] AplicacaoVacinaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        return Ok(await aplicacaoVacinaService.Count(cancellationToken));
+        return Ok(await aplicacaoVacinaService.Count(search, cancellationToken));
     }
 
     [HttpPost]

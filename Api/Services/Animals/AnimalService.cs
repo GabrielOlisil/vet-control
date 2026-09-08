@@ -23,7 +23,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
     public Task<List<Animal>> GetAllAsync(int? page, AnimalSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = context.Animals
+        var query = context.Animals.Include(e => e.Raca)
             .AsNoTracking();
 
         if (search?.RacaId is not null)

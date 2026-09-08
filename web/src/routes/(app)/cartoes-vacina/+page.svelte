@@ -4,7 +4,16 @@
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
     import { cartaoVacinaService } from "$lib/api/cartoes-vacina";
     import { vacinaService } from "$lib/api/vacinas";
-    import type { CartaoVacina, CartaoVacinaCreate, Vacina } from "$lib/types";
+    import type {
+        CartaoVacina,
+        CartaoVacinaCreateDto,
+        Vacina,
+    } from "$lib/types";
+
+    import IconCard from "@iconify-svelte/material-symbols/description-rounded.svelte";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
 
     let cartoes = $state<CartaoVacina[]>([]);
     let vacinas = $state<Vacina[]>([]);
@@ -12,7 +21,7 @@
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<CartaoVacinaCreate>({
+    let formData = $state<CartaoVacinaCreateDto>({
         vacinasAplicadasIds: [],
     });
     let formError = $state("");
@@ -34,8 +43,7 @@
                 vacinaService.list(),
             ]);
         } catch (error) {
-            console.error("Erro ao carregar dados:", error);
-            alert("Erro ao carregar cartões de vacina");
+            console.error("Erro ao carregar cartões de vacina:", error);
         } finally {
             isLoading = false;
         }
@@ -45,7 +53,9 @@
         if (cartao) {
             editingId = cartao.id;
             formData = {
-                vacinasAplicadasIds: cartao.vacinasAplicadas.map((v) => v.id),
+                vacinasAplicadasIds: cartao.vacinasAplicadas
+                    ? cartao.vacinasAplicadas.map((v) => v.id)
+                    : [],
             };
         } else {
             editingId = null;
@@ -96,90 +106,135 @@
         }
     }
 
-    function toggleVacina(vacinaId: string) {
-        const ids = formData.vacinasAplicadasIds || [];
-        if (ids.includes(vacinaId)) {
-            formData.vacinasAplicadasIds = ids.filter((id) => id !== vacinaId);
-        } else {
-            formData.vacinasAplicadasIds = [...ids, vacinaId];
-        }
+    function formatDate(dateStr?: string): string {
+        if (!dateStr) return "-";
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("pt-BR");
     }
 </script>
 
-<div class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-2xl font-bold text-gray-900">Cartões de Vacina</h2>
-    </div>
-
-    <!-- Create Button -->
-    <div class="px-6 py-4 border-b border-gray-200">
+<div class="space-y-6">
+    <!-- Header -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+    >
+        <div>
+            <h1
+                class="text-2xl font-black text-base-content flex items-center gap-2"
+            >
+                <IconCard width="24" height="24" class="text-primary" />
+                <span>Cartões de Vacina</span>
+            </h1>
+            <p class="text-xs text-base-content/70 mt-1">
+                Registros de imunização vinculados aos animais.
+            </p>
+        </div>
         <button
+            type="button"
             onclick={() => openFormModal()}
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            class="btn btn-primary btn-sm gap-1.5"
         >
-            + Novo Cartão
+            <IconAdd width="16" height="16" />
+            <span>Novo Cartão</span>
         </button>
     </div>
 
-    <!-- List -->
-    <div class="overflow-x-auto">
+    <!-- Lista de Cartões -->
+    <div
+        class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
+    >
         {#if isLoading}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Carregando...
+            <div class="p-12 text-center text-base-content/60">
+                <span class="loading loading-spinner loading-md text-primary"
+                ></span>
+                <p class="mt-2 text-xs">Carregando cartões...</p>
             </div>
         {:else if cartoes.length === 0}
-            <div class="px-6 py-12 text-center text-gray-500">
-                Nenhum cartão de vacina encontrado
+            <div class="p-12 text-center text-base-content/60 space-y-2">
+                <div class="flex justify-center opacity-40 text-primary">
+                    <IconCard width="48" height="48" />
+                </div>
+                <p class="font-bold">Nenhum cartão de vacina encontrado</p>
             </div>
         {:else}
-            <div class="px-6 py-4 space-y-4">
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {#each cartoes as cartao (cartao.id)}
                     <div
-                        class="border rounded-lg p-4 hover:bg-gray-50 transition"
+                        class="card bg-base-200/50 border border-base-300 shadow-xs"
                     >
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p class="text-sm font-semibold text-gray-900">
-                                    ID: {cartao.id}
-                                </p>
-                                <p class="text-sm text-gray-600">
-                                    Total de vacinas aplicadas: {cartao
-                                        .vacinasAplicadas.length}
-                                </p>
-                            </div>
-                            <div class="space-x-2">
-                                <button
-                                    onclick={() => openFormModal(cartao)}
-                                    class="text-blue-600 hover:text-blue-800 font-medium"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    onclick={() => openDeleteModal(cartao)}
-                                    class="text-red-600 hover:text-red-800 font-medium"
-                                >
-                                    Excluir
-                                </button>
-                            </div>
-                        </div>
-                        {#if cartao.vacinasAplicadas.length > 0}
-                            <div class="mt-2">
-                                <p
-                                    class="text-sm font-medium text-gray-700 mb-2"
-                                >
-                                    Vacinas aplicadas:
-                                </p>
-                                <div class="space-y-1">
-                                    {#each cartao.vacinasAplicadas as aplicacao}
-                                        <div class="text-sm text-gray-600">
-                                            • {aplicacao.vacinaName} ({aplicacao.dataAplicacao ||
-                                                "sem data"}) - próxima em {aplicacao.reaplicarEmXDias}
-                                            dias
-                                        </div>
-                                    {/each}
+                        <div class="card-body p-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span
+                                        class="badge badge-primary badge-sm font-semibold mb-1"
+                                    >
+                                        Cartão de Imunização
+                                    </span>
+                                    <p
+                                        class="font-mono text-xs text-base-content/70"
+                                    >
+                                        ID: {cartao.id}
+                                    </p>
+                                </div>
+                                <div class="space-x-1">
+                                    <button
+                                        type="button"
+                                        onclick={() => openDeleteModal(cartao)}
+                                        class="btn btn-ghost btn-xs text-error font-bold inline-flex items-center gap-1"
+                                    >
+                                        <IconDelete width="14" height="14" />
+                                        <span>Excluir</span>
+                                    </button>
                                 </div>
                             </div>
-                        {/if}
+
+                            <div class="divider my-1"></div>
+
+                            <div>
+                                <p
+                                    class="text-xs font-bold text-base-content/80 mb-2"
+                                >
+                                    Vacinas Registradas ({cartao
+                                        .vacinasAplicadas?.length || 0}):
+                                </p>
+                                {#if !cartao.vacinasAplicadas || cartao.vacinasAplicadas.length === 0}
+                                    <p
+                                        class="text-xs text-base-content/50 italic"
+                                    >
+                                        Nenhuma aplicação neste cartão.
+                                    </p>
+                                {:else}
+                                    <ul class="space-y-1 text-xs">
+                                        {#each cartao.vacinasAplicadas as aplicacao}
+                                            <li
+                                                class="flex items-center justify-between p-1.5 rounded-lg bg-base-100 border border-base-300"
+                                            >
+                                                <span
+                                                    class="font-bold text-primary flex items-center gap-1.5"
+                                                >
+                                                    <IconVaccines
+                                                        width="16"
+                                                        height="16"
+                                                    />
+                                                    <span
+                                                        >{aplicacao.vacina
+                                                            ?.nome ||
+                                                            "Vacina"}</span
+                                                    >
+                                                </span>
+                                                <span
+                                                    class="badge badge-sm badge-ghost"
+                                                >
+                                                    {formatDate(
+                                                        aplicacao.dataAplicacao,
+                                                    )}
+                                                </span>
+                                            </li>
+                                        {/each}
+                                    </ul>
+                                {/if}
+                            </div>
+                        </div>
                     </div>
                 {/each}
             </div>
@@ -195,41 +250,22 @@
     onSubmit={handleSubmit}
     isLoading={isSubmitting}
 >
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-3"
-            >Vacinas</label
-        >
-        <div
-            class="space-y-2 border rounded-lg p-3 bg-gray-50 max-h-64 overflow-y-auto"
-        >
-            {#each vacinas as vacina (vacina.id)}
-                <label
-                    class="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded"
-                >
-                    <input
-                        type="checkbox"
-                        checked={(formData.vacinasAplicadasIds || []).includes(
-                            vacina.id,
-                        )}
-                        onchange={() => toggleVacina(vacina.id)}
-                        class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">
-                        {vacina.nome} (reaplicar em {vacina.reaplicarEmXDias} dias)
-                    </span>
-                </label>
-            {/each}
-        </div>
+    <div class="space-y-3">
+        <p class="text-xs text-base-content/70">
+            Você pode criar um cartão avulso. Posteriormente você pode
+            associá-lo ao cadastrar um animal.
+        </p>
     </div>
     {#if formError}
-        <div class="text-red-600 text-sm mt-2">{formError}</div>
+        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
+            {formError}
+        </div>
     {/if}
 </FormModal>
 
 <!-- Delete Modal -->
 <ConfirmDeleteModal
     isOpen={showDeleteModal}
-    item={deletingItem}
     itemName="cartão de vacina"
     onClose={() => (showDeleteModal = false)}
     onConfirm={handleDelete}

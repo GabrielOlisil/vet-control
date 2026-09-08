@@ -27,38 +27,34 @@
 </script>
 
 {#if isOpen}
-    <div
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-        <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">{title}</h2>
-            </div>
-            <div class="px-6 py-4">
-                <p class="text-gray-600">{message}</p>
-            </div>
-            <div
-                class="px-6 py-4 bg-gray-50 rounded-b-lg flex gap-3 justify-end"
-            >
+    <dialog class="modal modal-open">
+        <div class="modal-box bg-base-100 text-base-content shadow-2xl max-w-md">
+            <h3 class="font-bold text-lg">{title}</h3>
+            <p class="py-4 text-sm text-base-content/80">{message}</p>
+            <div class="modal-action gap-2">
                 <button
+                    type="button"
                     onclick={onClose}
                     disabled={isLoading}
-                    class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition"
+                    class="btn btn-ghost"
                 >
                     {cancelText}
                 </button>
                 <button
+                    type="button"
                     onclick={handleConfirm}
                     disabled={isLoading}
-                    class={`px-4 py-2 text-white rounded-lg disabled:opacity-50 transition ${
-                        isDangerous
-                            ? "bg-red-600 hover:bg-red-700"
-                            : "bg-blue-600 hover:bg-blue-700"
-                    }`}
+                    class="btn {isDangerous ? 'btn-error text-white' : 'btn-primary'}"
                 >
-                    {isLoading ? "Carregando..." : confirmText}
+                    {#if isLoading}
+                        <span class="loading loading-spinner loading-sm"></span>
+                        Carregando...
+                    {:else}
+                        {confirmText}
+                    {/if}
                 </button>
             </div>
         </div>
-    </div>
+        <button type="button" class="modal-backdrop bg-black/40 backdrop-blur-xs cursor-default" onclick={onClose} aria-label="Fechar"></button>
+    </dialog>
 {/if}
