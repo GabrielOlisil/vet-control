@@ -13,4 +13,5 @@ public interface IVacinaService
     Task<Vacina> CreateAsync(VacinaCreateDto dto, CancellationToken cancellationToken = default);
     Task<Vacina?> PatchAsync(Guid id, VacinaPatchDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<int> Count(CancellationToken cancellationToken);
 }

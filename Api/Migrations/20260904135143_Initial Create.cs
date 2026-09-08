@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Api.Migrations
 {
     /// <inheritdoc />
-    public partial class initial : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,7 +15,9 @@ namespace Api.Migrations
                 name: "CartoesVacina",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -28,7 +30,9 @@ namespace Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Nome = table.Column<string>(type: "text", nullable: false),
-                    NomeCientifico = table.Column<string>(type: "text", nullable: false)
+                    NomeCientifico = table.Column<string>(type: "text", nullable: false),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -41,7 +45,9 @@ namespace Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    ReaplicarEmXDias = table.Column<long>(type: "bigint", nullable: false)
+                    ReaplicarEmXDias = table.Column<long>(type: "bigint", nullable: false),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -54,7 +60,9 @@ namespace Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Nome = table.Column<string>(type: "text", nullable: false),
-                    EspecieId = table.Column<Guid>(type: "uuid", nullable: false)
+                    EspecieId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -74,7 +82,9 @@ namespace Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     VacinaId = table.Column<Guid>(type: "uuid", nullable: false),
                     CartaoVacinaId = table.Column<Guid>(type: "uuid", nullable: true),
-                    DataAplicacao = table.Column<DateOnly>(type: "date", nullable: false)
+                    DataAplicacao = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -102,7 +112,9 @@ namespace Api.Migrations
                     RacaId = table.Column<Guid>(type: "uuid", nullable: true),
                     CartaoVacinaId = table.Column<Guid>(type: "uuid", nullable: true),
                     DataNascimento = table.Column<DateOnly>(type: "date", nullable: false),
-                    PictureUpload = table.Column<string>(type: "text", nullable: true)
+                    PictureUpload = table.Column<string>(type: "text", nullable: true),
+                    CreationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LastModificationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

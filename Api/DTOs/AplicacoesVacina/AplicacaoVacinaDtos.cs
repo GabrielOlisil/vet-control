@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Api.Models;
+using Api.DTOs.Vacinas;
 
 namespace Api.DTOs.AplicacoesVacina;
 
@@ -26,26 +27,32 @@ public sealed class AplicacaoVacinaPatchDto
     public Guid? CartaoVacinaId { get; set; }
 }
 
-public sealed class AplicacaoVacinaReadDto
+public sealed class AplicacaoVacinaReadResponseDto
 {
     public Guid Id { get; set; }
 
-    public Guid VacinaId { get; set; }
+    public required VacinaShortResponseDto Vacina { get; set; }
 
-    public required string VacinaName { get; set; }
-
-    public uint ReaplicarEmXDias { get; set; }
-
-    public Guid? CartaoVacinaId { get; set; }
+    public Guid? CartaoVacinaId { get; set; } //voltar
 
     public DateOnly DataAplicacao { get; set; }
 }
 
-public sealed class AplicacaoVacinaResponseDto
+public sealed class AplicacaoVacinaShortResponseDto
+{
+    public Guid Id { get; set; }
+    public required VacinaShortResponseDto Vacina { get; set; }
+    public DateOnly DataAplicacao { get; set; }
+
+}
+
+
+public sealed class AplicacaoVacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public required VacinaInfoDto Vacina { get; set; }
+    public required string VacinaName { get; set; }
+    public uint ReaplicarEmXDias { get; set; }
 
     public Guid? CartaoVacinaId { get; set; }
 
@@ -55,16 +62,9 @@ public sealed class AplicacaoVacinaResponseDto
     {
         get
         {
-            return DataAplicacao.ToDateTime(new TimeOnly(0, 0)).AddDays(Vacina.ReaplicarEmXDias);
+            return DataAplicacao.ToDateTime(new TimeOnly(0, 0))
+            .AddDays(ReaplicarEmXDias);
         }
     }
 }
 
-public sealed class VacinaInfoDto
-{
-    public Guid Id { get; set; }
-
-    public required string Nome { get; set; }
-
-    public uint ReaplicarEmXDias { get; set; }
-}

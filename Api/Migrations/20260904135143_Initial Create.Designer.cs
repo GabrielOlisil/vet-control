@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Api.Migrations
 {
     [DbContext(typeof(ApiContext))]
-    [Migration("20260901164335_initial")]
-    partial class initial
+    [Migration("20260904135143_Initial Create")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -34,8 +34,14 @@ namespace Api.Migrations
                     b.Property<Guid?>("CartaoVacinaId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("DataNascimento")
                         .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -65,8 +71,14 @@ namespace Api.Migrations
                     b.Property<Guid?>("CartaoVacinaId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("DataAplicacao")
                         .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("VacinaId")
                         .HasColumnType("uuid");
@@ -86,6 +98,12 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.ToTable("CartoesVacina");
@@ -96,6 +114,12 @@ namespace Api.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -116,8 +140,14 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("EspecieId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -135,6 +165,12 @@ namespace Api.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()

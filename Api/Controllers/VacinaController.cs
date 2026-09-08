@@ -11,16 +11,16 @@ namespace Api.Controllers;
 public class VacinaController(IVacinaService vacinaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<VacinaResponseDto>>> GetAll([FromQuery] VacinaSearchDto search,
+    public async Task<ActionResult<List<VacinaReadResponseDto>>> GetAll([FromQuery] VacinaSearchDto search,
         CancellationToken cancellationToken)
     {
         var vacinas = await vacinaService.GetAllAsync(search, cancellationToken);
-        var responses = vacinas.Select(VacinaMapper.MapToResponse).ToList();
+        var responses = vacinas.Select(VacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<VacinaResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<VacinaDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var vacina = await vacinaService.GetByIdAsync(id, cancellationToken);
         if (vacina is null)
@@ -31,7 +31,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<VacinaResponseDto>> Create(VacinaCreateDto dto,
+    public async Task<ActionResult<VacinaDetailResponseDto>> Create(VacinaCreateDto dto,
         CancellationToken cancellationToken)
     {
         var vacina = await vacinaService.CreateAsync(dto, cancellationToken);
@@ -44,7 +44,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<VacinaResponseDto>> Patch(Guid id, VacinaPatchDto dto,
+    public async Task<ActionResult<VacinaDetailResponseDto>> Patch(Guid id, VacinaPatchDto dto,
         CancellationToken cancellationToken)
     {
         var vacina = await vacinaService.PatchAsync(id, dto, cancellationToken);
@@ -57,6 +57,12 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
 
         var response = VacinaMapper.MapToResponse(fullVacina);
         return Ok(response);
+    }
+
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    {
+        return Ok(await vacinaService.Count(cancellationToken));
     }
 
     [HttpDelete("{id:guid}")]

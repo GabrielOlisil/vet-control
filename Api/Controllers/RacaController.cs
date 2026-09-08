@@ -12,16 +12,16 @@ namespace Api.Controllers;
 public class RacaController(IRacaService racaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<RacaResponseDto>>> GetAll([FromQuery] RacaSearchDto search,
+    public async Task<ActionResult<List<RacaReadResponseDto>>> GetAll([FromQuery] RacaSearchDto search,
         CancellationToken cancellationToken)
     {
         var racas = await racaService.GetAllAsync(search, cancellationToken);
-        var responses = racas.Select(RacaMapper.MapToResponse).ToList();
+        var responses = racas.Select(RacaMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<RacaResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<RacaDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var raca = await racaService.GetByIdAsync(id, cancellationToken);
         if (raca is null)
@@ -32,7 +32,7 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<RacaResponseDto>> Create(RacaCreateDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<RacaDetailResponseDto>> Create(RacaCreateDto dto, CancellationToken cancellationToken)
     {
         var raca = await racaService.CreateAsync(dto, cancellationToken);
         var fullRaca = await racaService.GetByIdAsync(raca.Id, cancellationToken);
@@ -52,7 +52,7 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<RacaResponseDto>> Patch(Guid id, RacaPatchDto dto,
+    public async Task<ActionResult<RacaDetailResponseDto>> Patch(Guid id, RacaPatchDto dto,
         CancellationToken cancellationToken)
     {
         var raca = await racaService.PatchAsync(id, dto, cancellationToken);
@@ -66,6 +66,12 @@ public class RacaController(IRacaService racaService) : ControllerBase
 
         var response = RacaMapper.MapToResponse(fullRaca);
         return Ok(response);
+    }
+
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    {
+        return Ok(await racaService.Count(cancellationToken));
     }
 
     [HttpDelete("{id:guid}")]

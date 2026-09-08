@@ -12,29 +12,23 @@ public sealed class CartaoVacinaPatchDto
     public List<Guid>? VacinasAplicadasIds { get; set; }
 }
 
-public sealed class CartaoVacinaReadDto
+public sealed class CartaoVacinaReadResponseDto
 {
     public Guid Id { get; set; }
 
-    public List<AplicacaoVacinaResumoDto> VacinasAplicadas { get; set; } = [];
+    public List<AplicacaoVacinaShortResponseDto> VacinasAplicadas { get; set; } = [];
 }
 
-public sealed class CartaoVacinaResponseDto
+public sealed class CartaoVacinaShortResponseDto
 {
     public Guid Id { get; set; }
 
-    public List<AplicacaoVacinaResponseDto> VacinasAplicadas { get; set; } = [];
+    public uint NumVacinas { get; set; }
 }
 
-public sealed class AplicacaoVacinaResumoDto
+public sealed class CartaoVacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public Guid VacinaId { get; set; }
-
-    public required string VacinaName { get; set; }
-
-    public uint ReaplicarEmXDias { get; set; }
-
-    public DateOnly DataAplicacao { get; set; }
+    public List<AplicacaoVacinaShortResponseDto> VacinasAplicadas { get; set; } = [];
 }

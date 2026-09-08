@@ -11,16 +11,23 @@ namespace Api.Controllers;
 public class AnimalController(IAnimalService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AnimalResponseDto>>> GetAll([FromQuery] AnimalSearchDto search,
+    public async Task<ActionResult<List<AnimaReadResponseDto>>> GetAll(
+        [FromQuery] AnimalSearchDto search, [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
-        var animals = await service.GetAllAsync(search, cancellationToken);
-        var responses = animals.Select(AnimalMapper.MapToResponse).ToList();
+        var animals = await service.GetAllAsync(page, search, cancellationToken);
+        var responses = animals.Select(AnimalMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count([FromQuery] AnimalSearchDto search, CancellationToken cancellationToken)
+    {
+        return Ok(await service.Count(search, cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<AnimalResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<AnimalDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var animal = await service.GetByIdAsync(id, cancellationToken);
         if (animal is null)
@@ -31,7 +38,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<AnimalResponseDto>> Create(AnimalCreateDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<AnimalDetailResponseDto>> Create(AnimalCreateDto dto, CancellationToken cancellationToken)
     {
         var animal = await service.CreateAsync(dto, cancellationToken);
         var fullAnimal = await service.GetByIdAsync(animal.Id, cancellationToken);
@@ -43,7 +50,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<AnimalResponseDto>> Patch(Guid id, AnimalPatchDto dto,
+    public async Task<ActionResult<AnimalDetailResponseDto>> Patch(Guid id, AnimalPatchDto dto,
         CancellationToken cancellationToken)
     {
         var animal = await service.PatchAsync(id, dto, cancellationToken);

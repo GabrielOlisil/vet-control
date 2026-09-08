@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Api.DTOs.CartoesVacina;
+using Api.DTOs.Racas;
 using Api.Models;
 
 namespace Api.DTOs.Animals;
@@ -20,6 +22,13 @@ public sealed class AnimalCreateDto
     public Guid? CartaoVacinaId { get; set; }
 }
 
+public sealed class AnimalShortResponseDto()
+{
+    public Guid Id { get; set; }
+
+    public required string Name { get; set; }
+}
+
 public sealed class AnimalPatchDto
 {
     [StringLength(100, MinimumLength = 1)] public string? Name { get; set; }
@@ -33,22 +42,18 @@ public sealed class AnimalPatchDto
     public Guid? CartaoVacinaId { get; set; }
 }
 
-public sealed class AnimalReadDto
+public sealed class AnimaReadResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Name { get; set; }
 
-    public Guid? RacaId { get; set; }
+    public RacaShortResponseDto? Raca { get; set; }
 
     public DateOnly DataNascimento { get; set; }
-
-    public string? PictureUpload { get; set; }
-
-    public Guid? CartaoVacinaId { get; set; }
 }
 
-public sealed class AnimalResponseDto
+public sealed class AnimalDetailResponseDto
 {
     public Guid Id { get; set; }
 
@@ -58,34 +63,9 @@ public sealed class AnimalResponseDto
 
     public string? PictureUpload { get; set; }
 
-    public RacaInfoDto? Raca { get; set; }
+    public RacaShortResponseDto? Raca { get; set; }
 
-    public CartaoVacinaInfoDto? CartaoVacina { get; set; }
+    public CartaoVacinaShortResponseDto? CartaoVacina { get; set; } //Cartao de vacina short
 }
 
-public sealed class RacaInfoDto
-{
-    public Guid Id { get; set; }
 
-    public required string Nome { get; set; }
-
-    public required string EspecieNome { get; set; }
-}
-
-public sealed class CartaoVacinaInfoDto
-{
-    public Guid Id { get; set; }
-
-    public List<AplicacaoVacinaInfoDto> VacinasAplicadas { get; set; } = [];
-}
-
-public sealed class AplicacaoVacinaInfoDto
-{
-    public Guid Id { get; set; }
-
-    public required string VacinaName { get; set; }
-
-    public uint ReaplicarEmXDias { get; set; }
-
-    public DateOnly DataAplicacao { get; set; }
-}

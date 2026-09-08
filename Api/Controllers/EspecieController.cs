@@ -11,15 +11,21 @@ namespace Api.Controllers;
 public class EspecieController(IEspecieService especieService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EspecieResponseDto>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<List<EspecieReadResponseDto>>> GetAll(CancellationToken cancellationToken)
     {
         var especies = await especieService.GetAllAsync(cancellationToken);
-        var responses = especies.Select(EspecieMapper.MapToResponse).ToList();
+        var responses = especies.Select(EspecieMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    {
+        return Ok(await especieService.Count(cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<EspecieResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<EspecieDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var especie = await especieService.GetByIdAsync(id, cancellationToken);
         if (especie is null)
@@ -30,7 +36,7 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<EspecieResponseDto>> Create(EspecieCreateDto dto,
+    public async Task<ActionResult<EspecieDetailResponseDto>> Create(EspecieCreateDto dto,
         CancellationToken cancellationToken)
     {
         var especie = await especieService.CreateAsync(dto, cancellationToken);
@@ -43,7 +49,7 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<EspecieResponseDto>> Patch(Guid id, EspeciePatchDto dto,
+    public async Task<ActionResult<EspecieDetailResponseDto>> Patch(Guid id, EspeciePatchDto dto,
         CancellationToken cancellationToken)
     {
         var especie = await especieService.PatchAsync(id, dto, cancellationToken);

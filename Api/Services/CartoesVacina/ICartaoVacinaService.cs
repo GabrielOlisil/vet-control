@@ -16,4 +16,5 @@ public interface ICartaoVacinaService
         CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<int> Count(CancellationToken cancellationToken);
 }

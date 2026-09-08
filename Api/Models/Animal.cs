@@ -1,7 +1,7 @@
 
 namespace Api.Models;
 
-public class Animal
+public class Animal : IAuditedEntity
 {
     public Guid Id { get; set; }
 
@@ -18,4 +18,6 @@ public class Animal
     public DateOnly DataNascimento { get; set; }
 
     public string? PictureUpload { get; set; }
+    public DateTimeOffset CreationDateTime { get; set; }
+    public DateTimeOffset? LastModificationDateTime { get; set; }
 }

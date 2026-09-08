@@ -1,21 +1,26 @@
 using Api.DTOs.Animals;
+using Api.DTOs.CartoesVacina;
+using Api.DTOs.Racas;
 using Api.Models;
 
 namespace Api.Mappers;
 
 public static class AnimalMapper
 {
-    public static AnimalReadDto MapToHead(Animal animal) => new()
+    public static AnimaReadResponseDto MapToHead(Animal animal) => new()
     {
         Id = animal.Id,
         Name = animal.Name,
-        RacaId = animal.RacaId,
-        CartaoVacinaId = animal.CartaoVacinaId,
+        Raca = animal.Raca != null ? new RacaShortResponseDto
+        {
+            Id = animal.Raca.Id,
+            Nome = animal.Raca.Nome,
+        } : null,
+
         DataNascimento = animal.DataNascimento,
-        PictureUpload = animal.PictureUpload
     };
 
-    public static AnimalResponseDto MapToResponse(Animal animal) => new()
+    public static AnimalDetailResponseDto MapToResponse(Animal animal) => new()
     {
         Id = animal.Id,
         Nome = animal.Name,
@@ -23,24 +28,17 @@ public static class AnimalMapper
         PictureUpload = animal.PictureUpload,
         Raca = animal.Raca is null
             ? null
-            : new RacaInfoDto
+            : new RacaShortResponseDto
             {
                 Id = animal.Raca.Id,
                 Nome = animal.Raca.Nome,
-                EspecieNome = animal.Raca.Especie?.Nome ?? "N/A"
             },
         CartaoVacina = animal.CartaoVacina is null
             ? null
-            : new CartaoVacinaInfoDto
+            : new CartaoVacinaShortResponseDto
             {
                 Id = animal.CartaoVacina.Id,
-                VacinasAplicadas = animal.CartaoVacina.VacinasAplicadas.Select(va => new AplicacaoVacinaInfoDto
-                {
-                    Id = va.Id,
-                    VacinaName = va.Vacina?.Name ?? "N/A",
-                    ReaplicarEmXDias = va.Vacina?.ReaplicarEmXDias ?? 0,
-                    DataAplicacao = va.DataAplicacao
-                }).ToList()
+                NumVacinas = (uint)animal.CartaoVacina.VacinasAplicadas.Count
             }
     };
 }

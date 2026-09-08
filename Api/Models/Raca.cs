@@ -1,6 +1,6 @@
 namespace Api.Models;
 
-public class Raca
+public class Raca : IAuditedEntity
 {
     public Guid Id { get; set; }
 
@@ -8,7 +8,9 @@ public class Raca
 
     public Guid EspecieId { get; set; }
 
-    public Especie Especie { get; set; }
+    public Especie? Especie { get; set; }
 
     public List<Animal> Animais { get; set; } = [];
+    public DateTimeOffset CreationDateTime { get; set; }
+    public DateTimeOffset? LastModificationDateTime { get; set; }
 }

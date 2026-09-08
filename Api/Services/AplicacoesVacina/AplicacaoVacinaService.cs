@@ -101,4 +101,9 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
         return query.OrderByDescending(aplicacao => aplicacao.DataAplicacao)
             .ToListAsync(cancellationToken);
     }
+
+    public Task<int> Count(CancellationToken cancellationToken = default)
+    {
+        return context.AplicacoesVacina.CountAsync(cancellationToken);
+    }
 }

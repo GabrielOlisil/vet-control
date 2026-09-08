@@ -6,22 +6,27 @@ namespace Api.Mappers;
 
 public static class RacaMapper
 {
-    public static RacaReadDto MapToHead(Raca raca) => new()
+    public static RacaReadResponseDto MapToHead(Raca raca) => new()
     {
         Id = raca.Id,
         Nome = raca.Nome,
-        EspecieId = raca.EspecieId
-    };
-
-    public static RacaResponseDto MapToResponse(Raca raca) => new()
-    {
-        Id = raca.Id,
-        Nome = raca.Nome,
-        Especie = new EspecieReadDto()
+        Especie = new EspecieShortResponseDto
         {
             Id = raca.EspecieId,
-            Nome = raca.Especie.Nome,
-            NomeCientifico = raca.Especie.NomeCientifico
+            FullName = string.Concat([.. raca.Especie?.Nome ?? string.Empty,
+            " ", raca.Especie?.NomeCientifico ?? string.Empty])
+        },
+    };
+
+    public static RacaDetailResponseDto MapToResponse(Raca raca) => new()
+    {
+        Id = raca.Id,
+        Nome = raca.Nome,
+        Especie = new EspecieShortResponseDto()
+        {
+            Id = raca.EspecieId,
+            FullName = string.Concat([.. raca.Especie?.Nome ?? string.Empty,
+            " ", raca.Especie?.NomeCientifico ?? string.Empty])
         },
     };
 }

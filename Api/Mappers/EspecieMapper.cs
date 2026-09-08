@@ -5,25 +5,19 @@ namespace Api.Mappers;
 
 public static class EspecieMapper
 {
-    public static EspecieReadDto MapToHead(Especie especie) => new()
-    {
-        Id = especie.Id,
-        Nome = especie.Nome,
-        NomeCientifico = especie.NomeCientifico
-    };
-
-    public static EspecieResponseDto MapToResponse(Especie especie) => new()
+    public static EspecieReadResponseDto MapToHead(Especie especie) => new()
     {
         Id = especie.Id,
         Nome = especie.Nome,
         NomeCientifico = especie.NomeCientifico,
-        Racas =
-        [
-            .. especie.Racas.Select(raca => new RacaResumoDto
-            {
-                Id = raca.Id,
-                Nome = raca.Nome
-            })
-        ]
+
+    };
+
+    public static EspecieDetailResponseDto MapToResponse(Especie especie) => new()
+    {
+        Id = especie.Id,
+        Nome = especie.Nome,
+        NomeCientifico = especie.NomeCientifico,
+        RaceCount = (uint)especie.Racas.Count
     };
 }

@@ -20,7 +20,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             .FirstOrDefaultAsync(animal => animal.Id == id, cancellationToken);
     }
 
-    public Task<List<Animal>> GetAllAsync(AnimalSearchDto? search = null,
+    public Task<List<Animal>> GetAllAsync(int? page, AnimalSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = context.Animals
@@ -35,7 +35,17 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         if (search?.DataNascimentoTo is not null)
             query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo);
 
-        return query.OrderBy(animal => animal.Name).ToListAsync(cancellationToken);
+        query = query.OrderBy(animal => animal.Name).ThenBy(animal => animal.CreationDateTime)
+                    .ThenBy(animal => animal.Id);
+
+        if (!page.HasValue)
+        {
+            page = 1;
+        }
+        query = query.Skip((page.Value - 1) * 10).Take(10);
+
+        return query.ToListAsync(cancellationToken);
+
     }
 
     public async Task<Animal> CreateAsync(AnimalCreateDto dto, CancellationToken cancellationToken = default)
@@ -106,5 +116,21 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         context.Animals.Remove(animal);
         await context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public Task<int> Count(AnimalSearchDto? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Animals.AsNoTracking();
+
+        if (search?.RacaId is not null)
+            query = query.Where(animal => animal.RacaId == search.RacaId);
+        if (search?.CartaoVacinaId is not null)
+            query = query.Where(animal => animal.CartaoVacinaId == search.CartaoVacinaId);
+        if (search?.DataNascimentoFrom is not null)
+            query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom);
+        if (search?.DataNascimentoTo is not null)
+            query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo);
+
+        return query.CountAsync(cancellationToken);
     }
 }

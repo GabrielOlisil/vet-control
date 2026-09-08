@@ -37,9 +37,6 @@ COPY --from=build /out/efbundle .
 
 ENTRYPOINT ["./efbundle"]
 
-
-
-
 # RUN
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api

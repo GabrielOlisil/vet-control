@@ -81,4 +81,9 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public Task<int> Count(CancellationToken cancellationToken = default)
+    {
+        return context.Vacinas.CountAsync(cancellationToken);
+    }
 }

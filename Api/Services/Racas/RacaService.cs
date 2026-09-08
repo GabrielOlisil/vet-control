@@ -73,6 +73,11 @@ public sealed class RacaService(ApiContext context) : IRacaService
         return true;
     }
 
+    public Task<int> Count(CancellationToken cancellationToken = default)
+    {
+        return context.Racas.CountAsync(cancellationToken);
+    }
+
 
     public Task<Raca?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {

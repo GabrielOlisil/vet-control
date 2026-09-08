@@ -19,27 +19,26 @@ public sealed class EspeciePatchDto
     [StringLength(100, MinimumLength = 1)] public string? NomeCientifico { get; set; }
 }
 
-public sealed class EspecieReadDto
+public sealed class EspecieReadResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Nome { get; set; }
     public required string NomeCientifico { get; set; }
 }
+public sealed class EspecieShortResponseDto
+{
+    public Guid Id { get; set; }
 
-public sealed class EspecieResponseDto
+    public required string FullName { get; set; }
+}
+
+public sealed class EspecieDetailResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Nome { get; set; }
     public required string NomeCientifico { get; set; }
-
-    public List<RacaResumoDto> Racas { get; set; } = [];
+    public uint RaceCount { get; set; }
 }
 
-public sealed class RacaResumoDto
-{
-    public Guid Id { get; set; }
-
-    public required string Nome { get; set; }
-}

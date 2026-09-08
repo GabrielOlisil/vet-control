@@ -2,33 +2,20 @@
 
 services:
 
-  migrations:
-    build:
-      context: .
-      target: migrations
-    environment:
-      ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
-    command:
-    - "--connection"
-    - "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
-    depends_on:
-      db:
-        condition: service_healthy
-
-
   api:
-    build:
-      context: .
-      target: api
+    build: .
+    working_dir: /app
+    volumes:
+      - ..:/app
+      - nuget-cache:/root/.nuget/packages/
+
+    command: sleep infinity
     environment:
       ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
       ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
     ports:
       - "8080:8080"
-    depends_on:
-      migrations:
-        condition: service_completed_successfully
-
 
   db:
     image: postgres:18-alpine
@@ -41,7 +28,7 @@ services:
     environment:
       POSTGRES_PASSWORD: "postgresssss"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vacinas"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d vacinas" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -52,6 +39,6 @@ services:
     ports:
       - 8000:8080
 
-
 volumes:
   db-data:
+  nuget-cache:

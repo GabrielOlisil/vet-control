@@ -11,16 +11,16 @@ namespace Api.Controllers;
 public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AplicacaoVacinaResponseDto>>> GetAll(
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetAll(
         [FromQuery] AplicacaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
         var aplicacoes = await aplicacaoVacinaService.GetAllAsync(search, cancellationToken);
-        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToResponse).ToList();
+        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<AplicacaoVacinaResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var aplicacao = await aplicacaoVacinaService.GetByIdAsync(id, cancellationToken);
         if (aplicacao is null)
@@ -30,8 +30,14 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return Ok(response);
     }
 
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    {
+        return Ok(await aplicacaoVacinaService.Count(cancellationToken));
+    }
+
     [HttpPost]
-    public async Task<ActionResult<AplicacaoVacinaResponseDto>> Create(AplicacaoVacinaCreateDto dto,
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Create(AplicacaoVacinaCreateDto dto,
         CancellationToken cancellationToken)
     {
         var aplicacao = await aplicacaoVacinaService.CreateAsync(dto, cancellationToken);
@@ -44,7 +50,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<AplicacaoVacinaResponseDto>> Patch(Guid id, AplicacaoVacinaPatchDto dto,
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Patch(Guid id, AplicacaoVacinaPatchDto dto,
         CancellationToken cancellationToken)
     {
         var aplicacao = await aplicacaoVacinaService.PatchAsync(id, dto, cancellationToken);

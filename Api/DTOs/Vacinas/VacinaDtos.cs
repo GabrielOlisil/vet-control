@@ -21,7 +21,15 @@ public sealed class VacinaPatchDto
     public uint? ReaplicarEmXDias { get; set; }
 }
 
-public sealed class VacinaReadDto
+
+public sealed class VacinaShortResponseDto
+{
+    public Guid Id { get; set; }
+
+    public required string Nome { get; set; }
+}
+
+public sealed class VacinaReadResponseDto
 {
     public Guid Id { get; set; }
 
@@ -30,7 +38,7 @@ public sealed class VacinaReadDto
     public uint ReaplicarEmXDias { get; set; }
 }
 
-public sealed class VacinaResponseDto
+public sealed class VacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 

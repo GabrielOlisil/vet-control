@@ -9,6 +9,8 @@ using Api.Services.Vacinas;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
+const string webPolicy = "AllowWeb";
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContextPool<ApiContext>(opt =>
@@ -28,7 +30,15 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddExceptionHandler<ErrorHandler>();
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(webPolicy, policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -47,7 +57,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference("docs");
 }
 
-
+app.UseCors(webPolicy);
 app.MapControllers();
 app.Run();
 

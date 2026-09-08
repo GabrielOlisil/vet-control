@@ -10,7 +10,7 @@ public sealed class RacaCreateDto
     [StringLength(100, MinimumLength = 1)]
     public required string Nome { get; set; }
 
-    [Required] [NonEmptyGuid] public Guid EspecieId { get; set; }
+    [Required][NonEmptyGuid] public Guid EspecieId { get; set; }
 }
 
 public sealed class RacaPatchDto
@@ -18,31 +18,29 @@ public sealed class RacaPatchDto
     [StringLength(100, MinimumLength = 1)] public string? Nome { get; set; }
 }
 
-public sealed class RacaReadDto
+public sealed class RacaReadResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Nome { get; set; }
 
-    public Guid EspecieId { get; set; }
+    public required EspecieShortResponseDto Especie { get; set; }
 }
 
-public sealed class RacaResponseDto
+
+public sealed class RacaShortResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Nome { get; set; }
-
-    public EspecieReadDto Especie { get; set; }
-
-    public List<AnimalResumoDto> Animais { get; set; } = [];
 }
 
-public sealed class AnimalResumoDto
+public sealed class RacaDetailResponseDto
 {
     public Guid Id { get; set; }
 
     public required string Nome { get; set; }
 
-    public DateOnly DataNascimento { get; set; }
+    public required EspecieShortResponseDto Especie { get; set; }
+    public uint AnimalCount { get; set; }
 }

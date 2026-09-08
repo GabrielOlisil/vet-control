@@ -108,6 +108,11 @@ public sealed class CartaoVacinaService(ApiContext context) : ICartaoVacinaServi
         return true;
     }
 
+    public Task<int> Count(CancellationToken cancellationToken = default)
+    {
+        return context.CartoesVacina.CountAsync(cancellationToken);
+    }
+
     private async Task ApplyApplicationsAsync(Guid cartaoId, HashSet<Guid>? applicationIds,
         CancellationToken cancellationToken, bool replaceExisting = false)
     {

@@ -78,4 +78,9 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public Task<int> Count(CancellationToken cancellationToken = default)
+    {
+        return context.Especies.CountAsync(cancellationToken);
+    }
 }

@@ -1,0 +1,16 @@
+{
+    "name": "DotNet & Postgres VetControl",
+    "dockerComposeFile": "./compose.yml",
+    "service": "api",
+    "workspaceFolder": "/app",
+    "shutdownAction": "stopCompose",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-dotnettools.csharp",
+                "ms-dotnettools.csdevkit"
+            ]
+        }
+    },
+    "remoteUser": "root"
+}

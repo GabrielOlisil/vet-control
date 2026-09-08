@@ -11,16 +11,16 @@ namespace Api.Controllers;
 public class CartaoVacinaController(ICartaoVacinaService cartaoVacinaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<CartaoVacinaResponseDto>>> GetAll(
+    public async Task<ActionResult<List<CartaoVacinaReadResponseDto>>> GetAll(
         [FromQuery] CartaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
         var cartoes = await cartaoVacinaService.GetAllAsync(search, cancellationToken);
-        var responses = cartoes.Select(CartaoVacinaMapper.MapToResponse).ToList();
+        var responses = cartoes.Select(CartaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<CartaoVacinaResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<CartaoVacinaDetailResponseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var cartao = await cartaoVacinaService.GetByIdAsync(id, cancellationToken);
         if (cartao is null)
@@ -31,7 +31,7 @@ public class CartaoVacinaController(ICartaoVacinaService cartaoVacinaService) : 
     }
 
     [HttpPost]
-    public async Task<ActionResult<CartaoVacinaResponseDto>> Create(CartaoVacinaCreateDto dto,
+    public async Task<ActionResult<CartaoVacinaDetailResponseDto>> Create(CartaoVacinaCreateDto dto,
         CancellationToken cancellationToken)
     {
         var cartao = await cartaoVacinaService.CreateAsync(dto, cancellationToken);
@@ -44,7 +44,7 @@ public class CartaoVacinaController(ICartaoVacinaService cartaoVacinaService) : 
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<CartaoVacinaResponseDto>> Patch(Guid id, CartaoVacinaPatchDto dto,
+    public async Task<ActionResult<CartaoVacinaDetailResponseDto>> Patch(Guid id, CartaoVacinaPatchDto dto,
         CancellationToken cancellationToken)
     {
         var cartao = await cartaoVacinaService.PatchAsync(id, dto, cancellationToken);
@@ -57,6 +57,12 @@ public class CartaoVacinaController(ICartaoVacinaService cartaoVacinaService) : 
 
         var response = CartaoVacinaMapper.MapToResponse(fullCartao);
         return Ok(response);
+    }
+
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    {
+        return Ok(await cartaoVacinaService.Count(cancellationToken));
     }
 
     [HttpDelete("{id:guid}")]
