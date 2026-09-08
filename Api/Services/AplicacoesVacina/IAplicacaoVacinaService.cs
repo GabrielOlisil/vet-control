@@ -15,8 +15,8 @@ public interface IAplicacaoVacinaService
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<AplicacaoVacina?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<List<AplicacaoVacina>> GetAllAsync(AplicacaoVacinaSearchDto? search = null,
+    Task<List<AplicacaoVacina>> GetAllAsync(int? page, AplicacaoVacinaSearchDto? search = null,
         CancellationToken cancellationToken = default);
 
-    Task<int> Count(CancellationToken cancellationToken);
+    Task<int> Count(AplicacaoVacinaSearchDto? search = null, CancellationToken cancellationToken = default);
 }
