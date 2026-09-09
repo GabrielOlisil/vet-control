@@ -7,9 +7,10 @@ services:
     working_dir: /app
     volumes:
       - ..:/app
-      - nuget-cache:/root/.nuget/packages/
+      - nuget-cache:/home/ubuntu/.nuget/packages/
 
     command: sleep infinity
+
     environment:
       ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
       ASPNETCORE_ENVIRONMENT: "Development"
