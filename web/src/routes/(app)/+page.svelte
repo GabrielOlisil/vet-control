@@ -86,9 +86,9 @@
 
     // Modal de Aplicação de Vacina
     let showAplicacaoModal = $state(false);
-    let aplicacaoTargetAnimal = $state<
-        Animal | AnimalDetailResponseDto | null
-    >(null);
+    let aplicacaoTargetAnimal = $state<Animal | AnimalDetailResponseDto | null>(
+        null,
+    );
     let aplicacaoForm = $state<{
         vacinaId: string;
         dataAplicacao: string;

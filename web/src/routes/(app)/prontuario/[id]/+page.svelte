@@ -235,7 +235,8 @@
                             <tbody>
                                 {#each animalCartao.vacinasAplicadas as aplicacao}
                                     {@const dias =
-                                        Number(aplicacao?.reaplicarEmXDias) || 365}
+                                        Number(aplicacao?.reaplicarEmXDias) ||
+                                        365}
                                     <tr>
                                         <td
                                             class="font-bold text-primary flex items-center gap-1.5"

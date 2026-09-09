@@ -250,10 +250,10 @@
                                         >
                                         <span
                                             class="text-[11px] text-base-content/50 font-mono"
-                                            >{animal.id ? animal.id.substring(
-                                                0,
-                                                8,
-                                            ) + "..." : "-"}</span
+                                            >{animal.id
+                                                ? animal.id.substring(0, 8) +
+                                                  "..."
+                                                : "-"}</span
                                         >
                                     </div>
                                 </td>

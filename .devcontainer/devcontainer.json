@@ -9,7 +9,8 @@
             "extensions": [
                 "ms-dotnettools.csharp",
                 "ms-dotnettools.csdevkit",
-                "google.google-antigravity"
+                "google.google-antigravity",
+                "svelte.svelte-vscode"
             ]
         }
     },

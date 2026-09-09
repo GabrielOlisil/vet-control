@@ -198,8 +198,7 @@
                                         <span
                                             class="badge badge-sm badge-outline font-semibold"
                                         >
-                                            {raca.especie.fullName ||
-                                                "Espécie"}
+                                            {raca.especie.fullName || "Espécie"}
                                         </span>
                                     {:else}
                                         <span

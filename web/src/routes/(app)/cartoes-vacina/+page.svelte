@@ -54,7 +54,9 @@
             editingId = cartao.id ?? null;
             formData = {
                 vacinasAplicadasIds: cartao.vacinasAplicadas
-                    ? cartao.vacinasAplicadas.map((v) => v.id).filter((id): id is string => Boolean(id))
+                    ? cartao.vacinasAplicadas
+                          .map((v) => v.id)
+                          .filter((id): id is string => Boolean(id))
                     : [],
             };
         } else {
