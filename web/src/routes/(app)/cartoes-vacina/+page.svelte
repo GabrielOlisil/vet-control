@@ -51,10 +51,10 @@
 
     function openFormModal(cartao?: CartaoVacina) {
         if (cartao) {
-            editingId = cartao.id;
+            editingId = cartao.id ?? null;
             formData = {
                 vacinasAplicadasIds: cartao.vacinasAplicadas
-                    ? cartao.vacinasAplicadas.map((v) => v.id)
+                    ? cartao.vacinasAplicadas.map((v) => v.id).filter((id): id is string => Boolean(id))
                     : [],
             };
         } else {
@@ -91,7 +91,7 @@
     }
 
     async function handleDelete() {
-        if (!deletingItem) return;
+        if (!deletingItem?.id) return;
 
         try {
             isDeleting = true;

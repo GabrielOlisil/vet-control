@@ -34,7 +34,7 @@
     }>({
         animalId: "",
         vacinaId: "",
-        dataAplicacao: new Date().toISOString().split("T")[0],
+        dataAplicacao: new Date().toISOString().slice(0, 10),
     });
     let formError = $state("");
     let isSubmitting = $state(false);
@@ -64,9 +64,9 @@
 
     function openFormModal() {
         formData = {
-            animalId: animais.length > 0 ? animais[0].id : "",
-            vacinaId: vacinas.length > 0 ? vacinas[0].id : "",
-            dataAplicacao: new Date().toISOString().split("T")[0],
+            animalId: animais.length > 0 ? (animais[0]?.id ?? "") : "",
+            vacinaId: vacinas.length > 0 ? (vacinas[0]?.id ?? "") : "",
+            dataAplicacao: new Date().toISOString().slice(0, 10),
         };
         formError = "";
         showFormModal = true;
@@ -83,12 +83,14 @@
             let targetAnimal = animais.find((a) => a.id === formData.animalId);
             let cartaoId = targetAnimal?.cartaoVacina?.id;
 
-            if (targetAnimal && !cartaoId) {
+            if (targetAnimal && !cartaoId && targetAnimal.id) {
                 const novoCartao = await cartaoVacinaService.create({});
-                await animalService.update(targetAnimal.id, {
-                    cartaoVacinaId: novoCartao.id,
-                });
-                cartaoId = novoCartao.id;
+                if (novoCartao.id) {
+                    await animalService.update(targetAnimal.id, {
+                        cartaoVacinaId: novoCartao.id,
+                    });
+                    cartaoId = novoCartao.id;
+                }
             }
 
             await aplicacaoVacinaService.create({
@@ -113,7 +115,7 @@
     }
 
     async function handleDelete() {
-        if (!deletingItem) return;
+        if (!deletingItem?.id) return;
 
         try {
             isDeleting = true;
@@ -253,7 +255,7 @@
             value={formData.animalId}
             onChange={(v: string) => (formData.animalId = v)}
             options={animais.map((a) => ({
-                value: a.id,
+                value: a.id ?? "",
                 label: `${getAnimalName(a)} (${a.raca?.nome || "Sem raça"})`,
             }))}
             placeholder="Selecione o animal"
@@ -266,7 +268,7 @@
         value={formData.vacinaId}
         onChange={(v: string) => (formData.vacinaId = v)}
         options={vacinas.map((v) => ({
-            value: v.id,
+            value: v.id ?? "",
             label: `${getVacinaName(v)} (a cada ${v.reaplicarEmXDias} dias)`,
         }))}
         placeholder="Selecione a vacina"

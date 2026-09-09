@@ -67,7 +67,7 @@
 
     function openFormModal(animal?: Animal) {
         if (animal) {
-            editingId = animal.id;
+            editingId = animal.id ?? null;
             formData = {
                 name: getAnimalName(animal),
                 dataNascimento:
@@ -108,7 +108,7 @@
                 await animalService.update(editingId, payload);
             } else {
                 const cartao = await cartaoVacinaService.create({});
-                payload.cartaoVacinaId = cartao.id;
+                payload.cartaoVacinaId = cartao.id ?? null;
                 await animalService.create(payload);
             }
             showFormModal = false;
@@ -127,7 +127,7 @@
     }
 
     async function handleDelete() {
-        if (!deletingItem) return;
+        if (!deletingItem?.id) return;
 
         try {
             isDeleting = true;
@@ -250,10 +250,10 @@
                                         >
                                         <span
                                             class="text-[11px] text-base-content/50 font-mono"
-                                            >{animal.id.substring(
+                                            >{animal.id ? animal.id.substring(
                                                 0,
                                                 8,
-                                            )}...</span
+                                            ) + "..." : "-"}</span
                                         >
                                     </div>
                                 </td>
@@ -329,8 +329,8 @@
         value={formData.racaId}
         onChange={(v: string) => (formData.racaId = v)}
         options={racas.map((r) => ({
-            value: r.id,
-            label: r.nome,
+            value: r.id ?? "",
+            label: r.nome || "Sem nome",
         }))}
         placeholder="Selecione uma raça (opcional)"
     />

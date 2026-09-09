@@ -3,6 +3,7 @@
     import { onMount } from "svelte";
     import type { PageProps } from "./$types";
     import {
+        getAnimalName,
         type CartaoVacinaDetailResponseDto,
         type AnimalDetailResponseDto,
     } from "$lib/types";
@@ -65,9 +66,11 @@
         try {
             animal = await animalService.get(params.id);
 
-            animalCartao = await cartaoVacinaService.get(
-                animal?.cartaoVacina?.id!,
-            );
+            if (animal?.cartaoVacina?.id) {
+                animalCartao = await cartaoVacinaService.get(
+                    animal.cartaoVacina.id,
+                );
+            }
         } catch {
         } finally {
             isLoading = false;
@@ -116,7 +119,7 @@
                         Prontuário
                     </div>
                     <h2 class="text-2xl font-black leading-tight">
-                        {animal?.name}
+                        {getAnimalName(animal)}
                     </h2>
                     <p class="text-xs opacity-90">
                         {animal?.raca?.nome || "Raça não informada"} • {calculateAge(
@@ -232,7 +235,7 @@
                             <tbody>
                                 {#each animalCartao.vacinasAplicadas as aplicacao}
                                     {@const dias =
-                                        aplicacao?.reaplicarEmXDias || 365}
+                                        Number(aplicacao?.reaplicarEmXDias) || 365}
                                     <tr>
                                         <td
                                             class="font-bold text-primary flex items-center gap-1.5"
