@@ -14,6 +14,7 @@ public class CartaoVacinaController(ICartaoVacinaService cartaoVacinaService) : 
     public async Task<ActionResult<List<CartaoVacinaReadResponseDto>>> GetAll(
         [FromQuery] CartaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
+
         var cartoes = await cartaoVacinaService.GetAllAsync(search, cancellationToken);
         var responses = cartoes.Select(CartaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);

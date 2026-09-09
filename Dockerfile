@@ -37,6 +37,16 @@ COPY --from=build /out/efbundle .
 
 ENTRYPOINT ["./efbundle"]
 
+
+
+FROM node:24-alpine AS front
+WORKDIR /app
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
+
 # RUN
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
@@ -44,4 +54,5 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 WORKDIR /app
 COPY --from=build /app ./
+COPY --from=front /app/build ./wwwroot
 ENTRYPOINT ["dotnet", "Api.dll"]

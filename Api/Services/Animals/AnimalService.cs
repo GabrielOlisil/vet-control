@@ -3,6 +3,7 @@ using Api.DTOs.Animals;
 using Api.DTOs;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Api.Services.Animals;
 
@@ -132,5 +133,17 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo);
 
         return query.CountAsync(cancellationToken);
+    }
+
+    public Task<List<Animal>> GetVacinasAnimalAsync(Guid animalId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<List<Animal>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    {
+        return context.Animals.AsNoTracking().Where(e => EF.Functions.ILike(e.Name, $"{name}%")).OrderBy(e => e.Name)
+            .Skip(page - 1)
+            .Take(10).ToListAsync(cancellationToken);
     }
 }

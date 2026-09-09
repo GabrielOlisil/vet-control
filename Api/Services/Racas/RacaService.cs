@@ -91,7 +91,7 @@ public sealed class RacaService(ApiContext context) : IRacaService
     public Task<List<Raca>> GetAllAsync(RacaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = context.Racas
+        var query = context.Racas.Include(e => e.Especie)
             .AsNoTracking();
 
         if (search?.EspecieId is not null)

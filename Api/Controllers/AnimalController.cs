@@ -20,6 +20,18 @@ public class AnimalController(IAnimalService service) : ControllerBase
         return Ok(responses);
     }
 
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<AnimalShortResponseDto>>> GetByName([FromQuery] int page, [FromQuery] string name, CancellationToken cancellationToken)
+    {
+        if (page < 1)
+        {
+            return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
+        }
+
+        return (await service.GetAllByNameAsync(page, name, cancellationToken)).Select(AnimalMapper.MapToShort).ToList();
+    }
+
     [HttpGet("count")]
     public async Task<ActionResult<int>> Count([FromQuery] AnimalSearchDto search, CancellationToken cancellationToken)
     {

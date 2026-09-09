@@ -9,7 +9,7 @@ public static class AplicacaoVacinaMapper
     public static AplicacaoVacinaReadResponseDto MapToHead(AplicacaoVacina aplicacao) => new()
     {
         Id = aplicacao.Id,
-        Vacina = new VacinaShortResponseDto { Id = aplicacao.VacinaId, Nome = aplicacao.Vacina?.Name ?? string.Empty },
+        Vacina = new VacinaShortResponseDto { Id = aplicacao.VacinaId, Name = aplicacao.Vacina?.Name ?? string.Empty },
         CartaoVacinaId = aplicacao.CartaoVacinaId,
         DataAplicacao = aplicacao.DataAplicacao
     };

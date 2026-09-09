@@ -15,7 +15,7 @@ public static class VacinaMapper
     public static VacinaDetailResponseDto MapToResponse(Vacina vacina) => new()
     {
         Id = vacina.Id,
-        Nome = vacina.Name,
+        Name = vacina.Name,
         ReaplicarEmXDias = vacina.ReaplicarEmXDias,
         CriadoEm = DateTime.UtcNow
     };

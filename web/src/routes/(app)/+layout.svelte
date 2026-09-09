@@ -2,13 +2,13 @@
     import "../../app.css";
     import { page } from "$app/stores";
     import type { Snippet } from "svelte";
-    import IconPets from "@iconify-svelte/material-symbols/pets-rounded.svelte";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
-    import IconCard from "@iconify-svelte/material-symbols/description-rounded.svelte";
-    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded.svelte";
-    import IconLabel from "@iconify-svelte/material-symbols/label-rounded.svelte";
-    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
+    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconCard from "@iconify-svelte/material-symbols/description-rounded";
+    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
+    import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
+    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
 
     let { children }: { children?: Snippet } = $props();
 
@@ -35,7 +35,7 @@
     >
         <div class="navbar-start gap-2">
             <!-- Mobile drawer/dropdown -->
-            <div class="dropdown lg:hidden">
+            <div class="dropdown xl:hidden">
                 <div
                     tabindex="0"
                     role="button"
@@ -59,6 +59,7 @@
                 </div>
                 <ul
                     tabindex="0"
+                    role="menu"
                     class="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-60 p-2 shadow-xl border border-base-300"
                 >
                     {#each navLinks as link}
@@ -100,7 +101,7 @@
             </a>
         </div>
 
-        <div class="navbar-center hidden lg:flex">
+        <div class="navbar-center hidden xl:flex">
             <ul class="menu menu-horizontal px-1 gap-1">
                 {#each navLinks as link}
                     {@const IconComponent = link.icon}

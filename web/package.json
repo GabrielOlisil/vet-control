@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@iconify-svelte/material-symbols": "^1.0.49",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@tailwindcss/vite": "^4.3.3",
 		"daisyui": "^5.7.32",
 		"tailwindcss": "^4.3.3"

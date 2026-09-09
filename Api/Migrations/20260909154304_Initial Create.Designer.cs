@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Api.Migrations
 {
     [DbContext(typeof(ApiContext))]
-    [Migration("20260904135143_Initial Create")]
+    [Migration("20260909154304_Initial Create")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -56,6 +56,11 @@ namespace Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CartaoVacinaId");
+
+                    b.HasIndex("Name");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Name"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Name"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("RacaId");
 
@@ -131,6 +136,16 @@ namespace Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Nome");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Nome"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Nome"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("NomeCientifico");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NomeCientifico"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NomeCientifico"), new[] { "gin_trgm_ops" });
+
                     b.ToTable("Especies");
                 });
 
@@ -157,6 +172,11 @@ namespace Api.Migrations
 
                     b.HasIndex("EspecieId");
 
+                    b.HasIndex("Nome");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Nome"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Nome"), new[] { "gin_trgm_ops" });
+
                     b.ToTable("Racas");
                 });
 
@@ -180,6 +200,11 @@ namespace Api.Migrations
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Name"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Name"), new[] { "gin_trgm_ops" });
 
                     b.ToTable("Vacinas");
                 });

@@ -8,19 +8,10 @@ namespace Api.Services.Especies;
 
 public sealed class EspecieService(ApiContext context) : IEspecieService
 {
-    public Task<List<Especie>> GetAllAsync(int? page, EspecieSearchDto? search = null, CancellationToken cancellationToken = default)
+    public Task<List<Especie>> GetAllAsync(int? page, CancellationToken cancellationToken = default)
     {
         var query = context.Especies
             .AsNoTracking();
-
-        if (search?.Nome is not null)
-        {
-            query = query.Where(e => e.Nome == search.Nome);
-        }
-        if (search?.NomeCientifico is not null)
-        {
-            query = query.Where(e => e.NomeCientifico == search.NomeCientifico);
-        }
 
         if (!page.HasValue)
         {
@@ -95,20 +86,12 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
         return true;
     }
 
-    public Task<int> Count(EspecieSearchDto? search = null, CancellationToken cancellationToken = default)
+    public Task<int> Count(CancellationToken cancellationToken = default)
     {
 
         var query = context.Especies
           .AsNoTracking();
 
-        if (search?.Nome is not null)
-        {
-            query = query.Where(e => e.Nome == search.Nome);
-        }
-        if (search?.NomeCientifico is not null)
-        {
-            query = query.Where(e => e.NomeCientifico == search.NomeCientifico);
-        }
 
         return query.CountAsync(cancellationToken);
     }

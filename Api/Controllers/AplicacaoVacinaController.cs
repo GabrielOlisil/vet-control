@@ -15,6 +15,10 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         [FromQuery] AplicacaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
         var aplicacoes = await aplicacaoVacinaService.GetAllAsync(page, search, cancellationToken);
+
+
+
+
         var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }

@@ -17,7 +17,7 @@ public static class CartaoVacinaMapper
                 .Select(aplicacao => new AplicacaoVacinaShortResponseDto
                 {
                     Id = aplicacao.Id,
-                    Vacina = new VacinaShortResponseDto{Id = aplicacao.VacinaId, Nome = aplicacao.Vacina?.Name ?? ""},
+                    Vacina = new VacinaShortResponseDto{Id = aplicacao.VacinaId, Name = aplicacao.Vacina?.Name ?? ""  },
                     DataAplicacao = aplicacao.DataAplicacao
                 })
         ]
@@ -30,10 +30,12 @@ public static class CartaoVacinaMapper
         [
             .. cartao.VacinasAplicadas
                 .OrderByDescending(aplicacao => aplicacao.DataAplicacao)
-                .Select(aplicacao => new AplicacaoVacinaShortResponseDto
+                .Select(aplicacao => new AplicacaoVacinaDetailResponseDto
                 {
                     Id = aplicacao.Id,
-                    Vacina = new VacinaShortResponseDto{Id = aplicacao.VacinaId, Nome = aplicacao.Vacina?.Name ?? ""},
+                    VacinaName = aplicacao.Vacina?.Name ?? "",
+                    CartaoVacinaId = aplicacao.CartaoVacinaId,
+                    ReaplicarEmXDias = aplicacao.Vacina?.ReaplicarEmXDias ?? 0,
                     DataAplicacao = aplicacao.DataAplicacao
                 })
         ]

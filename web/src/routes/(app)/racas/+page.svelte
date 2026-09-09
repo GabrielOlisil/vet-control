@@ -8,14 +8,14 @@
     import { especieService } from "$lib/api/especies";
     import type { Raca, RacaCreateDto, Especie } from "$lib/types";
 
-    import IconLabel from "@iconify-svelte/material-symbols/label-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let racas = $state<Raca[]>([]);
-    let filteredRacas = $state<Raca[]>([]);
     let especies = $state<Especie[]>([]);
+    let filteredRacas = $state<Raca[]>([]);
     let isLoading = $state(true);
     let searchName = $state("");
 
@@ -39,10 +39,8 @@
     async function loadData() {
         try {
             isLoading = true;
-            [racas, especies] = await Promise.all([
-                racaService.list(),
-                especieService.list(),
-            ]);
+            racas = await racaService.list();
+            especies = await especieService.list();
             filterRacas();
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
@@ -68,7 +66,7 @@
             editingId = null;
             formData = {
                 nome: "",
-                especieId: especies.length > 0 ? especies[0].id : "",
+                especieId: "",
             };
         }
         formError = "";
@@ -254,19 +252,13 @@
         placeholder="Ex: Labrador, Siamês, Poodle..."
         required
     />
+
     <Select
-        label="Espécie"
-        id="especieId"
-        value={formData.especieId}
+        label="Especie"
         onChange={(v: string) => (formData.especieId = v)}
-        options={especies.map((e) => ({
-            value: e.id,
-            label: e.nome,
-        }))}
-        placeholder="Selecione uma espécie"
-        required
-        disabled={editingId !== null}
+        options={especies.map((e) => ({ value: e.id, label: e.nome }))}
     />
+
     {#if formError}
         <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
             {formError}

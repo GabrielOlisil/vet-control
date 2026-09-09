@@ -11,6 +11,8 @@ namespace Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+
+            migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
             migrationBuilder.CreateTable(
                 name: "CartoesVacina",
                 columns: table => new
@@ -139,6 +141,13 @@ namespace Api.Migrations
                 column: "CartaoVacinaId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Animals_Name",
+                table: "Animals",
+                column: "Name")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Animals_RacaId",
                 table: "Animals",
                 column: "RacaId");
@@ -154,9 +163,37 @@ namespace Api.Migrations
                 column: "VacinaId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Especies_Nome",
+                table: "Especies",
+                column: "Nome")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Especies_NomeCientifico",
+                table: "Especies",
+                column: "NomeCientifico")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Racas_EspecieId",
                 table: "Racas",
                 column: "EspecieId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Racas_Nome",
+                table: "Racas",
+                column: "Nome")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Vacinas_Name",
+                table: "Vacinas",
+                column: "Name")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
         }
 
         /// <inheritdoc />
@@ -179,6 +216,9 @@ namespace Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "Especies");
+
+            migrationBuilder.Sql("DROP EXTENSION IF EXISTS pg_trgm;");
+
         }
     }
 }

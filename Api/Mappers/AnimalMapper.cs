@@ -20,6 +20,12 @@ public static class AnimalMapper
         DataNascimento = animal.DataNascimento,
     };
 
+    public static AnimalShortResponseDto MapToShort(Animal animal) => new()
+    {
+        Id = animal.Id,
+        Name = animal.Name
+    };
+
     public static AnimalDetailResponseDto MapToResponse(Animal animal) => new()
     {
         Id = animal.Id,

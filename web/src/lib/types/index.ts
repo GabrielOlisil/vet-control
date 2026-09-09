@@ -124,7 +124,7 @@ export function getAnimalName(animal: { name?: string; nome?: string } | null | 
 // Vacina
 export interface VacinaShortResponseDto {
     id: string;
-    nome: string;
+    name: string;
 }
 
 export interface VacinaReadResponseDto {
@@ -177,7 +177,7 @@ export interface CartaoVacinaReadResponseDto {
 
 export interface CartaoVacinaDetailResponseDto {
     id: string;
-    vacinasAplicadas: AplicacaoVacinaShortResponseDto[];
+    vacinasAplicadas: AplicacaoVacinaDetailResponseDto[];
 }
 
 export interface CartaoVacinaCreateDto {

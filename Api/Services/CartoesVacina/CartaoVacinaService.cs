@@ -12,6 +12,8 @@ public sealed class CartaoVacinaService(ApiContext context) : ICartaoVacinaServi
         CancellationToken cancellationToken = default)
     {
         var query = context.CartoesVacina
+        .Include(e => e.VacinasAplicadas)
+        .ThenInclude(e => e.Vacina)
             .AsNoTracking();
 
         if (search?.VacinaId is not null)

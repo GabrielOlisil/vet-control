@@ -10,10 +10,10 @@
         Vacina,
     } from "$lib/types";
 
-    import IconCard from "@iconify-svelte/material-symbols/description-rounded.svelte";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconCard from "@iconify-svelte/material-symbols/description-rounded";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let cartoes = $state<CartaoVacina[]>([]);
     let vacinas = $state<Vacina[]>([]);
@@ -218,7 +218,7 @@
                                                     />
                                                     <span
                                                         >{aplicacao.vacina
-                                                            ?.nome ||
+                                                            ?.name ||
                                                             "Vacina"}</span
                                                     >
                                                 </span>

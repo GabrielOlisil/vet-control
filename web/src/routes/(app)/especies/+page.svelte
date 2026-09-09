@@ -6,10 +6,10 @@
     import { especieService } from "$lib/api/especies";
     import type { Especie, EspecieCreateDto } from "$lib/types";
 
-    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let especies = $state<Especie[]>([]);
     let filteredEspecies = $state<Especie[]>([]);

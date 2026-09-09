@@ -26,7 +26,7 @@ public sealed class VacinaShortResponseDto
 {
     public Guid Id { get; set; }
 
-    public required string Nome { get; set; }
+    public required string Name { get; set; }
 }
 
 public sealed class VacinaReadResponseDto
@@ -42,7 +42,7 @@ public sealed class VacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public required string Nome { get; set; }
+    public required string Name { get; set; }
 
     public uint ReaplicarEmXDias { get; set; }
 

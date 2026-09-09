@@ -58,6 +58,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(webPolicy);
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
+
+
 app.Run();
 

@@ -28,35 +28,7 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Raca>()
-            .HasOne(raca => raca.Especie)
-            .WithMany(especie => especie.Racas)
-            .HasForeignKey(raca => raca.EspecieId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Animal>()
-            .HasOne(animal => animal.Raca)
-            .WithMany(raca => raca.Animais)
-            .HasForeignKey(animal => animal.RacaId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Animal>()
-            .HasOne(animal => animal.CartaoVacina)
-            .WithMany()
-            .HasForeignKey(animal => animal.CartaoVacinaId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        modelBuilder.Entity<AplicacaoVacina>()
-            .HasOne(aplicacao => aplicacao.Vacina)
-            .WithMany()
-            .HasForeignKey(aplicacao => aplicacao.VacinaId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<AplicacaoVacina>()
-            .HasOne(aplicacao => aplicacao.CartaoVacina)
-            .WithMany(cartao => cartao.VacinasAplicadas)
-            .HasForeignKey(aplicacao => aplicacao.CartaoVacinaId)
-            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApiContext).Assembly);
     }
 
     private void SetAuditedColumns()

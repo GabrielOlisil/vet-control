@@ -37,7 +37,7 @@ public sealed class AnimalPatchDto
 
     public string? PictureUpload { get; set; }
 
-    [NonEmptyGuid] public Guid? RacaId { get; set; }
+    public Guid? RacaId { get; set; }
 
     public Guid? CartaoVacinaId { get; set; }
 }

@@ -14,6 +14,8 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         var query = context.Vacinas
             .AsNoTracking();
 
+
+
         if (search?.ReaplicarEmXDiasMin is not null)
             query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin);
         if (search?.ReaplicarEmXDiasMax is not null)

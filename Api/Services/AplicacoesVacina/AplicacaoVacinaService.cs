@@ -96,6 +96,7 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
             query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo);
 
 
+
         if (!page.HasValue)
         {
             page = 1;

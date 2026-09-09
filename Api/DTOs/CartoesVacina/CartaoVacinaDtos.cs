@@ -30,5 +30,5 @@ public sealed class CartaoVacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public List<AplicacaoVacinaShortResponseDto> VacinasAplicadas { get; set; } = [];
+    public List<AplicacaoVacinaDetailResponseDto> VacinasAplicadas { get; set; } = [];
 }

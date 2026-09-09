@@ -21,17 +21,17 @@
         type CartaoVacinaDetailResponseDto,
     } from "$lib/types";
 
-    import IconPets from "@iconify-svelte/material-symbols/pets-rounded.svelte";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
-    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded.svelte";
-    import IconLabel from "@iconify-svelte/material-symbols/label-rounded.svelte";
-    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
-    import IconWarning from "@iconify-svelte/material-symbols/warning-rounded.svelte";
-    import IconInfo from "@iconify-svelte/material-symbols/info-rounded.svelte";
-    import IconClose from "@iconify-svelte/material-symbols/close-rounded.svelte";
+    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
+    import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
+    import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconWarning from "@iconify-svelte/material-symbols/warning-rounded";
+    import IconInfo from "@iconify-svelte/material-symbols/info-rounded";
+    import IconClose from "@iconify-svelte/material-symbols/close-rounded";
 
     // Estatísticas
     let stats = $state({
@@ -228,7 +228,7 @@
     }
 
     // Modal Animal
-    function openAnimalModal(animal?: Animal) {
+    function openAnimalModal(animal?: Animal | null) {
         if (animal) {
             editingAnimalId = animal.id;
             animalForm = {
@@ -346,7 +346,7 @@
     }
 
     // Modal Aplicação de Vacina (Direto no Animal)
-    function openAplicacaoModal(animal?: Animal) {
+    function openAplicacaoModal(animal?: Animal | null) {
         aplicacaoTargetAnimal =
             animal ||
             selectedAnimal ||
@@ -372,8 +372,10 @@
         try {
             isSubmittingAplicacao = true;
 
+            let animalFull = await animalService.get(aplicacaoTargetAnimal.id);
+
             // Garantir que o animal tem um cartão de vacinas
-            let cartaoId = aplicacaoTargetAnimal.cartaoVacina?.id;
+            let cartaoId = animalFull.cartaoVacina?.id;
             if (!cartaoId) {
                 const novoCartao = await cartaoVacinaService.create({});
                 await animalService.update(aplicacaoTargetAnimal.id, {
@@ -663,13 +665,9 @@
 
     <!-- ABA 1: ANIMAIS FIRST & PRONTUÁRIO -->
     {#if activeTab === "animais"}
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="">
             <!-- Coluna de Listagem de Animais -->
-            <div
-                class={selectedAnimal
-                    ? "lg:col-span-6 space-y-4"
-                    : "lg:col-span-12 space-y-4"}
-            >
+            <div class="space-y-4">
                 <div
                     class="card bg-base-100 shadow-sm border border-base-300 p-4"
                 >
@@ -757,11 +755,7 @@
                         </div>
                     </div>
                 {:else}
-                    <div
-                        class="grid grid-cols-1 {selectedAnimal
-                            ? 'sm:grid-cols-1'
-                            : 'sm:grid-cols-2 xl:grid-cols-3'} gap-4"
-                    >
+                    <div class="grid gap-4">
                         {#each filteredAnimais as animal (animal.id)}
                             {@const isCurrent =
                                 selectedAnimal?.id === animal.id}
@@ -836,6 +830,7 @@
                                             </div>
                                             <ul
                                                 tabindex="0"
+                                                role="menu"
                                                 class="dropdown-content menu menu-sm bg-base-100 rounded-box z-20 w-36 p-1 shadow-lg border border-base-300"
                                             >
                                                 <li>
@@ -913,10 +908,9 @@
                                             />
                                             <span>Vacinar</span>
                                         </button>
-                                        <button
+                                        <a
                                             type="button"
-                                            onclick={() =>
-                                                selectAnimalProntuario(animal)}
+                                            href="/prontuario/{animal.id}"
                                             class="btn {isCurrent
                                                 ? 'btn-primary'
                                                 : 'btn-outline btn-primary'} btn-xs rounded-lg"
@@ -924,7 +918,7 @@
                                             {isCurrent
                                                 ? "Visualizando"
                                                 : "Ver Prontuário →"}
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -932,284 +926,6 @@
                     </div>
                 {/if}
             </div>
-
-            <!-- Coluna de Prontuário / Cartão de Vacinação Detalhado -->
-            {#if selectedAnimal}
-                <div class="lg:col-span-6 sticky top-20 space-y-4">
-                    <div
-                        class="card bg-base-100 shadow-lg border-2 border-primary/40 overflow-hidden"
-                    >
-                        <!-- Cabeçalho do Prontuário -->
-                        <div
-                            class="bg-primary text-primary-content p-5 flex justify-between items-start"
-                        >
-                            <div class="flex items-center gap-4">
-                                <div class="avatar placeholder">
-                                    {#if selectedAnimal.pictureUpload}
-                                        <div
-                                            class="w-14 h-14 rounded-2xl ring-2 ring-white/30 overflow-hidden bg-white"
-                                        >
-                                            <img
-                                                src={selectedAnimal.pictureUpload}
-                                                alt={getAnimalName(
-                                                    selectedAnimal,
-                                                )}
-                                            />
-                                        </div>
-                                    {:else}
-                                        <div
-                                            class="w-14 h-14 rounded-2xl bg-white/20 text-white font-black text-2xl flex items-center justify-center"
-                                        >
-                                            {getAnimalName(selectedAnimal)
-                                                .charAt(0)
-                                                .toUpperCase()}
-                                        </div>
-                                    {/if}
-                                </div>
-                                <div>
-                                    <div
-                                        class="badge badge-neutral badge-sm mb-1 uppercase font-bold text-[10px]"
-                                    >
-                                        Prontuário & Carteira
-                                    </div>
-                                    <h2
-                                        class="text-2xl font-black leading-tight"
-                                    >
-                                        {getAnimalName(selectedAnimal)}
-                                    </h2>
-                                    <p class="text-xs opacity-90">
-                                        {selectedAnimal.raca?.nome ||
-                                            "Raça não informada"} • {calculateAge(
-                                            selectedAnimal.dataNascimento,
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <button
-                                type="button"
-                                onclick={closeProntuario}
-                                class="btn btn-circle btn-sm btn-ghost text-white"
-                                aria-label="Fechar prontuário"
-                            >
-                                <IconClose width="18" height="18" />
-                            </button>
-                        </div>
-
-                        <div class="p-5 space-y-5">
-                            <!-- Dados Clínicos do Animal -->
-                            <div
-                                class="grid grid-cols-2 gap-3 text-xs bg-base-200/60 p-3.5 rounded-xl border border-base-300"
-                            >
-                                <div>
-                                    <span class="text-base-content/60 block"
-                                        >Data de Nascimento:</span
-                                    >
-                                    <span
-                                        class="font-bold text-sm text-base-content"
-                                        >{formatDate(
-                                            selectedAnimal.dataNascimento,
-                                        )}</span
-                                    >
-                                </div>
-                                <div>
-                                    <span class="text-base-content/60 block"
-                                        >Raça:</span
-                                    >
-                                    <span
-                                        class="font-bold text-sm text-base-content"
-                                        >{selectedAnimal.raca?.nome ||
-                                            "-"}</span
-                                    >
-                                </div>
-                                <div class="col-span-2">
-                                    <span class="text-base-content/60 block"
-                                        >ID do Paciente:</span
-                                    >
-                                    <span
-                                        class="font-mono text-[11px] text-base-content/80 break-all"
-                                        >{selectedAnimal.id}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <!-- Seção Cartão de Vacinas -->
-                            <div>
-                                <div
-                                    class="flex items-center justify-between mb-3"
-                                >
-                                    <div class="flex items-center gap-2">
-                                        <IconVaccines
-                                            width="20"
-                                            height="20"
-                                            class="text-primary"
-                                        />
-                                        <h3
-                                            class="font-black text-base text-base-content"
-                                        >
-                                            Cartão de Vacinação
-                                        </h3>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onclick={() =>
-                                            openAplicacaoModal(selectedAnimal)}
-                                        class="btn btn-secondary btn-sm gap-1.5 shadow-xs"
-                                    >
-                                        <IconAdd width="16" height="16" />
-                                        <span>Aplicar Vacina</span>
-                                    </button>
-                                </div>
-
-                                {#if isLoadingProntuario}
-                                    <div class="p-8 text-center">
-                                        <span
-                                            class="loading loading-spinner loading-md text-primary"
-                                        ></span>
-                                        <p
-                                            class="text-xs text-base-content/60 mt-2"
-                                        >
-                                            Atualizando cartão...
-                                        </p>
-                                    </div>
-                                {:else if !animalCartao || !animalCartao.vacinasAplicadas || animalCartao.vacinasAplicadas.length === 0}
-                                    <div
-                                        class="alert alert-warning/20 border border-warning/30 text-xs p-4 rounded-xl flex items-start gap-3"
-                                    >
-                                        <IconWarning
-                                            width="20"
-                                            height="20"
-                                            class="text-warning shrink-0"
-                                        />
-                                        <div>
-                                            <p
-                                                class="font-bold text-base-content"
-                                            >
-                                                Nenhuma vacina registrada ainda
-                                            </p>
-                                            <p
-                                                class="text-base-content/70 mt-0.5"
-                                            >
-                                                Este animal ainda não possui
-                                                vacinas no cartão. Clique em <b
-                                                    >"+ Aplicar Vacina"</b
-                                                > para imunizá-lo.
-                                            </p>
-                                        </div>
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="overflow-x-auto border border-base-300 rounded-xl"
-                                    >
-                                        <table
-                                            class="table table-zebra table-sm w-full"
-                                        >
-                                            <thead
-                                                class="bg-base-200 text-base-content font-bold"
-                                            >
-                                                <tr>
-                                                    <th>Vacina</th>
-                                                    <th>Data Aplicação</th>
-                                                    <th>Próxima Dose</th>
-                                                    <th class="text-right"
-                                                        >Ação</th
-                                                    >
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {#each animalCartao.vacinasAplicadas as aplicacao}
-                                                    {@const vacinaObj =
-                                                        vacinas.find(
-                                                            (v) =>
-                                                                v.id ===
-                                                                aplicacao.vacina
-                                                                    ?.id,
-                                                        )}
-                                                    {@const dias =
-                                                        vacinaObj?.reaplicarEmXDias ||
-                                                        365}
-                                                    <tr>
-                                                        <td
-                                                            class="font-bold text-primary flex items-center gap-1.5"
-                                                        >
-                                                            <IconVaccines
-                                                                width="16"
-                                                                height="16"
-                                                            />
-                                                            <span
-                                                                >{aplicacao
-                                                                    .vacina
-                                                                    ?.nome ||
-                                                                    "Vacina"}</span
-                                                            >
-                                                        </td>
-                                                        <td class="text-xs">
-                                                            {formatDate(
-                                                                aplicacao.dataAplicacao,
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <span
-                                                                class="badge badge-sm badge-info badge-soft font-semibold"
-                                                            >
-                                                                {calculateNextDose(
-                                                                    aplicacao.dataAplicacao,
-                                                                    dias,
-                                                                )}
-                                                            </span>
-                                                        </td>
-                                                        <td class="text-right">
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                                                                title="Remover aplicação"
-                                                                onclick={() =>
-                                                                    confirmDelete(
-                                                                        aplicacao.id,
-                                                                        "aplicacao",
-                                                                        aplicacao
-                                                                            .vacina
-                                                                            ?.nome ||
-                                                                            "Vacina",
-                                                                    )}
-                                                            >
-                                                                <IconDelete
-                                                                    width="16"
-                                                                    height="16"
-                                                                />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                {/each}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                {/if}
-                            </div>
-                        </div>
-
-                        <div
-                            class="p-4 bg-base-200/50 border-t border-base-300 flex justify-between items-center text-xs"
-                        >
-                            <button
-                                type="button"
-                                onclick={() => openAnimalModal(selectedAnimal)}
-                                class="btn btn-ghost btn-xs gap-1.5"
-                            >
-                                <IconEdit width="14" height="14" />
-                                <span>Editar Dados do Animal</span>
-                            </button>
-                            <button
-                                type="button"
-                                onclick={closeProntuario}
-                                class="btn btn-ghost btn-xs"
-                            >
-                                Fechar Prontuário
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            {/if}
         </div>
     {/if}
 
@@ -1460,7 +1176,6 @@
     {/if}
 </FormModal>
 
-<!-- MODAL: REGISTRAR APLICAÇÃO DE VACINA -->
 <FormModal
     isOpen={showAplicacaoModal}
     title="Registrar Aplicação de Vacina"

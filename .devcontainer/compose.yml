@@ -16,6 +16,7 @@ services:
       ASPNETCORE_URLS: "http://+:8080"
     ports:
       - "8080:8080"
+      - "5173:5173"
 
   db:
     image: postgres:18-alpine
@@ -27,17 +28,7 @@ services:
       - db-data:/var/lib/postgresql
     environment:
       POSTGRES_PASSWORD: "postgresssss"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d vacinas" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8000:8080
+      POSTGRES_DATABASE: "vacinas"
 
 volumes:
   db-data:

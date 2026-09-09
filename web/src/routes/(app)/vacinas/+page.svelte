@@ -10,10 +10,10 @@
         type VacinaCreateDto,
     } from "$lib/types";
 
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let vacinas = $state<Vacina[]>([]);
     let filteredVacinas = $state<Vacina[]>([]);

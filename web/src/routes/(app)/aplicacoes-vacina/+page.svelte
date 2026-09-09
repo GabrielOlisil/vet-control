@@ -16,10 +16,10 @@
         type Animal,
     } from "$lib/types";
 
-    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded.svelte";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let aplicacoes = $state<AplicacaoVacina[]>([]);
     let vacinas = $state<Vacina[]>([]);
@@ -197,7 +197,7 @@
                                 >
                                     <IconVaccines width="16" height="16" />
                                     <span
-                                        >{aplicacao.vacina?.nome ||
+                                        >{aplicacao.vacina?.name ||
                                             aplicacao.vacinaName ||
                                             "Vacina"}</span
                                     >

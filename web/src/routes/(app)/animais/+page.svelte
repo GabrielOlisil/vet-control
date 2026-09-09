@@ -14,10 +14,10 @@
         type Raca,
     } from "$lib/types";
 
-    import IconPets from "@iconify-svelte/material-symbols/pets-rounded.svelte";
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded.svelte";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded.svelte";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded.svelte";
+    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
+    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
     let animais = $state<Animal[]>([]);
     let filteredAnimais = $state<Animal[]>([]);
