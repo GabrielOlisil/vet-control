@@ -143,7 +143,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
     public Task<List<Animal>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
     {
         return context.Animals.AsNoTracking().Where(e => EF.Functions.ILike(e.Name, $"{name}%")).OrderBy(e => e.Name)
-            .Skip(page - 1)
+            .Skip((page - 1) * 10)
             .Take(10).ToListAsync(cancellationToken);
     }
 }

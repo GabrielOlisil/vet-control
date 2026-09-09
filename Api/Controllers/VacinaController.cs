@@ -15,8 +15,21 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
         CancellationToken cancellationToken)
     {
         var vacinas = await vacinaService.GetAllAsync(search, cancellationToken);
-        var responses = vacinas.Select(VacinaMapper.MapToHead).ToList();
+        var responses = vacinas.Select(VacinaMapper.MapToRead).ToList();
         return Ok(responses);
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<VacinaShortResponseDto>>> GetAllByName([FromQuery] int page = 1, [FromQuery] string search = "", CancellationToken cancellationToken = default)
+    {
+        if (page < 1)
+        {
+            return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
+        }
+
+        var racas = await vacinaService.GetAllByNameAsync(page, search, cancellationToken);
+
+        return racas.Select(VacinaMapper.MapToShort).ToList();
     }
 
     [HttpGet("{id:guid}")]

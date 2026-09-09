@@ -6,7 +6,7 @@ namespace Api.Mappers;
 
 public static class RacaMapper
 {
-    public static RacaReadResponseDto MapToHead(Raca raca) => new()
+    public static RacaReadResponseDto MapToRead(Raca raca) => new()
     {
         Id = raca.Id,
         Nome = raca.Nome,
@@ -18,6 +18,11 @@ public static class RacaMapper
         },
     };
 
+    public static RacaShortResponseDto MapToShort(Raca raca) => new()
+    {
+        Id = raca.Id,
+        Nome = raca.Nome,
+    };
     public static RacaDetailResponseDto MapToResponse(Raca raca) => new()
     {
         Id = raca.Id,

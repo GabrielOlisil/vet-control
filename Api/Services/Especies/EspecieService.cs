@@ -95,4 +95,17 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
 
         return query.CountAsync(cancellationToken);
     }
+
+    public Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, CancellationToken cancellationToken = default)
+    {
+        var query = context.Especies.AsNoTracking()
+        .Where(e => searchNomeCientificoToo ? EF.Functions.ILike(e.Nome, $"{name}%") || EF.Functions.ILike(e.NomeCientifico, $"{name}%") : EF.Functions.ILike(e.Nome, $"{name}%"))
+
+        .OrderBy(e => e.Nome)
+        .ThenBy(e => e.NomeCientifico)
+           .Skip((page - 1) * 10)
+           .Take(10);
+
+        return query.ToListAsync(cancellationToken);
+    }
 }

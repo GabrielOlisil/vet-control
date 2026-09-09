@@ -22,7 +22,8 @@ public class AnimalController(IAnimalService service) : ControllerBase
 
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<AnimalShortResponseDto>>> GetByName([FromQuery] int page, [FromQuery] string name, CancellationToken cancellationToken)
+    public async Task<ActionResult<List<AnimalShortResponseDto>>> GetAllByName(CancellationToken cancellationToken, [FromQuery] int page = 1,
+     [FromQuery] string name = "")
     {
         if (page < 1)
         {

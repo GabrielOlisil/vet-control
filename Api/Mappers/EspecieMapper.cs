@@ -13,6 +13,12 @@ public static class EspecieMapper
 
     };
 
+    public static EspecieShortResponseDto MapToShort(Especie especie) => new()
+    {
+        Id = especie.Id,
+        FullName = string.Concat(especie.Nome, "  |  ", especie.NomeCientifico),
+    };
+
     public static EspecieDetailResponseDto MapToResponse(Especie especie) => new()
     {
         Id = especie.Id,

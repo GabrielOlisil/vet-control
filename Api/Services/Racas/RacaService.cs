@@ -8,20 +8,6 @@ namespace Api.Services.Racas;
 
 public sealed class RacaService(ApiContext context) : IRacaService
 {
-    /* public Task<List<Raca>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return context.Racas
-            .AsNoTracking()
-            .OrderBy(r => r.Nome)
-            .ToListAsync(cancellationToken);
-    }
-
-    public Task<Raca?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return context.Racas
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-    } */
 
     public async Task<Raca> CreateAsync(RacaCreateDto dto, CancellationToken cancellationToken = default)
     {
@@ -99,4 +85,17 @@ public sealed class RacaService(ApiContext context) : IRacaService
 
         return query.OrderBy(r => r.Nome).ToListAsync(cancellationToken);
     }
+
+    public Task<List<Raca>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    {
+        var query = context.Racas.AsNoTracking()
+             .Where(e => EF.Functions.ILike(e.Nome, $"{name}%"))
+             .OrderBy(e => e.Nome)
+                .Skip((page - 1) * 10)
+                .Take(10);
+
+        return query.ToListAsync(cancellationToken);
+    }
+
+
 }

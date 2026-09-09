@@ -18,6 +18,20 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
         return Ok(responses);
     }
 
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<EspecieShortResponseDto>>> GetAllByName([FromQuery] bool nomeCientificoToo, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] string search = "")
+    {
+        if (page < 1)
+        {
+            return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
+        }
+
+        var especies = await especieService.GetAllByNameAsync(page, nomeCientificoToo, search, cancellationToken);
+
+        return especies.Select(EspecieMapper.MapToShort).ToList();
+    }
+
     [HttpGet("count")]
     public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
     {

@@ -88,4 +88,15 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
     {
         return context.Vacinas.CountAsync(cancellationToken);
     }
+
+    public Task<List<Vacina>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    {
+        var query = context.Vacinas.AsNoTracking()
+             .Where(e => EF.Functions.ILike(e.Name, $"{name}%"))
+             .OrderBy(e => e.Name)
+                .Skip((page - 1) * 10)
+                .Take(10);
+
+        return query.ToListAsync(cancellationToken);
+    }
 }
