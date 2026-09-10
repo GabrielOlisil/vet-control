@@ -11,6 +11,7 @@ public class Especie : IAuditedEntity
 
     public PorteAnimal PortePadrao { get; set; } = PorteAnimal.Grande;
 
+    public string IconeKey { get; set; } = "paw";
 
     public List<Raca> Racas { get; set; } = [];
     public List<Vacina> VacinasRestritas { get; set; } = [];

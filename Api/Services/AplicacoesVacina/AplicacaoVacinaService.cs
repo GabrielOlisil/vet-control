@@ -6,19 +6,39 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.AplicacoesVacina;
 
-public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacinaService
+public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironment env) : IAplicacaoVacinaService
 {
-
-
     public async Task<AplicacaoVacina> CreateAsync(AplicacaoVacinaCreateDto dto,
         CancellationToken cancellationToken = default)
     {
+        var animal = await context.Animals.FindAsync([dto.AnimalId], cancellationToken);
+        if (animal is null)
+            throw new KeyNotFoundException($"Animal com Id '{dto.AnimalId}' não encontrado.");
+
+        var dataProximaDose = dto.DataProximaDose;
+        if (dataProximaDose is null)
+        {
+            var vacina = await context.Vacinas.FindAsync([dto.VacinaId], cancellationToken);
+            if (vacina is not null && vacina.ReaplicarEmXDias > 0)
+            {
+                dataProximaDose = dto.DataAplicacao.AddDays((int)vacina.ReaplicarEmXDias);
+            }
+            else
+            {
+                dataProximaDose = dto.DataAplicacao;
+            }
+        }
+
         var aplicacao = new AplicacaoVacina
         {
             Id = Guid.NewGuid(),
+            AnimalId = dto.AnimalId,
             VacinaId = dto.VacinaId,
-            CartaoVacinaId = dto.CartaoVacinaId,
-            DataAplicacao = dto.DataAplicacao
+            DataAplicacao = dto.DataAplicacao,
+            DataProximaDose = dataProximaDose.Value,
+            NumeroLote = dto.NumeroLote,
+            DoseMl = dto.DoseMl?.ToString(),
+            Observacoes = dto.Observacoes
         };
 
         context.AplicacoesVacina.Add(aplicacao);
@@ -37,19 +57,29 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
             return null;
         }
 
-        if (dto.VacinaId.HasValue)
-        {
-            aplicacao.VacinaId = dto.VacinaId.Value;
-        }
-
         if (dto.DataAplicacao.HasValue)
         {
             aplicacao.DataAplicacao = dto.DataAplicacao.Value;
         }
 
-        if (dto.CartaoVacinaId.HasValue)
+        if (dto.DataProximaDose.HasValue)
         {
-            aplicacao.CartaoVacinaId = dto.CartaoVacinaId;
+            aplicacao.DataProximaDose = dto.DataProximaDose.Value;
+        }
+
+        if (dto.NumeroLote is not null)
+        {
+            aplicacao.NumeroLote = dto.NumeroLote;
+        }
+
+        if (dto.DoseMl.HasValue)
+        {
+            aplicacao.DoseMl = dto.DoseMl.Value.ToString();
+        }
+
+        if (dto.Observacoes is not null)
+        {
+            aplicacao.Observacoes = dto.Observacoes;
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -88,21 +118,19 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
 
         if (search?.VacinaId is not null)
             query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId);
-        if (search?.CartaoVacinaId is not null)
-            query = query.Where(aplicacao => aplicacao.CartaoVacinaId == search.CartaoVacinaId);
+        if (search?.AnimalId is not null)
+            query = query.Where(aplicacao => aplicacao.AnimalId == search.AnimalId);
         if (search?.DataAplicacaoFrom is not null)
             query = query.Where(aplicacao => aplicacao.DataAplicacao >= search.DataAplicacaoFrom);
         if (search?.DataAplicacaoTo is not null)
             query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo);
-
-
 
         if (!page.HasValue)
         {
             page = 1;
         }
         query = query.OrderByDescending(aplicacao => aplicacao.DataAplicacao)
-        .Skip((page.Value - 1) * 10).Take(10);
+            .Skip((page.Value - 1) * 10).Take(10);
 
         return query.ToListAsync(cancellationToken);
     }
@@ -114,14 +142,47 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
 
         if (search?.VacinaId is not null)
             query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId);
-        if (search?.CartaoVacinaId is not null)
-            query = query.Where(aplicacao => aplicacao.CartaoVacinaId == search.CartaoVacinaId);
+        if (search?.AnimalId is not null)
+            query = query.Where(aplicacao => aplicacao.AnimalId == search.AnimalId);
         if (search?.DataAplicacaoFrom is not null)
             query = query.Where(aplicacao => aplicacao.DataAplicacao >= search.DataAplicacaoFrom);
         if (search?.DataAplicacaoTo is not null)
             query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo);
 
-
         return query.CountAsync(cancellationToken);
+    }
+
+    public async Task<bool> UploadComprovanteAsync(Guid aplicacaoId, Stream streamArquivo, string contentType, CancellationToken ct)
+    {
+        var aplicacao = await context.AplicacoesVacina.FirstOrDefaultAsync(e => e.Id == aplicacaoId, ct);
+        if (aplicacao is null)
+            return false;
+
+        var dir = Path.Combine(env.WebRootPath, "comprovantes");
+        Directory.CreateDirectory(dir);
+
+        var filePath = Path.Combine(dir, $"{aplicacaoId}.pdf");
+        await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+        await streamArquivo.CopyToAsync(fs, ct);
+
+        await context.SaveChangesAsync(ct);
+
+        return true;
+    }
+
+    public async Task<(byte[] Bytes, string ContentType)?> GetComprovanteAsync(Guid aplicacaoId, CancellationToken ct)
+    {
+        var aplicacao = await context.AplicacoesVacina
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == aplicacaoId, ct);
+        if (aplicacao is null)
+            return null;
+
+        var filePath = Path.Combine(env.WebRootPath, "comprovantes", $"{aplicacaoId}.pdf");
+        if (!File.Exists(filePath))
+            return null;
+
+        var bytes = await File.ReadAllBytesAsync(filePath, ct);
+        return (bytes, "application/pdf");
     }
 }

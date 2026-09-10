@@ -20,7 +20,6 @@ public class AnimalController(IAnimalService service) : ControllerBase
         return Ok(responses);
     }
 
-
     [HttpGet("search")]
     public async Task<ActionResult<List<AnimalShortResponseDto>>> GetAllByName(CancellationToken cancellationToken, [FromQuery] int page = 1,
      [FromQuery] string name = "")
@@ -48,6 +47,16 @@ public class AnimalController(IAnimalService service) : ControllerBase
 
         var response = AnimalMapper.MapToResponse(animal);
         return Ok(response);
+    }
+
+    [HttpGet("{id:guid}/prontuario")]
+    public async Task<ActionResult<AnimalProntuarioResponseDto>> GetProntuario(Guid id, CancellationToken ct)
+    {
+        var prontuario = await service.GetProntuarioAsync(id, ct);
+        if (prontuario is null)
+            return NotFound();
+
+        return Ok(prontuario);
     }
 
     [HttpPost]
@@ -85,4 +94,3 @@ public class AnimalController(IAnimalService service) : ControllerBase
         return deleted ? NoContent() : NotFound();
     }
 }
-

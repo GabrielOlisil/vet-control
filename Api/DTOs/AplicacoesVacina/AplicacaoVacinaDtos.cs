@@ -1,11 +1,16 @@
 using System.ComponentModel.DataAnnotations;
-using Api.Models;
 using Api.DTOs.Vacinas;
+using Api.Models;
+using Api.Models.Enums;
 
 namespace Api.DTOs.AplicacoesVacina;
 
 public sealed class AplicacaoVacinaCreateDto
 {
+    [Required]
+    [NonEmptyGuid]
+    public Guid AnimalId { get; set; }
+
     [Required]
     [NonEmptyGuid]
     public Guid VacinaId { get; set; }
@@ -14,17 +19,43 @@ public sealed class AplicacaoVacinaCreateDto
     [DataType(DataType.Date)]
     public DateOnly DataAplicacao { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; }
+    [DataType(DataType.Date)]
+    public DateOnly? DataProximaDose { get; set; }
+
+    [Required]
+    public required string NumeroLote { get; set; }
+
+    public string? LaboratorioFabricante { get; set; }
+
+    public decimal? DoseMl { get; set; }
+
+    [Required]
+    public required string VeterinarioResponsavel { get; set; }
+
+    public string? Aplicador { get; set; }
+
+    public string? Observacoes { get; set; }
 }
 
 public sealed class AplicacaoVacinaPatchDto
 {
-    public Guid? VacinaId { get; set; }
-
     [DataType(DataType.Date)]
     public DateOnly? DataAplicacao { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; }
+    [DataType(DataType.Date)]
+    public DateOnly? DataProximaDose { get; set; }
+
+    public string? NumeroLote { get; set; }
+
+    public string? LaboratorioFabricante { get; set; }
+
+    public decimal? DoseMl { get; set; }
+
+    public string? VeterinarioResponsavel { get; set; }
+
+    public string? Aplicador { get; set; }
+
+    public string? Observacoes { get; set; }
 }
 
 public sealed class AplicacaoVacinaReadResponseDto
@@ -33,7 +64,7 @@ public sealed class AplicacaoVacinaReadResponseDto
 
     public required VacinaShortResponseDto Vacina { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; } //voltar
+    public Guid AnimalId { get; set; }
 
     public DateOnly DataAplicacao { get; set; }
 }
@@ -43,28 +74,38 @@ public sealed class AplicacaoVacinaShortResponseDto
     public Guid Id { get; set; }
     public required VacinaShortResponseDto Vacina { get; set; }
     public DateOnly DataAplicacao { get; set; }
-
 }
-
 
 public sealed class AplicacaoVacinaDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public required string VacinaName { get; set; }
-    public uint ReaplicarEmXDias { get; set; }
+    public Guid AnimalId { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; }
+    public Guid VacinaId { get; set; }
+
+    public VacinaDetailResponseDto? Vacina { get; set; }
 
     public DateOnly DataAplicacao { get; set; }
 
-    public DateTime ProximaAplicacao
-    {
-        get
-        {
-            return DataAplicacao.ToDateTime(new TimeOnly(0, 0))
-            .AddDays(ReaplicarEmXDias);
-        }
-    }
-}
+    public DateOnly DataProximaDose { get; set; }
 
+    public required string NumeroLote { get; set; }
+
+    public string? LaboratorioFabricante { get; set; }
+
+    public decimal? DoseMl { get; set; }
+
+    public required string VeterinarioResponsavel { get; set; }
+
+    public string? Aplicador { get; set; }
+
+    public string? Observacoes { get; set; }
+
+    public StatusComprovanteVacina StatusComprovante { get; set; }
+
+    public bool TemComprovanteAnexo { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+    public DateTimeOffset? AtualizadoEm { get; set; }
+}

@@ -10,7 +10,8 @@ public static class EspecieMapper
         Id = especie.Id,
         Nome = especie.Nome,
         NomeCientifico = especie.NomeCientifico,
-
+        PortePadrao = especie.PortePadrao,
+        IconeKey = especie.IconeKey,
     };
 
     public static EspecieShortResponseDto MapToShort(Especie especie) => new()
@@ -24,6 +25,8 @@ public static class EspecieMapper
         Id = especie.Id,
         Nome = especie.Nome,
         NomeCientifico = especie.NomeCientifico,
+        PortePadrao = especie.PortePadrao,
+        IconeKey = especie.IconeKey,
         RaceCount = (uint)especie.Racas.Count
     };
 }

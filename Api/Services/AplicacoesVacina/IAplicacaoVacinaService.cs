@@ -19,4 +19,7 @@ public interface IAplicacaoVacinaService
         CancellationToken cancellationToken = default);
 
     Task<int> Count(AplicacaoVacinaSearchDto? search = null, CancellationToken cancellationToken = default);
+
+    Task<bool> UploadComprovanteAsync(Guid aplicacaoId, Stream streamArquivo, string contentType, CancellationToken ct);
+    Task<(byte[] Bytes, string ContentType)?> GetComprovanteAsync(Guid aplicacaoId, CancellationToken ct);
 }

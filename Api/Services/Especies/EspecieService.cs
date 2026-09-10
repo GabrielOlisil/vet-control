@@ -36,7 +36,9 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
         {
             Id = Guid.NewGuid(),
             Nome = dto.Nome,
-            NomeCientifico = dto.NomeCientifico
+            NomeCientifico = dto.NomeCientifico,
+            PortePadrao = dto.PortePadrao,
+            IconeKey = dto.IconeKey
         };
 
         context.Especies.Add(especie);
@@ -64,6 +66,16 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
         if (dto.NomeCientifico is not null)
         {
             especie.NomeCientifico = dto.NomeCientifico;
+        }
+
+        if (dto.PortePadrao.HasValue)
+        {
+            especie.PortePadrao = dto.PortePadrao.Value;
+        }
+
+        if (dto.IconeKey is not null)
+        {
+            especie.IconeKey = dto.IconeKey;
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -99,7 +111,7 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
     public Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, CancellationToken cancellationToken = default)
     {
         var query = context.Especies.AsNoTracking()
-        .Where(e => searchNomeCientificoToo ? EF.Functions.ILike(e.Nome, $"{name}%") || EF.Functions.ILike(e.NomeCientifico, $"{name}%") : EF.Functions.ILike(e.Nome, $"{name}%"))
+        .Where(e => searchNomeCientificoToo ? EF.Functions.ILike(e.Nome, $"{name}%") || EF.Functions.ILike(e.NomeCientifico ?? "", $"{name}%") : EF.Functions.ILike(e.Nome, $"{name}%"))
 
         .OrderBy(e => e.Nome)
         .ThenBy(e => e.NomeCientifico)

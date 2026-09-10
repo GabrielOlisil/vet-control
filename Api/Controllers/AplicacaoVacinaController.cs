@@ -15,10 +15,6 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         [FromQuery] AplicacaoVacinaSearchDto search, CancellationToken cancellationToken)
     {
         var aplicacoes = await aplicacaoVacinaService.GetAllAsync(page, search, cancellationToken);
-
-
-
-
         var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
     }
@@ -74,5 +70,24 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     {
         var deleted = await aplicacaoVacinaService.DeleteAsync(id, cancellationToken);
         return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/comprovante")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadComprovante(Guid id, IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0) return BadRequest("Arquivo inválido.");
+        if (file.ContentType != "application/pdf") return BadRequest("Apenas arquivos PDF são aceitos.");
+        using var stream = file.OpenReadStream();
+        var ok = await aplicacaoVacinaService.UploadComprovanteAsync(id, stream, file.ContentType, ct);
+        return ok ? NoContent() : NotFound();
+    }
+
+    [HttpGet("{id:guid}/comprovante")]
+    public async Task<IActionResult> DownloadComprovante(Guid id, CancellationToken ct)
+    {
+        var result = await aplicacaoVacinaService.GetComprovanteAsync(id, ct);
+        if (result == null) return NotFound();
+        return File(result.Value.Bytes, result.Value.ContentType, $"comprovante-{id}.pdf");
     }
 }

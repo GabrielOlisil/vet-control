@@ -1,32 +1,36 @@
 using System.ComponentModel.DataAnnotations;
-using Api.DTOs.CartoesVacina;
 using Api.DTOs.Racas;
 using Api.Models;
+using Api.Models.Enums;
+using Api.DTOs.AplicacoesVacina;
 
 namespace Api.DTOs.Animals;
 
+public record IdentificadorCreateDto(TipoIdentificador Tipo, string Valor, bool EhPrincipal = false);
+public record IdentificadorResponseDto(Guid Id, TipoIdentificador Tipo, string Valor, bool EhPrincipal);
+
 public sealed class AnimalCreateDto
 {
-    [Required]
     [StringLength(100, MinimumLength = 1)]
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 
     [PastOrPresentDate]
     [DataType(DataType.Date)]
     public DateOnly DataNascimento { get; set; }
 
-    public string? PictureUpload { get; set; }
+    public bool DataNascimentoAproximada { get; set; }
 
     [NonEmptyGuid] public Guid? RacaId { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; }
-}
+    public SexoAnimal Sexo { get; set; } = SexoAnimal.Indefinido;
 
-public sealed class AnimalShortResponseDto()
-{
-    public Guid Id { get; set; }
+    public OrigemAnimal Origem { get; set; } = OrigemAnimal.Externo;
 
-    public required string Name { get; set; }
+    public string? LoteOuPasto { get; set; }
+
+    [Required]
+    [MinLength(1)]
+    public required List<IdentificadorCreateDto> Identificadores { get; set; }
 }
 
 public sealed class AnimalPatchDto
@@ -35,18 +39,31 @@ public sealed class AnimalPatchDto
 
     [DataType(DataType.Date)] public DateOnly? DataNascimento { get; set; }
 
-    public string? PictureUpload { get; set; }
+    public bool? DataNascimentoAproximada { get; set; }
 
     public Guid? RacaId { get; set; }
 
-    public Guid? CartaoVacinaId { get; set; }
+    public SexoAnimal? Sexo { get; set; }
+
+    public OrigemAnimal? Origem { get; set; }
+
+    public string? LoteOuPasto { get; set; }
+
+    public List<IdentificadorCreateDto>? Identificadores { get; set; }
+}
+
+public sealed class AnimalShortResponseDto
+{
+    public Guid Id { get; set; }
+
+    public string? Name { get; set; }
 }
 
 public sealed class AnimaReadResponseDto
 {
     public Guid Id { get; set; }
 
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 
     public RacaShortResponseDto? Raca { get; set; }
 
@@ -57,15 +74,27 @@ public sealed class AnimalDetailResponseDto
 {
     public Guid Id { get; set; }
 
-    public required string Nome { get; set; }
+    public string? Name { get; set; }
 
     public DateOnly DataNascimento { get; set; }
 
-    public string? PictureUpload { get; set; }
+    public bool DataNascimentoAproximada { get; set; }
 
-    public RacaShortResponseDto? Raca { get; set; }
+    public SexoAnimal Sexo { get; set; }
 
-    public CartaoVacinaShortResponseDto? CartaoVacina { get; set; } //Cartao de vacina short
+    public OrigemAnimal Origem { get; set; }
+
+    public string? LoteOuPasto { get; set; }
+
+    public RacaDetailResponseDto? Raca { get; set; }
+
+    public List<IdentificadorResponseDto> Identificadores { get; set; } = [];
+
+    public IdentificadorResponseDto? IdentificadorPrincipal { get; set; }
 }
 
-
+public sealed class AnimalProntuarioResponseDto
+{
+    public required AnimalDetailResponseDto Animal { get; set; }
+    public List<AplicacaoVacinaDetailResponseDto> AplicacoesVacina { get; set; } = [];
+}

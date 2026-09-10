@@ -1,7 +1,8 @@
 using Api.DTOs.Animals;
-using Api.DTOs.CartoesVacina;
+using Api.DTOs.Especies;
 using Api.DTOs.Racas;
 using Api.Models;
+using Api.Models.Enums;
 
 namespace Api.Mappers;
 
@@ -16,7 +17,6 @@ public static class AnimalMapper
             Id = animal.Raca.Id,
             Nome = animal.Raca.Nome,
         } : null,
-
         DataNascimento = animal.DataNascimento,
     };
 
@@ -26,25 +26,41 @@ public static class AnimalMapper
         Name = animal.Name
     };
 
-    public static AnimalDetailResponseDto MapToResponse(Animal animal) => new()
+    public static AnimalDetailResponseDto MapToResponse(Animal animal)
     {
-        Id = animal.Id,
-        Nome = animal.Name,
-        DataNascimento = animal.DataNascimento,
-        PictureUpload = animal.PictureUpload,
-        Raca = animal.Raca is null
-            ? null
-            : new RacaShortResponseDto
-            {
-                Id = animal.Raca.Id,
-                Nome = animal.Raca.Nome,
-            },
-        CartaoVacina = animal.CartaoVacina is null
-            ? null
-            : new CartaoVacinaShortResponseDto
-            {
-                Id = animal.CartaoVacina.Id,
-                NumVacinas = (uint)animal.CartaoVacina.VacinasAplicadas.Count
-            }
-    };
+        var identificadores = animal.Identificadores
+            .Select(i => new IdentificadorResponseDto(i.Id, i.Tipo, i.Valor, i.IsPrincipal))
+            .ToList();
+
+        return new AnimalDetailResponseDto
+        {
+            Id = animal.Id,
+            Name = animal.Name,
+            DataNascimento = animal.DataNascimento,
+            DataNascimentoAproximada = false,
+            Sexo = animal.OrigemAnimal == Api.Models.Enums.OrigemAnimal.Interno
+                ? SexoAnimal.Indefinido
+                : SexoAnimal.Indefinido,
+            Origem = animal.OrigemAnimal,
+            LoteOuPasto = animal.LoteOuPasto,
+            Raca = animal.Raca is null
+                ? null
+                : new RacaDetailResponseDto
+                {
+                    Id = animal.Raca.Id,
+                    Nome = animal.Raca.Nome,
+                    Especie = animal.Raca.Especie is null
+                        ? new EspecieShortResponseDto { Id = animal.Raca.EspecieId, FullName = string.Empty }
+                        : new EspecieShortResponseDto
+                        {
+                            Id = animal.Raca.Especie.Id,
+                            FullName = string.Concat(animal.Raca.Especie.Nome, "  |  ", animal.Raca.Especie.NomeCientifico),
+                        },
+                    AnimalCount = 0
+                },
+            Identificadores = identificadores,
+            IdentificadorPrincipal = identificadores.FirstOrDefault(i => i.EhPrincipal)
+                ?? identificadores.FirstOrDefault()
+        };
+    }
 }
