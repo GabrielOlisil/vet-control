@@ -65,6 +65,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             Name = dto.Name ?? string.Empty,
             RacaId = dto.RacaId,
             DataNascimento = dto.DataNascimento,
+            Sexo = dto.Sexo,
             OrigemAnimal = dto.Origem,
             LoteOuPasto = dto.LoteOuPasto,
             Identificadores = dto.Identificadores.Select(i => new IdentificadorAnimal
@@ -110,8 +111,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         if (dto.Sexo.HasValue)
         {
-            // Sexo is stored differently - the Animal model doesn't have a Sexo field currently
-            // This is a no-op for now as the model doesn't support it yet
+            animal.Sexo = dto.Sexo.Value;
         }
 
         if (dto.Origem.HasValue)
@@ -181,7 +181,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         return context.Animals
             .AsNoTracking()
             .Include(a => a.Identificadores)
-            .Where(e => EF.Functions.ILike(e.Name, $"{name}%")
+            .Where(e => EF.Functions.ILike(e.Name ?? string.Empty, $"{name}%")
                 || e.Identificadores.Any(i => EF.Functions.ILike(i.Valor, $"%{name}%")))
             .OrderBy(e => e.Name)
             .Skip((page - 1) * 10)

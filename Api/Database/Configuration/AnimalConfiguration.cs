@@ -17,6 +17,12 @@ public class AnimalConfiguration : IEntityTypeConfiguration<Animal>
         .OnDelete(DeleteBehavior.Restrict);
 
 
+        builder.Property(a => a.Name).IsRequired(false);
+
+        builder.Property(a => a.Sexo)
+            .HasConversion<string>()
+            .IsRequired();
+
         builder.HasIndex(b => new { b.Name })
             .HasMethod("GIN")
             .HasOperators("gin_trgm_ops");

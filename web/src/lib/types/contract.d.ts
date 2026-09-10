@@ -15,7 +15,6 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
-                    CartaoVacinaId?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                     page?: number | string;
@@ -125,7 +124,6 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
-                    CartaoVacinaId?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                 };
@@ -243,6 +241,45 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/animais/{id}/prontuario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnimalProntuarioResponseDto"];
+                        "application/json": components["schemas"]["AnimalProntuarioResponseDto"];
+                        "text/json": components["schemas"]["AnimalProntuarioResponseDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/aplicacoes-vacina": {
         parameters: {
             query?: never;
@@ -255,7 +292,7 @@ export interface paths {
                 query?: {
                     page?: number | string;
                     VacinaId?: string;
-                    CartaoVacinaId?: string;
+                    AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
                 };
@@ -411,7 +448,7 @@ export interface paths {
             parameters: {
                 query?: {
                     VacinaId?: string;
-                    CartaoVacinaId?: string;
+                    AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
                 };
@@ -442,7 +479,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cartoes-vacina": {
+    "/api/v1/aplicacoes-vacina/{id}/comprovante": {
         parameters: {
             query?: never;
             header?: never;
@@ -450,100 +487,6 @@ export interface paths {
             cookie?: never;
         };
         get: {
-            parameters: {
-                query?: {
-                    VacinaId?: string;
-                    DataAplicacaoFrom?: string;
-                    DataAplicacaoTo?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["CartaoVacinaReadResponseDto"][];
-                        "application/json": components["schemas"]["CartaoVacinaReadResponseDto"][];
-                        "text/json": components["schemas"]["CartaoVacinaReadResponseDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CartaoVacinaCreateDto"];
-                    "text/json": components["schemas"]["CartaoVacinaCreateDto"];
-                    "application/*+json": components["schemas"]["CartaoVacinaCreateDto"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "application/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "text/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/cartoes-vacina/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "application/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "text/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -563,9 +506,8 @@ export interface paths {
                 };
             };
         };
-        options?: never;
-        head?: never;
-        patch: {
+        put?: never;
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -576,9 +518,9 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CartaoVacinaPatchDto"];
-                    "text/json": components["schemas"]["CartaoVacinaPatchDto"];
-                    "application/*+json": components["schemas"]["CartaoVacinaPatchDto"];
+                    "multipart/form-data": {
+                        file?: components["schemas"]["IFormFile"];
+                    };
                 };
             };
             responses: {
@@ -587,47 +529,10 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "text/plain": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "application/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                        "text/json": components["schemas"]["CartaoVacinaDetailResponseDto"];
-                    };
+                    content?: never;
                 };
             };
         };
-        trace?: never;
-    };
-    "/api/v1/cartoes-vacina/count": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": number | string;
-                        "application/json": number | string;
-                        "text/json": number | string;
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1364,142 +1269,177 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AnimalCreateDto: {
-            name: string;
+            name?: null | string;
             /** Format: date */
             dataNascimento?: string;
-            pictureUpload?: null | string;
+            dataNascimentoAproximada?: boolean;
             /** Format: uuid */
             racaId?: null | string;
-            /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            sexo?: components["schemas"]["SexoAnimal"];
+            origem?: components["schemas"]["OrigemAnimal"];
+            loteOuPasto?: null | string;
+            identificadores: components["schemas"]["IdentificadorCreateDto"][];
         };
         AnimalDetailResponseDto: {
             /** Format: uuid */
             id?: string;
-            nome: string;
+            name?: null | string;
             /** Format: date */
             dataNascimento?: string;
-            pictureUpload?: null | string;
-            raca?: null | components["schemas"]["RacaShortResponseDto"];
-            cartaoVacina?: null | components["schemas"]["CartaoVacinaShortResponseDto"];
+            dataNascimentoAproximada?: boolean;
+            sexo?: components["schemas"]["SexoAnimal"];
+            origem?: components["schemas"]["OrigemAnimal"];
+            loteOuPasto?: null | string;
+            raca?: null | components["schemas"]["RacaDetailResponseDto"];
+            identificadores?: components["schemas"]["IdentificadorResponseDto"][];
+            identificadorPrincipal?: null | components["schemas"]["IdentificadorResponseDto"];
         };
         AnimalPatchDto: {
             name?: null | string;
             /** Format: date */
             dataNascimento?: null | string;
-            pictureUpload?: null | string;
+            dataNascimentoAproximada?: null | boolean;
             /** Format: uuid */
             racaId?: null | string;
-            /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            sexo?: null | components["schemas"]["SexoAnimal"];
+            origem?: null | components["schemas"]["OrigemAnimal"];
+            loteOuPasto?: null | string;
+            identificadores?: null | components["schemas"]["IdentificadorCreateDto"][];
+        };
+        AnimalProntuarioResponseDto: {
+            animal: components["schemas"]["AnimalDetailResponseDto"];
+            aplicacoesVacina?: components["schemas"]["AplicacaoVacinaDetailResponseDto"][];
         };
         AnimalShortResponseDto: {
             /** Format: uuid */
             id?: string;
-            name: string;
+            name?: null | string;
         };
         AnimaReadResponseDto: {
             /** Format: uuid */
             id?: string;
-            name: string;
+            name?: null | string;
             raca?: null | components["schemas"]["RacaShortResponseDto"];
             /** Format: date */
             dataNascimento?: string;
         };
         AplicacaoVacinaCreateDto: {
             /** Format: uuid */
+            animalId: string;
+            /** Format: uuid */
             vacinaId: string;
             /** Format: date */
             dataAplicacao?: string;
-            /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            /** Format: date */
+            dataProximaDose?: null | string;
+            numeroLote: string;
+            laboratorioFabricante?: null | string;
+            /** Format: double */
+            doseMl?: null | number | string;
+            veterinarioResponsavel: string;
+            aplicador?: null | string;
+            observacoes?: null | string;
         };
         AplicacaoVacinaDetailResponseDto: {
             /** Format: uuid */
             id?: string;
-            vacinaName: string;
-            /** Format: uint32 */
-            reaplicarEmXDias?: number | string;
             /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            animalId?: string;
+            /** Format: uuid */
+            vacinaId?: string;
+            vacina?: null | components["schemas"]["VacinaDetailResponseDto"];
             /** Format: date */
             dataAplicacao?: string;
+            /** Format: date */
+            dataProximaDose?: string;
+            numeroLote: string;
+            laboratorioFabricante?: null | string;
+            /** Format: double */
+            doseMl?: null | number | string;
+            veterinarioResponsavel: string;
+            aplicador?: null | string;
+            observacoes?: null | string;
+            statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+            temComprovanteAnexo?: boolean;
             /** Format: date-time */
-            proximaAplicacao?: string;
+            criadoEm?: string;
+            /** Format: date-time */
+            atualizadoEm?: null | string;
         };
         AplicacaoVacinaPatchDto: {
-            /** Format: uuid */
-            vacinaId?: null | string;
             /** Format: date */
             dataAplicacao?: null | string;
-            /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            /** Format: date */
+            dataProximaDose?: null | string;
+            numeroLote?: null | string;
+            laboratorioFabricante?: null | string;
+            /** Format: double */
+            doseMl?: null | number | string;
+            veterinarioResponsavel?: null | string;
+            aplicador?: null | string;
+            observacoes?: null | string;
         };
         AplicacaoVacinaReadResponseDto: {
             /** Format: uuid */
             id?: string;
             vacina: components["schemas"]["VacinaShortResponseDto"];
             /** Format: uuid */
-            cartaoVacinaId?: null | string;
+            animalId?: string;
             /** Format: date */
             dataAplicacao?: string;
-        };
-        AplicacaoVacinaShortResponseDto: {
-            /** Format: uuid */
-            id?: string;
-            vacina: components["schemas"]["VacinaShortResponseDto"];
-            /** Format: date */
-            dataAplicacao?: string;
-        };
-        CartaoVacinaCreateDto: {
-            vacinasAplicadasIds?: null | string[];
-        };
-        CartaoVacinaDetailResponseDto: {
-            /** Format: uuid */
-            id?: string;
-            vacinasAplicadas?: components["schemas"]["AplicacaoVacinaDetailResponseDto"][];
-        };
-        CartaoVacinaPatchDto: {
-            vacinasAplicadasIds?: null | string[];
-        };
-        CartaoVacinaReadResponseDto: {
-            /** Format: uuid */
-            id?: string;
-            vacinasAplicadas?: components["schemas"]["AplicacaoVacinaShortResponseDto"][];
-        };
-        CartaoVacinaShortResponseDto: {
-            /** Format: uuid */
-            id?: string;
-            /** Format: uint32 */
-            numVacinas?: number | string;
         };
         EspecieCreateDto: {
             nome: string;
-            nomeCientifico: string;
+            nomeCientifico?: null | string;
+            portePadrao?: components["schemas"]["PorteAnimal"];
+            iconeKey?: string;
         };
         EspecieDetailResponseDto: {
             /** Format: uuid */
             id?: string;
             nome: string;
-            nomeCientifico: string;
+            nomeCientifico?: null | string;
+            portePadrao?: components["schemas"]["PorteAnimal"];
+            iconeKey?: string;
             /** Format: uint32 */
             raceCount?: number | string;
         };
         EspeciePatchDto: {
             nome?: null | string;
             nomeCientifico?: null | string;
+            portePadrao?: null | components["schemas"]["PorteAnimal"];
+            iconeKey?: null | string;
         };
         EspecieReadResponseDto: {
             /** Format: uuid */
             id?: string;
             nome: string;
-            nomeCientifico: string;
+            nomeCientifico?: null | string;
+            portePadrao?: components["schemas"]["PorteAnimal"];
+            iconeKey?: string;
         };
         EspecieShortResponseDto: {
             /** Format: uuid */
             id?: string;
             fullName: string;
         };
+        IdentificadorCreateDto: {
+            tipo: components["schemas"]["TipoIdentificador"];
+            valor: string;
+            /** @default false */
+            ehPrincipal: boolean;
+        };
+        IdentificadorResponseDto: {
+            /** Format: uuid */
+            id: string;
+            tipo: components["schemas"]["TipoIdentificador"];
+            valor: string;
+            ehPrincipal: boolean;
+        };
+        /** Format: binary */
+        IFormFile: string;
+        OrigemAnimal: number;
+        PorteAnimal: number;
         RacaCreateDto: {
             nome: string;
             /** Format: uuid */
@@ -1527,6 +1467,9 @@ export interface components {
             id?: string;
             nome: string;
         };
+        SexoAnimal: number;
+        StatusComprovanteVacina: number;
+        TipoIdentificador: number;
         VacinaCreateDto: {
             name: string;
             /** Format: uint32 */

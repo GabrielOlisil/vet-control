@@ -38,9 +38,7 @@ public static class AnimalMapper
             Name = animal.Name,
             DataNascimento = animal.DataNascimento,
             DataNascimentoAproximada = false,
-            Sexo = animal.OrigemAnimal == Api.Models.Enums.OrigemAnimal.Interno
-                ? SexoAnimal.Indefinido
-                : SexoAnimal.Indefinido,
+            Sexo = animal.Sexo,
             Origem = animal.OrigemAnimal,
             LoteOuPasto = animal.LoteOuPasto,
             Raca = animal.Raca is null

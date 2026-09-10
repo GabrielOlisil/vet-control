@@ -6,7 +6,9 @@ namespace Api.Models;
 public class Animal : IAuditedEntity
 {
     public Guid Id { get; set; }
-    public required string Name { get; set; }
+    public string? Name { get; set; }
+
+    public SexoAnimal Sexo { get; set; } = SexoAnimal.Indefinido;
     public Guid? RacaId { get; set; }
     public DateOnly DataNascimento { get; set; }
 

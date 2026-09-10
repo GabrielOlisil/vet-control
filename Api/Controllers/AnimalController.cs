@@ -60,6 +60,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpPost]
+
     public async Task<ActionResult<AnimalDetailResponseDto>> Create(AnimalCreateDto dto, CancellationToken cancellationToken)
     {
         var animal = await service.CreateAsync(dto, cancellationToken);
