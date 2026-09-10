@@ -2,7 +2,6 @@ using Api.Database;
 using Api.Middlewares;
 using Api.Services.AplicacoesVacina;
 using Api.Services.Animals;
-using Api.Services.CartoesVacina;
 using Api.Services.Especies;
 using Api.Services.Racas;
 using Api.Services.Vacinas;
@@ -22,8 +21,6 @@ builder.Services.AddScoped<IRacaService, RacaService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 builder.Services.AddScoped<IVacinaService, VacinaService>();
 builder.Services.AddScoped<IAplicacaoVacinaService, AplicacaoVacinaService>();
-builder.Services.AddScoped<ICartaoVacinaService, CartaoVacinaService>();
-
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -40,12 +37,6 @@ builder.Services.AddCors(options =>
     });
 });
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApiContext>();
-    dbContext.Database.Migrate();
-}
 
 
 app.UseExceptionHandler();
@@ -65,4 +56,3 @@ app.MapControllers();
 
 
 app.Run();
-

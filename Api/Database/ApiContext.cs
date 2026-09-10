@@ -8,9 +8,10 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
     public DbSet<Especie> Especies { get; set; }
     public DbSet<Raca> Racas { get; set; }
     public DbSet<Animal> Animals { get; set; }
+    public DbSet<IdentificadorAnimal> IdentificadorAnimal { get; set; }
     public DbSet<Vacina> Vacinas { get; set; }
     public DbSet<AplicacaoVacina> AplicacoesVacina { get; set; }
-    public DbSet<CartaoVacina> CartoesVacina { get; set; }
+
 
 
     public override int SaveChanges()

@@ -9,14 +9,15 @@ public class AplicacaoVacinaConfiguration : IEntityTypeConfiguration<AplicacaoVa
 {
     public void Configure(EntityTypeBuilder<AplicacaoVacina> builder)
     {
-        builder.HasOne(aplicacao => aplicacao.Vacina)
-                    .WithMany()
-                    .HasForeignKey(aplicacao => aplicacao.VacinaId)
-                    .OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne(e => e.Animal)
+            .WithMany(e => e.VacinasAplicadas)
+            .HasForeignKey(animal => animal.AnimalId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(aplicacao => aplicacao.CartaoVacina)
-                    .WithMany(cartao => cartao.VacinasAplicadas)
-                    .HasForeignKey(aplicacao => aplicacao.CartaoVacinaId)
-                    .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(e => e.Vacina)
+            .WithMany(e => e.Aplicacoes)
+            .HasForeignKey(e => e.VacinaId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

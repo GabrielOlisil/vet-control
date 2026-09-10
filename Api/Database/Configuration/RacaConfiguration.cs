@@ -2,7 +2,6 @@
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using NpgsqlTypes;
 
 namespace Api.Database.Configuration;
 

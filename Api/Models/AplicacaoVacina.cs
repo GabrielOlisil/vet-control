@@ -6,13 +6,21 @@ public class AplicacaoVacina : IAuditedEntity
 
     public Guid VacinaId { get; set; }
 
-    public Vacina? Vacina { get; set; }
-
-    public Guid? CartaoVacinaId { get; set; }
-
-    public CartaoVacina? CartaoVacina { get; set; }
+    public Guid AnimalId { get; set; }
 
     public DateOnly DataAplicacao { get; set; }
+    public DateOnly DataProximaDose { get; set; }
+
+    public required string NumeroLote { get; set; }
+
+    public string? DoseMl { get; set; }
+
+    public string? Observacoes { get; set; }
+
+
+
+    public Vacina? Vacina { get; set; }
+    public Animal? Animal { get; set; }
     public DateTimeOffset CreationDateTime { get; set; }
     public DateTimeOffset? LastModificationDateTime { get; set; }
 }

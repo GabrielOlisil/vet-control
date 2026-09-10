@@ -16,11 +16,6 @@ public class AnimalConfiguration : IEntityTypeConfiguration<Animal>
         .HasForeignKey(animal => animal.RacaId)
         .OnDelete(DeleteBehavior.Restrict);
 
-        builder
-        .HasOne(animal => animal.CartaoVacina)
-        .WithMany()
-        .HasForeignKey(animal => animal.CartaoVacinaId)
-        .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(b => new { b.Name })
             .HasMethod("GIN")
