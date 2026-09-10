@@ -4,7 +4,6 @@
     import type { Snippet } from "svelte";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
-    import IconCard from "@iconify-svelte/material-symbols/description-rounded";
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
     import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
     import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
@@ -13,10 +12,9 @@
     let { children }: { children?: Snippet } = $props();
 
     const navLinks = [
-        { href: "/", label: "Atendimento & Prontuário", icon: IconPets },
+        { href: "/", label: "Dashboard", icon: IconPets },
         { href: "/animais", label: "Animais", icon: IconPets },
         { href: "/vacinas", label: "Vacinas", icon: IconVaccines },
-        { href: "/cartoes-vacina", label: "Cartões", icon: IconCard },
         { href: "/aplicacoes-vacina", label: "Aplicações", icon: IconCalendar },
         { href: "/racas", label: "Raças", icon: IconLabel },
         { href: "/especies", label: "Espécies", icon: IconBiotech },
@@ -34,7 +32,7 @@
         class="navbar bg-base-100 border-b border-base-300 sticky top-0 z-40 shadow-xs px-4 sm:px-8"
     >
         <div class="navbar-start gap-2">
-            <!-- Mobile drawer/dropdown -->
+            <!-- Mobile dropdown -->
             <div class="dropdown xl:hidden">
                 <div
                     tabindex="0"
@@ -95,7 +93,7 @@
                     >
                     <span
                         class="text-[10px] font-medium opacity-60 uppercase tracking-widest"
-                        >Clínica Veterinária</span
+                        >HVU / Fazenda Escola</span
                     >
                 </span>
             </a>
@@ -153,12 +151,12 @@
         <aside class="grid-flow-col items-center gap-2">
             <IconPets width="16" height="16" class="text-primary" />
             <span class="font-semibold text-base-content">Vet Control</span>
-            <span>— Sistema Integrado de Animais e Imunização</span>
+            <span>— Sistema de Gestão Vacinal Veterinária</span>
         </aside>
         <div
             class="grid-flow-col gap-4 md:place-self-center md:justify-self-end"
         >
-            <span class="badge badge-sm badge-outline">API v1.0 • DaisyUI</span>
+            <span class="badge badge-sm badge-outline">API v1 • DaisyUI</span>
         </div>
     </footer>
 </div>

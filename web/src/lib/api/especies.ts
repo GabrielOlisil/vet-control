@@ -1,37 +1,41 @@
 import { ApiClient } from './client';
-import type { Especie, EspecieCreateDto, EspeciePatchDto, EspecieDetailResponseDto } from '../types';
-
-export interface EspecieFilterParams {
-    page?: number;
-    nome?: string;
-    nomeCientifico?: string;
-}
+import type {
+    EspecieReadResponseDto,
+    EspecieDetailResponseDto,
+    EspecieShortResponseDto,
+    EspecieCreateDto,
+    EspeciePatchDto,
+} from '../types';
 
 export const especieService = {
-    list: (filters?: EspecieFilterParams) => {
-        const params = new URLSearchParams();
-        if (filters?.page) params.set('page', filters.page.toString());
-        if (filters?.nome) params.set('Nome', filters.nome);
-        if (filters?.nomeCientifico) params.set('NomeCientifico', filters.nomeCientifico);
-
-        const qs = params.toString();
-        return ApiClient.get<Especie[]>(`/especies${qs ? `?${qs}` : ''}`);
+    getList(page?: number): Promise<EspecieReadResponseDto[]> {
+        const qs = page ? `?page=${page}` : '';
+        return ApiClient.get<EspecieReadResponseDto[]>(`/especies${qs}`);
     },
 
-    get: (id: string) => ApiClient.get<EspecieDetailResponseDto>(`/especies/${id}`),
+    search(search: string, nomeCientificoToo?: boolean, page = 1): Promise<EspecieShortResponseDto[]> {
+        const qs = new URLSearchParams({ search, page: String(page) });
+        if (nomeCientificoToo !== undefined) qs.set('nomeCientificoToo', String(nomeCientificoToo));
+        return ApiClient.get<EspecieShortResponseDto[]>(`/especies/search?${qs}`);
+    },
 
-    create: (data: EspecieCreateDto) => ApiClient.post<EspecieDetailResponseDto>('/especies', data),
+    getCount(): Promise<number> {
+        return ApiClient.getNumber('/especies/count');
+    },
 
-    update: (id: string, data: EspeciePatchDto) => ApiClient.patch<EspecieDetailResponseDto>(`/especies/${id}`, data),
+    getById(id: string): Promise<EspecieDetailResponseDto> {
+        return ApiClient.get<EspecieDetailResponseDto>(`/especies/${id}`);
+    },
 
-    delete: (id: string) => ApiClient.delete(`/especies/${id}`),
+    create(dto: EspecieCreateDto): Promise<EspecieDetailResponseDto> {
+        return ApiClient.post<EspecieDetailResponseDto>('/especies', dto);
+    },
 
-    count: (filters?: Omit<EspecieFilterParams, 'page'>) => {
-        const params = new URLSearchParams();
-        if (filters?.nome) params.set('Nome', filters.nome);
-        if (filters?.nomeCientifico) params.set('NomeCientifico', filters.nomeCientifico);
+    patch(id: string, dto: EspeciePatchDto): Promise<EspecieDetailResponseDto> {
+        return ApiClient.patch<EspecieDetailResponseDto>(`/especies/${id}`, dto);
+    },
 
-        const qs = params.toString();
-        return ApiClient.count(`/especies${qs ? `?${qs}` : ''}`);
+    delete(id: string): Promise<void> {
+        return ApiClient.delete(`/especies/${id}`);
     },
 };

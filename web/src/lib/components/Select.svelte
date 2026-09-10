@@ -2,24 +2,24 @@
     let {
         label = "",
         id = "",
-        value = "",
+        value = $bindable(""),
         options = [],
         placeholder = "",
         required = false,
         disabled = false,
         error = "",
         onChange = null,
-    }: Partial<{
-        label: string;
-        id: string;
-        value: any;
-        options: Array<{ value: any; label: string }>;
-        placeholder: string;
-        required: boolean;
-        disabled: boolean;
-        error: string | null;
-        onChange: ((value: any) => void) | null;
-    }> = $props();
+    }: {
+        label?: string;
+        id?: string;
+        value?: any;
+        options?: Array<{ value: any; label: string }>;
+        placeholder?: string;
+        required?: boolean;
+        disabled?: boolean;
+        error?: string | null;
+        onChange?: ((value: any) => void) | null;
+    } = $props();
 
     function handleChange(e: Event) {
         const target = e.target as HTMLSelectElement;
@@ -33,7 +33,9 @@
 <div class="w-full mb-3">
     {#if label}
         <label for={id} class="label py-1 block">
-            <span class="label-text font-medium text-sm flex items-center gap-1">
+            <span
+                class="label-text font-medium text-sm flex items-center gap-1"
+            >
                 {label}
                 {#if required}
                     <span class="text-error font-bold">*</span>
@@ -47,7 +49,9 @@
         {required}
         {disabled}
         onchange={handleChange}
-        class="select select-bordered w-full transition-all {error ? 'select-error' : 'focus:select-primary'}"
+        class="select select-bordered w-full transition-all {error
+            ? 'select-error'
+            : 'focus:select-primary'}"
     >
         {#if placeholder}
             <option value="">{placeholder}</option>

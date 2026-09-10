@@ -1,368 +1,526 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
-    import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
+    import Modal from "$lib/components/Modal.svelte";
+    import Input from "$lib/components/Input.svelte";
     import { animalService } from "$lib/api/animais";
     import { racaService } from "$lib/api/racas";
-    import { cartaoVacinaService } from "$lib/api/cartoes-vacina";
     import {
         getAnimalName,
-        type Animal,
+        calcularIdade,
+        hoje,
+        TipoIdentificadorLabels,
+        SexoAnimalLabels,
+        OrigemAnimalLabels,
+        type AnimaReadResponseDto,
+        type AnimalDetailResponseDto,
         type AnimalCreateDto,
-        type Raca,
+        type AnimalPatchDto,
+        type RacaReadResponseDto,
     } from "$lib/types";
-
-    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
 
-    let animais = $state<Animal[]>([]);
-    let filteredAnimais = $state<Animal[]>([]);
-    let racas = $state<Raca[]>([]);
+    // ── Estado ────────────────────────────────────────────────────────────────
+    let animais = $state<AnimaReadResponseDto[]>([]);
+    let racas = $state<RacaReadResponseDto[]>([]);
+    let totalAnimais = $state(0);
+    let currentPage = $state(1);
     let isLoading = $state(true);
-    let searchName = $state("");
 
-    let showFormModal = $state(false);
+    // Filtros
+    let filterRacaId = $state("");
+    let filterDataFrom = $state("");
+    let filterDataTo = $state("");
+
+    // ── Modal criar / editar ─────────────────────────────────────────────────
+    let showModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<AnimalCreateDto>({
-        name: "",
-        dataNascimento: new Date().toISOString().split("T")[0],
-        racaId: "",
-        pictureUpload: "",
-    });
-    let formError = $state("");
     let isSubmitting = $state(false);
+    let formError = $state("");
 
-    let showDeleteModal = $state(false);
-    let deletingItem = $state<Animal | null>(null);
-    let isDeleting = $state(false);
-
-    onMount(() => {
-        loadData();
+    const emptyForm = (): AnimalCreateDto => ({
+        name: "",
+        dataNascimento: hoje(),
+        dataNascimentoAproximada: false,
+        racaId: undefined,
+        sexo: 0,
+        origem: 0,
+        loteOuPasto: "",
+        identificadores: [{ tipo: 0, valor: "", ehPrincipal: true }],
     });
 
-    async function loadData() {
-        try {
-            isLoading = true;
-            [animais, racas] = await Promise.all([
-                animalService.list(1),
-                racaService.list(),
-            ]);
-            filterAnimais();
-        } catch (error) {
-            console.error("Erro ao carregar dados:", error);
-        } finally {
-            isLoading = false;
-        }
-    }
+    let form = $state<AnimalCreateDto>(emptyForm());
 
-    function filterAnimais() {
-        filteredAnimais = animais.filter((a) =>
-            getAnimalName(a).toLowerCase().includes(searchName.toLowerCase()),
-        );
-    }
-
-    function openFormModal(animal?: Animal) {
-        if (animal) {
-            editingId = animal.id;
-            editingId = animal.id ?? null;
-            formData = {
-                name: getAnimalName(animal),
-                dataNascimento:
-                    animal.dataNascimento ||
-                    new Date().toISOString().split("T")[0],
-                racaId: animal.raca?.id || "",
-                pictureUpload: animal.pictureUpload || "",
-            };
-        } else {
-            editingId = null;
-            formData = {
-                name: "",
-                dataNascimento: new Date().toISOString().split("T")[0],
-                racaId: "",
-                pictureUpload: "",
-            };
-        }
+    function openCreate() {
+        editingId = null;
+        form = emptyForm();
         formError = "";
-        showFormModal = true;
+        showModal = true;
     }
 
-    async function handleSubmit() {
-        if (!formData.name.trim()) {
-            formError = "Nome do animal é obrigatório";
+    async function openEdit(animal: AnimaReadResponseDto) {
+        try {
+            const detail: AnimalDetailResponseDto = await animalService.getById(
+                animal.id!,
+            );
+            editingId = detail.id ?? null;
+            form = {
+                name: detail.name ?? "",
+                dataNascimento: detail.dataNascimento ?? hoje(),
+                dataNascimentoAproximada:
+                    detail.dataNascimentoAproximada ?? false,
+                racaId: detail.raca?.id ?? undefined,
+                sexo: detail.sexo ?? 0,
+                origem: detail.origem ?? 0,
+                loteOuPasto: detail.loteOuPasto ?? "",
+                identificadores: detail.identificadores?.map((i) => ({
+                    tipo: i.tipo,
+                    valor: i.valor,
+                    ehPrincipal: i.ehPrincipal,
+                })) ?? [{ tipo: 0, valor: "", ehPrincipal: true }],
+            };
+            formError = "";
+            showModal = true;
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : "Erro ao carregar animal.");
+        }
+    }
+
+    async function submitForm() {
+        formError = "";
+        if (!form.identificadores[0]?.valor?.trim()) {
+            formError = "Informe o identificador principal.";
             return;
         }
-
+        isSubmitting = true;
         try {
-            isSubmitting = true;
-            const payload: AnimalCreateDto = {
-                name: formData.name.trim(),
-                dataNascimento: formData.dataNascimento || undefined,
-                racaId: formData.racaId || null,
-                pictureUpload: formData.pictureUpload || null,
-            };
-
             if (editingId) {
-                await animalService.update(editingId, payload);
+                const patch: AnimalPatchDto = {
+                    name: form.name?.trim() || null,
+                    dataNascimento: form.dataNascimento || null,
+                    dataNascimentoAproximada:
+                        form.dataNascimentoAproximada ?? null,
+                    racaId: form.racaId || null,
+                    sexo: form.sexo ?? null,
+                    origem: form.origem ?? null,
+                    loteOuPasto: form.loteOuPasto?.trim() || null,
+                    identificadores: form.identificadores,
+                };
+                await animalService.patch(editingId, patch);
             } else {
-                const cartao = await cartaoVacinaService.create({});
-                payload.cartaoVacinaId = cartao.id;
-                payload.cartaoVacinaId = cartao.id ?? null;
-                await animalService.create(payload);
+                await animalService.create({
+                    ...form,
+                    name: form.name?.trim() || undefined,
+                    racaId: form.racaId || undefined,
+                    loteOuPasto: form.loteOuPasto?.trim() || undefined,
+                });
             }
-            showFormModal = false;
-            await loadData();
-        } catch (error) {
-            formError = "Erro ao salvar animal";
-            console.error(error);
+            showModal = false;
+            await load();
+        } catch (e: unknown) {
+            formError = e instanceof Error ? e.message : "Erro ao salvar.";
         } finally {
             isSubmitting = false;
         }
     }
 
-    function openDeleteModal(animal: Animal) {
-        deletingItem = animal;
+    // ── Deletar ───────────────────────────────────────────────────────────────
+    let showDeleteModal = $state(false);
+    let deletingAnimal = $state<AnimaReadResponseDto | null>(null);
+    let isDeleting = $state(false);
+
+    function openDelete(animal: AnimaReadResponseDto) {
+        deletingAnimal = animal;
         showDeleteModal = true;
     }
 
-    async function handleDelete() {
-        if (!deletingItem) return;
-        if (!deletingItem?.id) return;
-
+    async function confirmDelete() {
+        if (!deletingAnimal?.id) return;
+        isDeleting = true;
         try {
-            isDeleting = true;
-            await animalService.delete(deletingItem.id);
+            await animalService.delete(deletingAnimal.id);
             showDeleteModal = false;
-            await loadData();
-        } catch (error) {
-            alert("Erro ao excluir animal");
-            console.error(error);
+            deletingAnimal = null;
+            await load();
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : "Erro ao excluir.");
         } finally {
             isDeleting = false;
         }
     }
 
-    function formatDate(dateStr?: string): string {
-        if (!dateStr) return "-";
-        const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("pt-BR");
+    // ── Carregar ──────────────────────────────────────────────────────────────
+    async function load() {
+        isLoading = true;
+        try {
+            const params = {
+                page: currentPage,
+                RacaId: filterRacaId || undefined,
+                DataNascimentoFrom: filterDataFrom || undefined,
+                DataNascimentoTo: filterDataTo || undefined,
+            };
+            const [list, count, r] = await Promise.all([
+                animalService.getList(params),
+                animalService.getCount(params),
+                racaService.getList(),
+            ]);
+            animais = list;
+            totalAnimais = count;
+            racas = r;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    onMount(load);
+
+    const tipoIdOptions = Object.entries(TipoIdentificadorLabels).map(
+        ([v, l]) => ({ value: v, label: l }),
+    );
+    const sexoOptions = Object.entries(SexoAnimalLabels).map(([v, l]) => ({
+        value: v,
+        label: l,
+    }));
+    const origemOptions = Object.entries(OrigemAnimalLabels).map(([v, l]) => ({
+        value: v,
+        label: l,
+    }));
+
+    function addIdent() {
+        form.identificadores = [
+            ...form.identificadores,
+            { tipo: 0, valor: "", ehPrincipal: false },
+        ];
+    }
+    function removeIdent(i: number) {
+        form.identificadores = form.identificadores.filter(
+            (_, idx) => idx !== i,
+        );
     }
 </script>
 
-<div class="space-y-6">
-    <!-- Header -->
-    <div
-        class="card bg-base-100 shadow-sm border border-base-300 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-    >
+<div class="space-y-5">
+    <!-- Cabeçalho -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h1
-                class="text-2xl font-black text-base-content flex items-center gap-2"
-            >
-                <IconPets width="24" height="24" class="text-primary" />
-                <span>Gestão de Animais</span>
-            </h1>
-            <p class="text-xs text-base-content/70 mt-1">
-                Lista de todos os animais cadastrados na clínica.
+            <h1 class="text-2xl font-bold">Gestão de Animais</h1>
+            <p class="text-sm text-base-content/60">
+                {totalAnimais} animal(is) encontrado(s)
             </p>
         </div>
-        <button
-            type="button"
-            onclick={() => openFormModal()}
-            class="btn btn-primary btn-sm gap-1.5"
-        >
+        <button class="btn btn-primary btn-sm gap-1" onclick={openCreate}>
             <IconAdd width="16" height="16" />
-            <span>Novo Animal</span>
+            Cadastrar Animal
         </button>
     </div>
 
-    <!-- Tabela e Filtros -->
-    <div
-        class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
-    >
-        <!-- Search -->
-        <div class="p-4 border-b border-base-200 bg-base-100 flex gap-4">
-            <input
-                type="text"
-                placeholder="Pesquisar animal por nome..."
-                value={searchName}
-                oninput={(e) => {
-                    searchName = (e.target as HTMLInputElement).value;
-                    filterAnimais();
-                }}
-                class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
-            />
+    <!-- Filtros -->
+    <div class="card bg-base-100 shadow-xs rounded-2xl p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+                <label class="label label-text text-xs">Raça</label>
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterRacaId}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todas as raças</option>
+                    {#each racas as r}
+                        <option value={r.id}>{r.nome}</option>
+                    {/each}
+                </select>
+            </div>
+            <div>
+                <label class="label label-text text-xs">Nascimento de</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterDataFrom}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+            <div>
+                <label class="label label-text text-xs">Nascimento até</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterDataTo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
         </div>
+    </div>
 
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            {#if isLoading}
-                <div class="p-12 text-center text-base-content/60">
-                    <span
-                        class="loading loading-spinner loading-md text-primary"
-                    ></span>
-                    <p class="mt-2 text-xs">Carregando animais...</p>
-                </div>
-            {:else if filteredAnimais.length === 0}
-                <div class="p-12 text-center text-base-content/60 space-y-2">
-                    <div class="flex justify-center opacity-40 text-primary">
-                        <IconPets width="48" height="48" />
-                    </div>
-                    <p class="font-bold">Nenhum animal encontrado</p>
-                </div>
-            {:else}
-                <table class="table table-zebra w-full">
-                    <thead class="bg-base-200 text-base-content font-bold">
-                        <tr>
-                            <th>Paciente</th>
-                            <th>Raça</th>
-                            <th>Data Nascimento</th>
+    <!-- Tabela -->
+    <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
+        {#if isLoading}
+            <div class="flex justify-center py-16">
+                <span class="loading loading-spinner loading-md text-primary"
+                ></span>
+            </div>
+        {:else if animais.length === 0}
+            <div class="text-center py-16 text-base-content/50">
+                <IconPets
+                    width="40"
+                    height="40"
+                    class="mx-auto mb-3 opacity-30"
+                />
+                <p>Nenhum animal encontrado.</p>
+            </div>
+        {:else}
+            <div class="overflow-x-auto">
+                <table class="table table-zebra table-sm w-full">
+                    <thead>
+                        <tr class="text-xs uppercase text-base-content/50">
+                            <th>Identificador Principal</th>
+                            <th>Nome</th>
+                            <th>Raça / Espécie</th>
+                            <th>Nascimento / Idade</th>
                             <th class="text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {#each filteredAnimais as animal (animal.id)}
-                            <tr>
-                                <td class="flex items-center gap-3">
-                                    <div class="avatar placeholder">
-                                        {#if animal.pictureUpload}
-                                            <div
-                                                class="w-10 h-10 rounded-lg overflow-hidden ring-1 ring-base-300"
-                                            >
-                                                <img
-                                                    src={animal.pictureUpload}
-                                                    alt={getAnimalName(animal)}
-                                                />
-                                            </div>
-                                        {:else}
-                                            <div
-                                                class="w-10 h-10 rounded-lg bg-primary/10 text-primary font-bold flex items-center justify-center"
-                                            >
-                                                {getAnimalName(animal)
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                    <div>
-                                        <span
-                                            class="font-bold text-base-content block"
-                                            >{getAnimalName(animal)}</span
-                                        >
-                                        <span
-                                            class="text-[11px] text-base-content/50 font-mono"
-                                            >{animal.id.substring(
-                                                0,
-                                                8,
-                                            )}...</span
-                                            >{animal.id
-                                                ? animal.id.substring(0, 8) +
-                                                  "..."
-                                                : "-"}</span
-                                        >
-                                    </div>
-                                </td>
+                        {#each animais as animal}
+                            <tr class="hover:bg-base-200/50">
                                 <td>
-                                    {#if animal.raca}
-                                        <span
-                                            class="badge badge-sm badge-outline"
-                                            >{animal.raca.nome}</span
-                                        >
-                                    {:else}
-                                        <span
-                                            class="text-base-content/50 text-xs"
-                                            >Não informada</span
-                                        >
-                                    {/if}
+                                    <span
+                                        class="badge badge-outline font-mono badge-sm"
+                                    >
+                                        {animal.id?.slice(0, 8) ?? "—"}
+                                    </span>
+                                </td>
+                                <td class="font-medium"
+                                    >{getAnimalName(animal)}</td
+                                >
+                                <td class="text-sm text-base-content/70">
+                                    {animal.raca?.nome ?? "Não informada"}
                                 </td>
                                 <td class="text-sm">
-                                    {formatDate(animal.dataNascimento)}
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-xs text-base-content/50"
+                                        >
+                                            {animal.dataNascimento
+                                                ? new Date(
+                                                      animal.dataNascimento,
+                                                  ).toLocaleDateString("pt-BR")
+                                                : "—"}
+                                        </span>
+                                        <span
+                                            >{calcularIdade(
+                                                animal.dataNascimento,
+                                            )}</span
+                                        >
+                                    </div>
                                 </td>
-                                <td class="text-right space-x-1">
-                                    <button
-                                        type="button"
-                                        onclick={() => openFormModal(animal)}
-                                        class="btn btn-ghost btn-xs text-primary font-bold inline-flex items-center gap-1"
-                                    >
-                                        <IconEdit width="14" height="14" />
-                                        <span>Editar</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onclick={() => openDeleteModal(animal)}
-                                        class="btn btn-ghost btn-xs text-error font-bold inline-flex items-center gap-1"
-                                    >
-                                        <IconDelete width="14" height="14" />
-                                        <span>Excluir</span>
-                                    </button>
+                                <td class="text-right">
+                                    <div class="flex justify-end gap-1">
+                                        <a
+                                            href="/prontuario/{animal.id}"
+                                            class="btn btn-xs btn-ghost"
+                                            >Prontuário</a
+                                        >
+                                        <button
+                                            class="btn btn-xs btn-ghost"
+                                            onclick={() => openEdit(animal)}
+                                        >
+                                            <IconEdit width="14" height="14" />
+                                        </button>
+                                        <button
+                                            class="btn btn-xs btn-ghost text-error"
+                                            onclick={() => openDelete(animal)}
+                                        >
+                                            <IconDelete
+                                                width="14"
+                                                height="14"
+                                            />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         {/each}
                     </tbody>
                 </table>
+            </div>
+            <!-- Paginação -->
+            {#if totalAnimais > animais.length}
+                <div class="flex justify-center gap-2 py-4">
+                    <button
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage === 1}
+                        onclick={() => {
+                            currentPage--;
+                            load();
+                        }}>← Anterior</button
+                    >
+                    <span class="btn btn-sm btn-ghost no-animation"
+                        >Página {currentPage}</span
+                    >
+                    <button
+                        class="btn btn-sm btn-ghost"
+                        onclick={() => {
+                            currentPage++;
+                            load();
+                        }}>Próxima →</button
+                    >
+                </div>
             {/if}
-        </div>
+        {/if}
     </div>
 </div>
 
-<!-- Form Modal -->
+<!-- ── Modal Criar / Editar ──────────────────────────────────────────────── -->
 <FormModal
-    isOpen={showFormModal}
-    title={editingId ? "Editar Animal" : "Novo Animal"}
-    onClose={() => (showFormModal = false)}
-    onSubmit={handleSubmit}
+    isOpen={showModal}
+    title={editingId ? "Editar Animal" : "Cadastrar Animal"}
     isLoading={isSubmitting}
+    submitText={editingId ? "Salvar Alterações" : "Cadastrar"}
+    onClose={() => {
+        showModal = false;
+    }}
+    onSubmit={submitForm}
 >
-    <Input
-        label="Nome"
-        id="name"
-        value={formData.name}
-        onChange={(v: string) => (formData.name = v)}
-        placeholder="Ex: Rex"
-        required
-    />
-    <Input
-        label="Data de Nascimento"
-        id="dataNascimento"
-        type="date"
-        value={formData.dataNascimento}
-        onChange={(v: string) => (formData.dataNascimento = v)}
-    />
-    <Select
-        label="Raça"
-        id="racaId"
-        value={formData.racaId}
-        onChange={(v: string) => (formData.racaId = v)}
-        options={racas.map((r) => ({
-            value: r.id,
-            label: r.nome,
-            value: r.id ?? "",
-            label: r.nome || "Sem nome",
-        }))}
-        placeholder="Selecione uma raça (opcional)"
-    />
-    <Input
-        label="URL da Foto"
-        id="pictureUpload"
-        type="url"
-        value={formData.pictureUpload || ""}
-        onChange={(v: string) => (formData.pictureUpload = v)}
-        placeholder="https://exemplo.com/foto.jpg (opcional)"
-    />
     {#if formError}
-        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
-            {formError}
-        </div>
+        <div class="alert alert-error text-sm py-2">{formError}</div>
     {/if}
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+            <Input
+                label="Nome (opcional)"
+                placeholder="Ex: Mimosa, Farouk…"
+                bind:value={form.name}
+            />
+        </div>
+        <div>
+            <label class="label label-text text-xs">Raça</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={form.racaId}
+            >
+                <option value="">— Selecione —</option>
+                {#each racas as r}
+                    <option value={r.id}>{r.nome}</option>
+                {/each}
+            </select>
+        </div>
+        <div>
+            <Input
+                label="Data de Nascimento *"
+                type="date"
+                bind:value={form.dataNascimento}
+                required
+            />
+        </div>
+        <div class="flex items-center gap-2 pt-5">
+            <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                id="datAprox"
+                bind:checked={form.dataNascimentoAproximada}
+            />
+            <label class="label-text text-sm" for="datAprox"
+                >Data aproximada</label
+            >
+        </div>
+        <div>
+            <label class="label label-text text-xs">Sexo</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={form.sexo}
+            >
+                {#each sexoOptions as opt}
+                    <option value={Number(opt.value)}>{opt.label}</option>
+                {/each}
+            </select>
+        </div>
+        <div>
+            <label class="label label-text text-xs">Origem</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={form.origem}
+            >
+                {#each origemOptions as opt}
+                    <option value={Number(opt.value)}>{opt.label}</option>
+                {/each}
+            </select>
+        </div>
+        <div class="sm:col-span-2">
+            <Input
+                label="Lote / Pasto / Baia"
+                placeholder="Ex: Pasto 02, Baia 4…"
+                bind:value={form.loteOuPasto}
+            />
+        </div>
+    </div>
+
+    <div class="divider text-xs">Identificadores</div>
+    {#each form.identificadores as ident, idx}
+        <div class="flex gap-2 items-end">
+            <div class="flex-1">
+                <label class="label-text text-xs">Tipo</label>
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={ident.tipo}
+                >
+                    {#each tipoIdOptions as opt}
+                        <option value={Number(opt.value)}>{opt.label}</option>
+                    {/each}
+                </select>
+            </div>
+            <div class="flex-[2]">
+                <Input
+                    label="Valor"
+                    placeholder="Ex: 402…"
+                    bind:value={ident.valor}
+                />
+            </div>
+            {#if idx === 0}
+                <div class="pb-1 w-8 flex justify-center">
+                    <span class="badge badge-primary badge-sm">P</span>
+                </div>
+            {:else}
+                <button
+                    type="button"
+                    class="btn btn-ghost btn-sm btn-square"
+                    onclick={() => removeIdent(idx)}>✕</button
+                >
+            {/if}
+        </div>
+    {/each}
+    <button type="button" class="btn btn-ghost btn-xs mt-1" onclick={addIdent}
+        >+ Adicionar identificador</button
+    >
 </FormModal>
 
-<!-- Delete Modal -->
-<ConfirmDeleteModal
+<!-- ── Modal Deletar ─────────────────────────────────────────────────────── -->
+<Modal
     isOpen={showDeleteModal}
-    itemName={deletingItem ? getAnimalName(deletingItem) : "animal"}
-    onClose={() => (showDeleteModal = false)}
-    onConfirm={handleDelete}
+    title="Confirmar Exclusão"
+    message="Tem certeza que deseja excluir o animal '{getAnimalName(
+        deletingAnimal,
+    )}'? Esta ação é irreversível."
+    confirmText="Excluir"
+    cancelText="Cancelar"
+    isDangerous={true}
     isLoading={isDeleting}
+    onConfirm={confirmDelete}
+    onClose={() => {
+        showDeleteModal = false;
+        deletingAnimal = null;
+    }}
 />

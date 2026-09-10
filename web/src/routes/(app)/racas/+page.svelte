@@ -1,119 +1,141 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
     import { racaService } from "$lib/api/racas";
     import { especieService } from "$lib/api/especies";
-    import type { Raca, RacaCreateDto, Especie } from "$lib/types";
+    import type {
+        RacaReadResponseDto,
+        RacaCreateDto,
+        RacaPatchDto,
+        EspecieReadResponseDto,
+    } from "$lib/types";
 
     import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconFilter from "@iconify-svelte/material-symbols/filter-list-rounded";
 
-    let racas = $state<Raca[]>([]);
-    let especies = $state<Especie[]>([]);
-    let filteredRacas = $state<Raca[]>([]);
+    let racas = $state<RacaReadResponseDto[]>([]);
+    let especies = $state<EspecieReadResponseDto[]>([]);
     let isLoading = $state(true);
+    let selectedEspecieId = $state<string>("");
     let searchName = $state("");
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<RacaCreateDto>({
-        nome: "",
-        especieId: "",
-    });
+    let formNome = $state("");
+    let formEspecieId = $state("");
     let formError = $state("");
     let isSubmitting = $state(false);
 
     let showDeleteModal = $state(false);
-    let deletingItem = $state<Raca | null>(null);
+    let deletingItem = $state<RacaReadResponseDto | null>(null);
     let isDeleting = $state(false);
 
-    onMount(() => {
-        loadData();
-    });
-
-    async function loadData() {
+    onMount(async () => {
         try {
             isLoading = true;
-            racas = await racaService.list();
-            especies = await especieService.list();
-            filterRacas();
+            const [esps, rcs] = await Promise.all([
+                especieService.getList(),
+                racaService.getList(),
+            ]);
+            especies = esps;
+            racas = rcs;
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
         } finally {
             isLoading = false;
         }
+    });
+
+    async function handleEspecieFilterChange() {
+        try {
+            isLoading = true;
+            racas = await racaService.getList(selectedEspecieId || undefined);
+        } catch (error) {
+            console.error("Erro ao filtrar raças:", error);
+        } finally {
+            isLoading = false;
+        }
     }
 
-    function filterRacas() {
-        filteredRacas = racas.filter((r) =>
-            r.nome?.toLowerCase().includes(searchName.toLowerCase()),
-        );
-    }
+    const filteredRacas = $derived(
+        racas.filter((r) =>
+            (r.nome || "").toLowerCase().includes(searchName.toLowerCase()),
+        ),
+    );
 
-    function openFormModal(raca?: Raca) {
+    function openFormModal(raca?: RacaReadResponseDto) {
         if (raca) {
-            editingId = raca.id;
             editingId = raca.id ?? null;
-            formData = {
-                nome: raca.nome,
-                nome: raca.nome || "",
-                especieId: raca.especie?.id || "",
-            };
+            formNome = raca.nome || "";
+            formEspecieId = raca.especie?.id || "";
         } else {
             editingId = null;
-            formData = {
-                nome: "",
-                especieId: "",
-            };
+            formNome = "";
+            formEspecieId = selectedEspecieId || (especies[0]?.id ?? "");
         }
         formError = "";
         showFormModal = true;
     }
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.especieId) {
-            formError = "Preencha todos os campos obrigatórios";
+        if (!formNome.trim()) {
+            formError = "Informe o nome da raça.";
+            return;
+        }
+        if (!editingId && !formEspecieId) {
+            formError = "Selecione a espécie vinculada.";
             return;
         }
 
         try {
             isSubmitting = true;
             if (editingId) {
-                await racaService.update(editingId, { nome: formData.nome });
+                const patchDto: RacaPatchDto = {
+                    nome: formNome.trim(),
+                };
+                await racaService.patch(editingId, patchDto);
             } else {
-                await racaService.create(formData);
+                const createDto: RacaCreateDto = {
+                    nome: formNome.trim(),
+                    especieId: formEspecieId,
+                };
+                await racaService.create(createDto);
             }
             showFormModal = false;
-            await loadData();
-        } catch (error) {
-            formError = "Erro ao salvar raça na API";
+            await handleEspecieFilterChange();
+        } catch (error: unknown) {
+            formError =
+                error instanceof Error
+                    ? error.message
+                    : "Erro ao salvar raça na API";
             console.error(error);
         } finally {
             isSubmitting = false;
         }
     }
 
-    function openDeleteModal(raca: Raca) {
+    function openDeleteModal(raca: RacaReadResponseDto) {
         deletingItem = raca;
         showDeleteModal = true;
     }
 
     async function handleDelete() {
-        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {
             isDeleting = true;
             await racaService.delete(deletingItem.id);
             showDeleteModal = false;
-            await loadData();
-        } catch (error) {
-            alert("Erro ao excluir raça");
+            await handleEspecieFilterChange();
+        } catch (error: unknown) {
+            alert(
+                error instanceof Error ? error.message : "Erro ao excluir raça",
+            );
             console.error(error);
         } finally {
             isDeleting = false;
@@ -131,16 +153,16 @@
                 class="text-2xl font-black text-base-content flex items-center gap-2"
             >
                 <IconLabel width="24" height="24" class="text-primary" />
-                <span>Raças</span>
+                <span>Raças de Animais</span>
             </h1>
             <p class="text-xs text-base-content/70 mt-1">
-                Catálogo de raças vinculadas a cada espécie.
+                Catálogo de raças vinculadas a cada espécie biológica atendida.
             </p>
         </div>
         <button
             type="button"
             onclick={() => openFormModal()}
-            class="btn btn-primary btn-sm gap-1.5"
+            class="btn btn-primary btn-sm gap-1.5 shadow-xs"
         >
             <IconAdd width="16" height="16" />
             <span>Nova Raça</span>
@@ -151,17 +173,42 @@
     <div
         class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
     >
-        <div class="p-4 border-b border-base-200 bg-base-100">
-            <input
-                type="text"
-                placeholder="Pesquisar por nome da raça..."
-                value={searchName}
-                oninput={(e) => {
-                    searchName = (e.target as HTMLInputElement).value;
-                    filterRacas();
-                }}
-                class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
-            />
+        <div
+            class="p-4 border-b border-base-200 bg-base-100 flex flex-col sm:flex-row gap-3 items-center justify-between"
+        >
+            <div class="w-full sm:w-auto flex-1 max-w-sm">
+                <input
+                    type="text"
+                    placeholder="Pesquisar por nome da raça..."
+                    value={searchName}
+                    oninput={(e) => {
+                        searchName = (e.target as HTMLInputElement).value;
+                    }}
+                    class="input input-bordered w-full input-sm focus:input-primary"
+                />
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <IconFilter
+                    width="18"
+                    height="18"
+                    class="text-base-content/60 shrink-0"
+                />
+                <label for="filtroEspecie" class="sr-only"
+                    >Filtrar por espécie</label
+                >
+                <select
+                    id="filtroEspecie"
+                    class="select select-bordered select-sm w-full sm:w-60"
+                    bind:value={selectedEspecieId}
+                    onchange={handleEspecieFilterChange}
+                >
+                    <option value="">Todas as Espécies</option>
+                    {#each especies as esp}
+                        <option value={esp.id}>{esp.nome}</option>
+                    {/each}
+                </select>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -178,10 +225,17 @@
                         <IconLabel width="48" height="48" />
                     </div>
                     <p class="font-bold">Nenhuma raça encontrada</p>
+                    <p class="text-xs text-base-content/50">
+                        {selectedEspecieId
+                            ? "Tente selecionar outra espécie no filtro ou cadastrar uma nova raça."
+                            : "Cadastre novas raças para começar a utilizá-las nos animais."}
+                    </p>
                 </div>
             {:else}
                 <table class="table table-zebra w-full">
-                    <thead class="bg-base-200 text-base-content font-bold">
+                    <thead
+                        class="bg-base-200 text-base-content font-bold text-xs uppercase"
+                    >
                         <tr>
                             <th>Nome da Raça</th>
                             <th>Espécie Vinculada</th>
@@ -190,7 +244,7 @@
                     </thead>
                     <tbody>
                         {#each filteredRacas as raca (raca.id)}
-                            <tr>
+                            <tr class="hover:bg-base-200/50">
                                 <td
                                     class="font-bold text-base text-base-content"
                                 >
@@ -201,15 +255,12 @@
                                         <span
                                             class="badge badge-sm badge-outline font-semibold"
                                         >
-                                            {raca.especie.nome ||
-                                                raca.especie.fullName ||
-                                                "Espécie"}
                                             {raca.especie.fullName || "Espécie"}
                                         </span>
                                     {:else}
                                         <span
-                                            class="text-xs text-base-content/50"
-                                            >-</span
+                                            class="text-xs text-base-content/40"
+                                            >—</span
                                         >
                                     {/if}
                                 </td>
@@ -248,24 +299,40 @@
     onSubmit={handleSubmit}
     isLoading={isSubmitting}
 >
+    {#if formError}
+        <div class="alert alert-error text-white text-xs p-3 rounded-lg mb-3">
+            {formError}
+        </div>
+    {/if}
+
     <Input
         label="Nome da Raça"
-        id="nome"
-        value={formData.nome}
-        onChange={(v: string) => (formData.nome = v)}
-        placeholder="Ex: Labrador, Siamês, Poodle..."
+        id="nomeRaca"
+        bind:value={formNome}
+        placeholder="Ex: Nelore, Angus, Quarto de Milha, Holandês, SRD..."
         required
     />
 
-    <Select
-        label="Especie"
-        onChange={(v: string) => (formData.especieId = v)}
-        options={especies.map((e) => ({ value: e.id, label: e.nome }))}
-    />
-
-    {#if formError}
-        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
-            {formError}
+    {#if !editingId}
+        <div class="w-full mb-3">
+            <label for="especieSelect" class="label py-1 block">
+                <span
+                    class="label-text font-medium text-sm flex items-center gap-1"
+                >
+                    Espécie *
+                </span>
+            </label>
+            <select
+                id="especieSelect"
+                class="select select-bordered w-full"
+                bind:value={formEspecieId}
+                required
+            >
+                <option value="">— Selecione uma espécie —</option>
+                {#each especies as esp}
+                    <option value={esp.id}>{esp.nome}</option>
+                {/each}
+            </select>
         </div>
     {/if}
 </FormModal>

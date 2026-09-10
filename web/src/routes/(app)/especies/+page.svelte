@@ -3,31 +3,57 @@
     import Input from "$lib/components/Input.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
+    import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import { especieService } from "$lib/api/especies";
-    import type { Especie, EspecieCreateDto } from "$lib/types";
+    import {
+        PorteAnimalLabels,
+        type EspecieReadResponseDto,
+        type EspecieCreateDto,
+        type EspeciePatchDto,
+    } from "$lib/types";
 
     import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
 
-    let especies = $state<Especie[]>([]);
-    let filteredEspecies = $state<Especie[]>([]);
+    let especies = $state<EspecieReadResponseDto[]>([]);
     let isLoading = $state(true);
     let searchName = $state("");
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
-    let formData = $state<EspecieCreateDto>({
-        nome: "",
-        nomeCientifico: "",
-    });
+
+    let formNome = $state("");
+    let formNomeCientifico = $state("");
+    let formPortePadrao = $state(1); // Médio
+    let formIconeKey = $state("outros");
+
     let formError = $state("");
     let isSubmitting = $state(false);
 
     let showDeleteModal = $state(false);
-    let deletingItem = $state<Especie | null>(null);
+    let deletingItem = $state<EspecieReadResponseDto | null>(null);
     let isDeleting = $state(false);
+
+    const iconeOptions = [
+        { value: "bovino", label: "🐄 Bovino" },
+        { value: "equino", label: "🐴 Equino" },
+        { value: "ovino", label: "🐑 Ovino" },
+        { value: "caprino", label: "🐐 Caprino" },
+        { value: "suino", label: "🐖 Suíno" },
+        { value: "canino", label: "🐕 Canino" },
+        { value: "felino", label: "🐈 Felino" },
+        { value: "ave", label: "🐓 Ave" },
+        { value: "coelho", label: "🐇 Coelho" },
+        { value: "outros", label: "🐾 Outros" },
+    ];
+
+    const porteOptions = [
+        { value: 0, label: PorteAnimalLabels[0] },
+        { value: 1, label: PorteAnimalLabels[1] },
+        { value: 2, label: PorteAnimalLabels[2] },
+    ];
 
     onMount(() => {
         loadEspecies();
@@ -36,8 +62,7 @@
     async function loadEspecies() {
         try {
             isLoading = true;
-            especies = await especieService.list();
-            filterEspecies();
+            especies = await especieService.getList();
         } catch (error) {
             console.error("Erro ao carregar espécies:", error);
         } finally {
@@ -45,64 +70,80 @@
         }
     }
 
-    function filterEspecies() {
-        filteredEspecies = especies.filter(
-            (e) => e.nome.toLowerCase().includes(searchName.toLowerCase()),
-            (e.nome || "").toLowerCase().includes(searchName.toLowerCase()),
-        );
-    }
+    const filteredEspecies = $derived(
+        especies.filter(
+            (e) =>
+                (e.nome || "")
+                    .toLowerCase()
+                    .includes(searchName.toLowerCase()) ||
+                (e.nomeCientifico || "")
+                    .toLowerCase()
+                    .includes(searchName.toLowerCase()),
+        ),
+    );
 
-    function openFormModal(especie?: Especie) {
+    function openFormModal(especie?: EspecieReadResponseDto) {
         if (especie) {
-            editingId = especie.id;
             editingId = especie.id ?? null;
-            formData = {
-                nome: especie.nome,
-                nomeCientifico: especie.nomeCientifico,
-                nome: especie.nome || "",
-                nomeCientifico: especie.nomeCientifico || "",
-            };
+            formNome = especie.nome || "";
+            formNomeCientifico = especie.nomeCientifico || "";
+            formPortePadrao = Number(especie.portePadrao ?? 1);
+            formIconeKey = especie.iconeKey || "outros";
         } else {
             editingId = null;
-            formData = {
-                nome: "",
-                nomeCientifico: "",
-            };
+            formNome = "";
+            formNomeCientifico = "";
+            formPortePadrao = 1;
+            formIconeKey = "bovino";
         }
         formError = "";
         showFormModal = true;
     }
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.nomeCientifico.trim()) {
-            formError = "Preencha todos os campos";
+        if (!formNome.trim()) {
+            formError = "Informe o nome vulgar da espécie.";
             return;
         }
 
         try {
             isSubmitting = true;
             if (editingId) {
-                await especieService.update(editingId, formData);
+                const patchDto: EspeciePatchDto = {
+                    nome: formNome.trim(),
+                    nomeCientifico: formNomeCientifico.trim() || null,
+                    portePadrao: formPortePadrao,
+                    iconeKey: formIconeKey,
+                };
+                await especieService.patch(editingId, patchDto);
             } else {
-                await especieService.create(formData);
+                const createDto: EspecieCreateDto = {
+                    nome: formNome.trim(),
+                    nomeCientifico: formNomeCientifico.trim() || null,
+                    portePadrao: formPortePadrao,
+                    iconeKey: formIconeKey,
+                };
+                await especieService.create(createDto);
             }
             showFormModal = false;
             await loadEspecies();
-        } catch (error) {
-            formError = "Erro ao salvar espécie";
+        } catch (error: unknown) {
+            formError =
+                error instanceof Error
+                    ? error.message
+                    : "Erro ao salvar espécie";
             console.error(error);
         } finally {
             isSubmitting = false;
         }
     }
 
-    function openDeleteModal(especie: Especie) {
+    function openDeleteModal(especie: EspecieReadResponseDto) {
         deletingItem = especie;
         showDeleteModal = true;
     }
 
     async function handleDelete() {
-        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {
@@ -110,8 +151,12 @@
             await especieService.delete(deletingItem.id);
             showDeleteModal = false;
             await loadEspecies();
-        } catch (error) {
-            alert("Erro ao excluir espécie");
+        } catch (error: unknown) {
+            alert(
+                error instanceof Error
+                    ? error.message
+                    : "Erro ao excluir espécie",
+            );
             console.error(error);
         } finally {
             isDeleting = false;
@@ -132,13 +177,13 @@
                 <span>Espécies Biológicas</span>
             </h1>
             <p class="text-xs text-base-content/70 mt-1">
-                Classificação taxonômica das espécies atendidas.
+                Classificação taxonômica das espécies atendidas na instituição.
             </p>
         </div>
         <button
             type="button"
             onclick={() => openFormModal()}
-            class="btn btn-primary btn-sm gap-1.5"
+            class="btn btn-primary btn-sm gap-1.5 shadow-xs"
         >
             <IconAdd width="16" height="16" />
             <span>Nova Espécie</span>
@@ -152,11 +197,10 @@
         <div class="p-4 border-b border-base-200 bg-base-100">
             <input
                 type="text"
-                placeholder="Pesquisar por nome vulgar..."
+                placeholder="Pesquisar por nome vulgar ou científico..."
                 value={searchName}
                 oninput={(e) => {
                     searchName = (e.target as HTMLInputElement).value;
-                    filterEspecies();
                 }}
                 class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
             />
@@ -179,26 +223,50 @@
                 </div>
             {:else}
                 <table class="table table-zebra w-full">
-                    <thead class="bg-base-200 text-base-content font-bold">
+                    <thead
+                        class="bg-base-200 text-base-content font-bold text-xs uppercase"
+                    >
                         <tr>
+                            <th class="w-16">Ícone</th>
                             <th>Nome Vulgar</th>
                             <th>Nome Científico</th>
+                            <th>Porte Padrão</th>
                             <th class="text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {#each filteredEspecies as especie (especie.id)}
-                            <tr>
+                            <tr class="hover:bg-base-200/50">
+                                <td>
+                                    <EspecieAvatar
+                                        iconeKey={especie.iconeKey}
+                                        tamanho="sm"
+                                    />
+                                </td>
                                 <td
                                     class="font-bold text-base text-base-content"
                                 >
                                     {especie.nome}
                                 </td>
                                 <td>
-                                    <span
-                                        class="italic text-sm text-base-content/80 font-serif"
-                                    >
-                                        {especie.nomeCientifico}
+                                    {#if especie.nomeCientifico}
+                                        <span
+                                            class="italic text-sm text-base-content/80 font-serif"
+                                        >
+                                            {especie.nomeCientifico}
+                                        </span>
+                                    {:else}
+                                        <span
+                                            class="text-xs text-base-content/40"
+                                            >—</span
+                                        >
+                                    {/if}
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm badge-outline">
+                                        {PorteAnimalLabels[
+                                            especie.portePadrao ?? 1
+                                        ] ?? "Indefinido"}
                                     </span>
                                 </td>
                                 <td class="text-right space-x-1">
@@ -236,27 +304,63 @@
     onSubmit={handleSubmit}
     isLoading={isSubmitting}
 >
-    <Input
-        label="Nome Vulgar"
-        id="nome"
-        value={formData.nome}
-        onChange={(v: string) => (formData.nome = v)}
-        placeholder="Ex: Canino, Felino, Equino..."
-        required
-    />
-    <Input
-        label="Nome Científico"
-        id="nomeCientifico"
-        value={formData.nomeCientifico}
-        onChange={(v: string) => (formData.nomeCientifico = v)}
-        placeholder="Ex: Canis lupus familiaris, Felis catus..."
-        required
-    />
     {#if formError}
-        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
+        <div class="alert alert-error text-white text-xs p-3 rounded-lg mb-3">
             {formError}
         </div>
     {/if}
+
+    <Input
+        label="Nome Vulgar"
+        id="nome"
+        bind:value={formNome}
+        placeholder="Ex: Bovino, Equino, Ovino, Canino..."
+        required
+    />
+
+    <Input
+        label="Nome Científico"
+        id="nomeCientifico"
+        bind:value={formNomeCientifico}
+        placeholder="Ex: Bos taurus, Equus caballus, Ovis aries..."
+    />
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+        <div>
+            <label for="portePadrao" class="label py-1 block">
+                <span class="label-text font-medium text-sm">Porte Padrão</span>
+            </label>
+            <select
+                id="portePadrao"
+                class="select select-bordered w-full"
+                bind:value={formPortePadrao}
+            >
+                {#each porteOptions as opt}
+                    <option value={opt.value}>{opt.label}</option>
+                {/each}
+            </select>
+        </div>
+
+        <div>
+            <label for="iconeKey" class="label py-1 block">
+                <span
+                    class="label-text font-medium text-sm flex items-center justify-between"
+                >
+                    <span>Ícone Representativo</span>
+                    <EspecieAvatar iconeKey={formIconeKey} tamanho="sm" />
+                </span>
+            </label>
+            <select
+                id="iconeKey"
+                class="select select-bordered w-full"
+                bind:value={formIconeKey}
+            >
+                {#each iconeOptions as opt}
+                    <option value={opt.value}>{opt.label}</option>
+                {/each}
+            </select>
+        </div>
+    </div>
 </FormModal>
 
 <!-- Delete Modal -->

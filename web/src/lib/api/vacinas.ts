@@ -1,30 +1,48 @@
 import { ApiClient } from './client';
-import type { Vacina, VacinaCreateDto, VacinaPatchDto, VacinaDetailResponseDto } from '../types';
+import type {
+    VacinaReadResponseDto,
+    VacinaDetailResponseDto,
+    VacinaShortResponseDto,
+    VacinaCreateDto,
+    VacinaPatchDto,
+} from '../types';
 
-export interface VacinaFilterParams {
-    name?: string;
-    reaplicarEmXDiasMin?: number;
-    reaplicarEmXDiasMax?: number;
+export interface VacinaListParams {
+    ReaplicarEmXDiasMin?: number;
+    ReaplicarEmXDiasMax?: number;
 }
 
 export const vacinaService = {
-    list: (filters?: VacinaFilterParams) => {
-        const params = new URLSearchParams();
-        if (filters?.name) params.set('Name', filters.name);
-        if (filters?.reaplicarEmXDiasMin !== undefined) params.set('ReaplicarEmXDiasMin', filters.reaplicarEmXDiasMin.toString());
-        if (filters?.reaplicarEmXDiasMax !== undefined) params.set('ReaplicarEmXDiasMax', filters.reaplicarEmXDiasMax.toString());
-
-        const qs = params.toString();
-        return ApiClient.get<Vacina[]>(`/vacinas${qs ? `?${qs}` : ''}`);
+    getList(params?: VacinaListParams): Promise<VacinaReadResponseDto[]> {
+        const qs = new URLSearchParams();
+        if (params?.ReaplicarEmXDiasMin !== undefined) qs.set('ReaplicarEmXDiasMin', String(params.ReaplicarEmXDiasMin));
+        if (params?.ReaplicarEmXDiasMax !== undefined) qs.set('ReaplicarEmXDiasMax', String(params.ReaplicarEmXDiasMax));
+        const q = qs.toString();
+        return ApiClient.get<VacinaReadResponseDto[]>(`/vacinas${q ? `?${q}` : ''}`);
     },
 
-    get: (id: string) => ApiClient.get<VacinaDetailResponseDto>(`/vacinas/${id}`),
+    search(search: string, page = 1): Promise<VacinaShortResponseDto[]> {
+        const qs = new URLSearchParams({ search, page: String(page) });
+        return ApiClient.get<VacinaShortResponseDto[]>(`/vacinas/search?${qs}`);
+    },
 
-    create: (data: VacinaCreateDto) => ApiClient.post<VacinaDetailResponseDto>('/vacinas', data),
+    getCount(): Promise<number> {
+        return ApiClient.getNumber('/vacinas/count');
+    },
 
-    update: (id: string, data: VacinaPatchDto) => ApiClient.patch<VacinaDetailResponseDto>(`/vacinas/${id}`, data),
+    getById(id: string): Promise<VacinaDetailResponseDto> {
+        return ApiClient.get<VacinaDetailResponseDto>(`/vacinas/${id}`);
+    },
 
-    delete: (id: string) => ApiClient.delete(`/vacinas/${id}`),
+    create(dto: VacinaCreateDto): Promise<VacinaDetailResponseDto> {
+        return ApiClient.post<VacinaDetailResponseDto>('/vacinas', dto);
+    },
 
-    count: () => ApiClient.count('/vacinas'),
+    patch(id: string, dto: VacinaPatchDto): Promise<VacinaDetailResponseDto> {
+        return ApiClient.patch<VacinaDetailResponseDto>(`/vacinas/${id}`, dto);
+    },
+
+    delete(id: string): Promise<void> {
+        return ApiClient.delete(`/vacinas/${id}`);
+    },
 };

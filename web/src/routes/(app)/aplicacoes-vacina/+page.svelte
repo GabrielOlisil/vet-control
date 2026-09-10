@@ -1,313 +1,460 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
-    import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
+    import Modal from "$lib/components/Modal.svelte";
+    import Input from "$lib/components/Input.svelte";
+    import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
+    import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
     import { vacinaService } from "$lib/api/vacinas";
     import { animalService } from "$lib/api/animais";
-    import { cartaoVacinaService } from "$lib/api/cartoes-vacina";
     import {
         getAnimalName,
-        getVacinaName,
-        type AplicacaoVacina,
-        type Vacina,
-        type Animal,
+        hoje,
+        type AplicacaoVacinaReadResponseDto,
+        type AplicacaoVacinaDetailResponseDto,
+        type AplicacaoVacinaCreateDto,
+        type VacinaReadResponseDto,
+        type AnimaReadResponseDto,
     } from "$lib/types";
 
-    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
 
-    let aplicacoes = $state<AplicacaoVacina[]>([]);
-    let vacinas = $state<Vacina[]>([]);
-    let animais = $state<Animal[]>([]);
+    // ── Estado ────────────────────────────────────────────────────────────────
+    let aplicacoes = $state<AplicacaoVacinaReadResponseDto[]>([]);
+    let total = $state(0);
+    let currentPage = $state(1);
     let isLoading = $state(true);
 
-    let showFormModal = $state(false);
-    let formData = $state<{
-        animalId: string;
-        vacinaId: string;
-        dataAplicacao: string;
-    }>({
+    let vacinas = $state<VacinaReadResponseDto[]>([]);
+    let animais = $state<AnimaReadResponseDto[]>([]);
+
+    // Filtros
+    let filterVacinaId = $state("");
+    let filterAnimalId = $state("");
+    let filterDataFrom = $state("");
+    let filterDataTo = $state("");
+
+    // ── Modal: Registrar Vacinação ────────────────────────────────────────────
+    let showModal = $state(false);
+    let isSubmitting = $state(false);
+    let formError = $state("");
+    let form = $state<AplicacaoVacinaCreateDto>({
         animalId: "",
         vacinaId: "",
-        dataAplicacao: new Date().toISOString().split("T")[0],
-        dataAplicacao: new Date().toISOString().slice(0, 10),
-    });
-    let formError = $state("");
-    let isSubmitting = $state(false);
-
-    let showDeleteModal = $state(false);
-    let deletingItem = $state<AplicacaoVacina | null>(null);
-    let isDeleting = $state(false);
-
-    onMount(() => {
-        loadData();
+        dataAplicacao: hoje(),
+        dataProximaDose: undefined,
+        numeroLote: "",
+        doseMl: undefined,
+        veterinarioResponsavel: "",
+        aplicador: undefined,
+        laboratorioFabricante: undefined,
+        observacoes: undefined,
     });
 
-    async function loadData() {
-        try {
-            isLoading = true;
-            [aplicacoes, vacinas, animais] = await Promise.all([
-                aplicacaoVacinaService.list(),
-                vacinaService.list(),
-                animalService.list(1),
-            ]);
-        } catch (error) {
-            console.error("Erro ao carregar aplicações de vacinas:", error);
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    function openFormModal() {
-        formData = {
-            animalId: animais.length > 0 ? animais[0].id : "",
-            vacinaId: vacinas.length > 0 ? vacinas[0].id : "",
-            dataAplicacao: new Date().toISOString().split("T")[0],
-            animalId: animais.length > 0 ? (animais[0]?.id ?? "") : "",
-            vacinaId: vacinas.length > 0 ? (vacinas[0]?.id ?? "") : "",
-            dataAplicacao: new Date().toISOString().slice(0, 10),
+    function openModal() {
+        form = {
+            animalId: "",
+            vacinaId: "",
+            dataAplicacao: hoje(),
+            dataProximaDose: undefined,
+            numeroLote: "",
+            doseMl: undefined,
+            veterinarioResponsavel: "",
+            aplicador: undefined,
+            laboratorioFabricante: undefined,
+            observacoes: undefined,
         };
         formError = "";
-        showFormModal = true;
+        showModal = true;
     }
 
-    async function handleSubmit() {
-        if (!formData.vacinaId) {
-            formError = "Selecione uma vacina";
+    async function submitForm() {
+        formError = "";
+        if (!form.animalId) {
+            formError = "Selecione o animal.";
             return;
         }
-
+        if (!form.vacinaId) {
+            formError = "Selecione a vacina.";
+            return;
+        }
+        if (!form.numeroLote?.trim()) {
+            formError = "Informe o número do lote.";
+            return;
+        }
+        if (!form.veterinarioResponsavel?.trim()) {
+            formError = "Informe o veterinário responsável.";
+            return;
+        }
+        isSubmitting = true;
         try {
-            isSubmitting = true;
-            let targetAnimal = animais.find((a) => a.id === formData.animalId);
-            let cartaoId = targetAnimal?.cartaoVacina?.id;
-
-            if (targetAnimal && !cartaoId) {
-            if (targetAnimal && !cartaoId && targetAnimal.id) {
-                const novoCartao = await cartaoVacinaService.create({});
-                await animalService.update(targetAnimal.id, {
-                    cartaoVacinaId: novoCartao.id,
-                });
-                cartaoId = novoCartao.id;
-                if (novoCartao.id) {
-                    await animalService.update(targetAnimal.id, {
-                        cartaoVacinaId: novoCartao.id,
-                    });
-                    cartaoId = novoCartao.id;
-                }
-            }
-
-            await aplicacaoVacinaService.create({
-                vacinaId: formData.vacinaId,
-                dataAplicacao: formData.dataAplicacao,
-                cartaoVacinaId: cartaoId || null,
-            });
-
-            showFormModal = false;
-            await loadData();
-        } catch (error) {
-            formError = "Erro ao salvar aplicação de vacina";
-            console.error(error);
+            await aplicacaoVacinaService.create(form);
+            showModal = false;
+            await load();
+        } catch (e: unknown) {
+            formError = e instanceof Error ? e.message : "Erro ao registrar.";
         } finally {
             isSubmitting = false;
         }
     }
 
-    function openDeleteModal(item: AplicacaoVacina) {
-        deletingItem = item;
-        showDeleteModal = true;
-    }
+    // ── Modal: Excluir ────────────────────────────────────────────────────────
+    let showDeleteModal = $state(false);
+    let deletingApl = $state<AplicacaoVacinaReadResponseDto | null>(null);
+    let isDeleting = $state(false);
 
-    async function handleDelete() {
-        if (!deletingItem) return;
-        if (!deletingItem?.id) return;
-
+    async function confirmDelete() {
+        if (!deletingApl?.id) return;
+        isDeleting = true;
         try {
-            isDeleting = true;
-            await aplicacaoVacinaService.delete(deletingItem.id);
+            await aplicacaoVacinaService.delete(deletingApl.id);
             showDeleteModal = false;
-            await loadData();
-        } catch (error) {
-            alert("Erro ao excluir aplicação");
-            console.error(error);
+            deletingApl = null;
+            await load();
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : "Erro ao excluir.");
         } finally {
             isDeleting = false;
         }
     }
 
-    function formatDate(dateStr?: string): string {
-        if (!dateStr) return "-";
-        const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("pt-BR");
+    // ── Carregar ──────────────────────────────────────────────────────────────
+    async function load() {
+        isLoading = true;
+        try {
+            const params = {
+                page: currentPage,
+                VacinaId: filterVacinaId || undefined,
+                AnimalId: filterAnimalId || undefined,
+                DataAplicacaoFrom: filterDataFrom || undefined,
+                DataAplicacaoTo: filterDataTo || undefined,
+            };
+            const [list, count] = await Promise.all([
+                aplicacaoVacinaService.getList(params),
+                aplicacaoVacinaService.getCount(params),
+            ]);
+            aplicacoes = list;
+            total = count;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    onMount(async () => {
+        const [vs, as_] = await Promise.all([
+            vacinaService.getList(),
+            animalService.getList(),
+        ]);
+        vacinas = vs;
+        animais = as_;
+        await load();
+    });
+
+    function formatDate(d?: string | null): string {
+        if (!d) return "—";
+        return new Date(d).toLocaleDateString("pt-BR");
     }
 </script>
 
-<div class="space-y-6">
-    <!-- Header -->
-    <div
-        class="card bg-base-100 shadow-sm border border-base-300 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-    >
+<div class="space-y-5">
+    <!-- Cabeçalho -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h1
-                class="text-2xl font-black text-base-content flex items-center gap-2"
-            >
-                <IconCalendar width="24" height="24" class="text-primary" />
-                <span>Histórico de Aplicações de Vacinas</span>
-            </h1>
-            <p class="text-xs text-base-content/70 mt-1">
-                Todas as vacinações registradas no sistema.
-            </p>
+            <h1 class="text-2xl font-bold">Livro de Aplicações de Vacinas</h1>
+            <p class="text-sm text-base-content/60">{total} registro(s)</p>
         </div>
-        <button
-            type="button"
-            onclick={openFormModal}
-            class="btn btn-primary btn-sm gap-1.5"
-        >
+        <button class="btn btn-primary btn-sm gap-1" onclick={openModal}>
             <IconAdd width="16" height="16" />
-            <span>Nova Aplicação</span>
+            Registrar Vacinação
         </button>
     </div>
 
-    <!-- Tabela de Aplicações -->
-    <div
-        class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
-    >
+    <!-- Filtros -->
+    <div class="card bg-base-100 shadow-xs rounded-2xl p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+                <label class="label label-text text-xs">Vacina</label>
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterVacinaId}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todas</option>
+                    {#each vacinas as v}
+                        <option value={v.id}>{v.name}</option>
+                    {/each}
+                </select>
+            </div>
+            <div>
+                <label class="label label-text text-xs">Animal</label>
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterAnimalId}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todos</option>
+                    {#each animais as a}
+                        <option value={a.id}>{getAnimalName(a)}</option>
+                    {/each}
+                </select>
+            </div>
+            <div>
+                <label class="label label-text text-xs">Aplicação de</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterDataFrom}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+            <div>
+                <label class="label label-text text-xs">Aplicação até</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterDataTo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
         {#if isLoading}
-            <div class="p-12 text-center text-base-content/60">
+            <div class="flex justify-center py-16">
                 <span class="loading loading-spinner loading-md text-primary"
                 ></span>
-                <p class="mt-2 text-xs">Carregando aplicações...</p>
             </div>
         {:else if aplicacoes.length === 0}
-            <div class="p-12 text-center text-base-content/60 space-y-2">
-                <div class="flex justify-center opacity-40 text-primary">
-                    <IconVaccines width="48" height="48" />
-                </div>
-                <p class="font-bold">Nenhuma aplicação de vacina registrada</p>
+            <div class="text-center py-16 text-base-content/50">
+                <IconCalendar
+                    width="40"
+                    height="40"
+                    class="mx-auto mb-3 opacity-30"
+                />
+                <p>Nenhuma aplicação encontrada.</p>
             </div>
         {:else}
             <div class="overflow-x-auto">
-                <table class="table table-zebra w-full">
-                    <thead class="bg-base-200 text-base-content font-bold">
-                        <tr>
+                <table class="table table-zebra table-sm w-full">
+                    <thead>
+                        <tr class="text-xs uppercase text-base-content/50">
                             <th>Vacina</th>
-                            <th>Data da Aplicação</th>
-                            <th>Cartão ID</th>
+                            <th>Animal</th>
+                            <th>Data Aplicação</th>
                             <th class="text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {#each aplicacoes as aplicacao (aplicacao.id)}
-                            <tr>
-                                <td
-                                    class="font-bold text-primary flex items-center gap-1.5"
+                        {#each aplicacoes as apl}
+                            <tr class="hover:bg-base-200/50">
+                                <td class="font-medium"
+                                    >{apl.vacina?.name ?? "—"}</td
                                 >
-                                    <IconVaccines width="16" height="16" />
-                                    <span
-                                        >{aplicacao.vacina?.name ||
-                                            aplicacao.vacinaName ||
-                                            "Vacina"}</span
-                                    >
-                                </td>
                                 <td>
-                                    <span class="badge badge-sm badge-outline">
-                                        {formatDate(aplicacao.dataAplicacao)}
-                                    </span>
-                                </td>
-                                <td
-                                    class="font-mono text-xs text-base-content/60"
-                                >
-                                    {aplicacao.cartaoVacinaId
-                                        ? aplicacao.cartaoVacinaId.substring(
-                                              0,
-                                              8,
-                                          ) + "..."
-                                        : "Sem cartão"}
-                                </td>
-                                <td class="text-right">
-                                    <button
-                                        type="button"
-                                        onclick={() =>
-                                            openDeleteModal(aplicacao)}
-                                        class="btn btn-ghost btn-xs text-error font-bold inline-flex items-center gap-1"
+                                    <a
+                                        href="/prontuario/{apl.animalId}"
+                                        class="link link-hover text-sm font-mono"
                                     >
-                                        <IconDelete width="14" height="14" />
-                                        <span>Excluir</span>
-                                    </button>
+                                        {apl.animalId?.slice(0, 8)}…
+                                    </a>
+                                </td>
+                                <td class="text-sm"
+                                    >{formatDate(apl.dataAplicacao)}</td
+                                >
+                                <td class="text-right">
+                                    <div class="flex justify-end gap-1">
+                                        <a
+                                            href="/prontuario/{apl.animalId}"
+                                            class="btn btn-xs btn-ghost"
+                                            >Prontuário</a
+                                        >
+                                        <button
+                                            class="btn btn-xs btn-ghost text-error"
+                                            onclick={() => {
+                                                deletingApl = apl;
+                                                showDeleteModal = true;
+                                            }}
+                                        >
+                                            <IconDelete
+                                                width="13"
+                                                height="13"
+                                            />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         {/each}
                     </tbody>
                 </table>
             </div>
+            {#if total > aplicacoes.length}
+                <div class="flex justify-center gap-2 py-4">
+                    <button
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage === 1}
+                        onclick={() => {
+                            currentPage--;
+                            load();
+                        }}>← Anterior</button
+                    >
+                    <span class="btn btn-sm btn-ghost no-animation"
+                        >Página {currentPage}</span
+                    >
+                    <button
+                        class="btn btn-sm btn-ghost"
+                        onclick={() => {
+                            currentPage++;
+                            load();
+                        }}>Próxima →</button
+                    >
+                </div>
+            {/if}
         {/if}
     </div>
 </div>
 
-<!-- Form Modal -->
+<!-- ── Modal: Registrar Vacinação ────────────────────────────────────────── -->
 <FormModal
-    isOpen={showFormModal}
-    title="Nova Aplicação de Vacina"
-    submitText="Registrar Aplicação"
-    onClose={() => (showFormModal = false)}
-    onSubmit={handleSubmit}
+    isOpen={showModal}
+    title="Registrar Vacinação"
     isLoading={isSubmitting}
+    submitText="Registrar"
+    onClose={() => {
+        showModal = false;
+    }}
+    onSubmit={submitForm}
 >
-    {#if animais.length > 0}
-        <Select
-            label="Paciente (Animal)"
-            id="animalId"
-            value={formData.animalId}
-            onChange={(v: string) => (formData.animalId = v)}
-            options={animais.map((a) => ({
-                value: a.id,
-                value: a.id ?? "",
-                label: `${getAnimalName(a)} (${a.raca?.nome || "Sem raça"})`,
-            }))}
-            placeholder="Selecione o animal"
-        />
-    {/if}
-
-    <Select
-        label="Vacina"
-        id="vacinaId"
-        value={formData.vacinaId}
-        onChange={(v: string) => (formData.vacinaId = v)}
-        options={vacinas.map((v) => ({
-            value: v.id,
-            value: v.id ?? "",
-            label: `${getVacinaName(v)} (a cada ${v.reaplicarEmXDias} dias)`,
-        }))}
-        placeholder="Selecione a vacina"
-        required
-    />
-
-    <Input
-        label="Data da Aplicação"
-        id="dataAplicacao"
-        type="date"
-        value={formData.dataAplicacao}
-        onChange={(v: string) => (formData.dataAplicacao = v)}
-        required
-    />
-
     {#if formError}
-        <div class="alert alert-error text-white text-xs p-3 rounded-lg mt-2">
-            {formError}
-        </div>
+        <div class="alert alert-error text-sm py-2">{formError}</div>
     {/if}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs">Animal *</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={form.animalId}
+            >
+                <option value="">— Selecione o animal —</option>
+                {#each animais as a}
+                    <option value={a.id}
+                        >{getAnimalName(a)} ({a.raca?.nome ??
+                            "Sem raça"})</option
+                    >
+                {/each}
+            </select>
+        </div>
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs">Vacina *</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={form.vacinaId}
+            >
+                <option value="">— Selecione a vacina —</option>
+                {#each vacinas as v}
+                    <option value={v.id}>{v.name}</option>
+                {/each}
+            </select>
+        </div>
+        <div>
+            <Input
+                label="Data de Aplicação *"
+                type="date"
+                bind:value={form.dataAplicacao}
+                required
+            />
+        </div>
+        <div>
+            <Input
+                label="Próxima Dose"
+                type="date"
+                bind:value={form.dataProximaDose}
+            />
+            <p class="text-xs text-base-content/50">
+                Opcional — calculado automaticamente.
+            </p>
+        </div>
+        <div>
+            <Input
+                label="Número do Lote *"
+                placeholder="LOT-2024-001"
+                bind:value={form.numeroLote}
+                required
+            />
+        </div>
+        <div>
+            <label class="label label-text text-xs">Dose (mL)</label>
+            <input
+                type="number"
+                step="0.1"
+                min="0"
+                class="input input-bordered w-full"
+                bind:value={form.doseMl}
+            />
+        </div>
+        <div class="sm:col-span-2">
+            <Input
+                label="Veterinário Responsável *"
+                placeholder="Dr. João Silva – CRMV-SP 12345"
+                bind:value={form.veterinarioResponsavel}
+                required
+            />
+        </div>
+        <div>
+            <Input
+                label="Aplicador"
+                placeholder="Residente, técnico…"
+                bind:value={form.aplicador}
+            />
+        </div>
+        <div>
+            <Input
+                label="Laboratório Fabricante"
+                bind:value={form.laboratorioFabricante}
+            />
+        </div>
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs">Observações</label>
+            <textarea
+                class="textarea textarea-bordered w-full"
+                rows="2"
+                bind:value={form.observacoes}
+            ></textarea>
+        </div>
+    </div>
 </FormModal>
 
-<!-- Delete Modal -->
-<ConfirmDeleteModal
+<!-- ── Modal: Excluir ────────────────────────────────────────────────────── -->
+<Modal
     isOpen={showDeleteModal}
-    itemName="aplicação de vacina"
-    onClose={() => (showDeleteModal = false)}
-    onConfirm={handleDelete}
+    title="Excluir Registro"
+    message="Deseja excluir este registro de aplicação da vacina '{deletingApl
+        ?.vacina?.name ?? ''}'?"
+    confirmText="Excluir"
+    cancelText="Cancelar"
+    isDangerous={true}
     isLoading={isDeleting}
+    onConfirm={confirmDelete}
+    onClose={() => {
+        showDeleteModal = false;
+        deletingApl = null;
+    }}
 />

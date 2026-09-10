@@ -1,314 +1,587 @@
 <script lang="ts">
-    import { animalService } from "$lib/api/animais";
     import { onMount } from "svelte";
-    import type { PageProps } from "./$types";
+    import { page } from "$app/stores";
+    import FormModal from "$lib/components/FormModal.svelte";
+    import Modal from "$lib/components/Modal.svelte";
+    import Input from "$lib/components/Input.svelte";
+    import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
+    import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
+    import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
+    import { animalService } from "$lib/api/animais";
+    import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
+    import { vacinaService } from "$lib/api/vacinas";
     import {
         getAnimalName,
-        type CartaoVacinaDetailResponseDto,
-        type AnimalDetailResponseDto,
+        calcularIdade,
+        hoje,
+        SexoAnimalLabels,
+        OrigemAnimalLabels,
+        TipoIdentificadorLabels,
+        type AnimalProntuarioResponseDto,
+        type AplicacaoVacinaDetailResponseDto,
+        type AplicacaoVacinaCreateDto,
+        type VacinaReadResponseDto,
     } from "$lib/types";
-    import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
-    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconUpload from "@iconify-svelte/material-symbols/upload-rounded";
+    import IconDownload from "@iconify-svelte/material-symbols/download-rounded";
 
-    import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    const animalId = $page.params.id ?? "";
 
-    import IconWarning from "@iconify-svelte/material-symbols/warning-rounded";
-    import IconClose from "@iconify-svelte/material-symbols/close-rounded";
-
-    import { cartaoVacinaService } from "$lib/api/cartoes-vacina";
-
-    let { params }: PageProps = $props();
+    // ── Estado ────────────────────────────────────────────────────────────────
+    let prontuario = $state<AnimalProntuarioResponseDto | null>(null);
+    let vacinasCatalogo = $state<VacinaReadResponseDto[]>([]);
     let isLoading = $state(true);
+    let loadError = $state("");
 
-    let animal = $state<AnimalDetailResponseDto>();
-    $inspect(animal);
+    // ── Modal: Registrar Vacina ───────────────────────────────────────────────
+    let showVacinarModal = $state(false);
+    let isSubmittingVacina = $state(false);
+    let vacinarError = $state("");
+    let vacinarForm = $state<AplicacaoVacinaCreateDto>({
+        animalId: animalId,
+        vacinaId: "",
+        dataAplicacao: hoje(),
+        dataProximaDose: undefined,
+        numeroLote: "",
+        doseMl: undefined,
+        veterinarioResponsavel: "",
+        aplicador: undefined,
+        laboratorioFabricante: undefined,
+        observacoes: undefined,
+    });
 
-    let animalCartao = $state<CartaoVacinaDetailResponseDto>();
-
-    function calculateAge(dateStr?: string): string {
-        if (!dateStr) return "Idade não informada";
-        const birth = new Date(dateStr);
-        if (isNaN(birth.getTime())) return "-";
-
-        const today = new Date();
-        let years = today.getFullYear() - birth.getFullYear();
-        let months = today.getMonth() - birth.getMonth();
-
-        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
-            years--;
-            months += 12;
-        }
-
-        if (years <= 0) {
-            if (months <= 0) {
-                const diffTime = Math.abs(today.getTime() - birth.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return `${diffDays} dia(s)`;
-            }
-            return `${months} mês(es)`;
-        }
-        return `${years} ano(s)${months > 0 ? ` e ${months} m` : ""}`;
+    function openVacinarModal() {
+        vacinarForm = {
+            animalId: animalId,
+            vacinaId: "",
+            dataAplicacao: hoje(),
+            dataProximaDose: undefined,
+            numeroLote: "",
+            doseMl: undefined,
+            veterinarioResponsavel: "",
+            aplicador: undefined,
+            laboratorioFabricante: undefined,
+            observacoes: undefined,
+        };
+        vacinarError = "";
+        showVacinarModal = true;
     }
 
-    function calculateNextDose(
-        dataAplicacao?: string,
-        reaplicarEmXDias: number = 365,
-    ): string {
-        if (!dataAplicacao) return "-";
-        const date = new Date(dataAplicacao);
-        if (isNaN(date.getTime())) return "-";
-        date.setDate(date.getDate() + reaplicarEmXDias);
-        return date.toLocaleDateString("pt-BR");
+    async function submitVacinar() {
+        vacinarError = "";
+        if (!vacinarForm.vacinaId) {
+            vacinarError = "Selecione a vacina.";
+            return;
+        }
+        if (!vacinarForm.numeroLote?.trim()) {
+            vacinarError = "Informe o número do lote.";
+            return;
+        }
+        if (!vacinarForm.veterinarioResponsavel?.trim()) {
+            vacinarError = "Informe o veterinário responsável.";
+            return;
+        }
+        isSubmittingVacina = true;
+        try {
+            await aplicacaoVacinaService.create(vacinarForm);
+            showVacinarModal = false;
+            await load();
+        } catch (e: unknown) {
+            vacinarError =
+                e instanceof Error ? e.message : "Erro ao registrar vacinação.";
+        } finally {
+            isSubmittingVacina = false;
+        }
+    }
+
+    // ── Modal: Upload Comprovante ─────────────────────────────────────────────
+    let showUploadModal = $state(false);
+    let uploadTargetAplicacao = $state<AplicacaoVacinaDetailResponseDto | null>(
+        null,
+    );
+    let uploadFile = $state<File | null>(null);
+    let isUploading = $state(false);
+    let uploadError = $state("");
+
+    function openUpload(apl: AplicacaoVacinaDetailResponseDto) {
+        uploadTargetAplicacao = apl;
+        uploadFile = null;
+        uploadError = "";
+        showUploadModal = true;
+    }
+
+    async function submitUpload() {
+        if (!uploadFile || !uploadTargetAplicacao?.id) return;
+        uploadError = "";
+        isUploading = true;
+        try {
+            await aplicacaoVacinaService.uploadComprovante(
+                uploadTargetAplicacao.id,
+                uploadFile,
+            );
+            showUploadModal = false;
+            await load();
+        } catch (e: unknown) {
+            uploadError =
+                e instanceof Error ? e.message : "Erro ao fazer upload.";
+        } finally {
+            isUploading = false;
+        }
+    }
+
+    // ── Modal: Excluir Aplicação ─────────────────────────────────────────────
+    let showDeleteModal = $state(false);
+    let deletingApl = $state<AplicacaoVacinaDetailResponseDto | null>(null);
+    let isDeleting = $state(false);
+
+    function openDelete(apl: AplicacaoVacinaDetailResponseDto) {
+        deletingApl = apl;
+        showDeleteModal = true;
+    }
+
+    async function confirmDelete() {
+        if (!deletingApl?.id) return;
+        isDeleting = true;
+        try {
+            await aplicacaoVacinaService.delete(deletingApl.id);
+            showDeleteModal = false;
+            deletingApl = null;
+            await load();
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : "Erro ao excluir.");
+        } finally {
+            isDeleting = false;
+        }
+    }
+
+    // ── Carregar ──────────────────────────────────────────────────────────────
+    async function load() {
+        try {
+            const [pron, vs] = await Promise.all([
+                animalService.getProntuario(animalId),
+                vacinaService.getList(),
+            ]);
+            prontuario = pron;
+            vacinasCatalogo = vs;
+        } catch (e: unknown) {
+            loadError =
+                e instanceof Error ? e.message : "Erro ao carregar prontuário.";
+        }
     }
 
     onMount(async () => {
-        try {
-            animal = await animalService.get(params.id);
-
-            animalCartao = await cartaoVacinaService.get(
-                animal?.cartaoVacina?.id!,
-            );
-            if (animal?.cartaoVacina?.id) {
-                animalCartao = await cartaoVacinaService.get(
-                    animal.cartaoVacina.id,
-                );
-            }
-        } catch {
-        } finally {
-            isLoading = false;
-        }
+        isLoading = true;
+        await load();
+        isLoading = false;
     });
 
-    function formatDate(dateStr?: string): string {
-        if (!dateStr) return "-";
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return d.toLocaleDateString("pt-BR");
+    const animal = $derived(prontuario?.animal);
+    const aplicacoes = $derived(prontuario?.aplicacoesVacina ?? []);
+
+    function formatDate(d?: string | null): string {
+        if (!d) return "—";
+        return new Date(d).toLocaleDateString("pt-BR");
     }
 </script>
 
-<div class="lg:col-span-6 sticky top-20 space-y-4">
-    <div
-        class="card bg-base-100 shadow-lg border-2 border-primary/40 overflow-hidden"
-    >
-        <!-- Cabeçalho do Prontuário -->
-        <div
-            class="bg-primary text-primary-content p-5 flex justify-between items-start"
-        >
-            <div class="flex items-center gap-4">
-                <div class="avatar placeholder">
-                    {#if animal?.pictureUpload}
-                        <div
-                            class="w-14 h-14 rounded-2xl ring-2 ring-white/30 overflow-hidden bg-white"
-                        >
-                            <img
-                                src={animal?.pictureUpload}
-                                alt={animal?.nome}
-                            />
-                        </div>
-                    {:else}
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-white/20 text-white font-black text-2xl flex items-center justify-center"
-                        >
-                            {animal?.nome?.charAt(0).toUpperCase()}
+{#if isLoading}
+    <div class="flex justify-center items-center py-24">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+{:else if loadError}
+    <div class="alert alert-error max-w-lg mx-auto mt-12">{loadError}</div>
+{:else if prontuario && animal}
+    <div class="space-y-6">
+        <!-- ── Cabeçalho do Prontuário ─────────────────────────────────────── -->
+        <div class="card bg-base-100 shadow-xs rounded-2xl p-6">
+            <div class="flex flex-wrap items-start gap-5">
+                <EspecieAvatar
+                    iconeKey={animal.raca?.especie?.fullName?.toLowerCase() ??
+                        "outros"}
+                    tamanho="lg"
+                />
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <h1 class="text-2xl font-bold">
+                            {getAnimalName(animal)}
+                        </h1>
+                        {#if animal.identificadorPrincipal}
+                            <span class="badge badge-outline font-mono text-sm">
+                                {TipoIdentificadorLabels[
+                                    animal.identificadorPrincipal.tipo
+                                ] ?? ""}:
+                                {animal.identificadorPrincipal.valor}
+                            </span>
+                        {/if}
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        {#if animal.sexo !== undefined}
+                            <span class="badge badge-ghost badge-sm"
+                                >{SexoAnimalLabels[animal.sexo] ??
+                                    animal.sexo}</span
+                            >
+                        {/if}
+                        {#if animal.origem !== undefined}
+                            <span class="badge badge-ghost badge-sm"
+                                >{OrigemAnimalLabels[animal.origem] ??
+                                    animal.origem}</span
+                            >
+                        {/if}
+                        {#if animal.raca?.nome}
+                            <span class="badge badge-outline badge-sm"
+                                >{animal.raca.nome}</span
+                            >
+                        {/if}
+                        {#if animal.raca?.especie?.fullName}
+                            <span
+                                class="badge badge-outline badge-sm opacity-70"
+                                >{animal.raca.especie.fullName}</span
+                            >
+                        {/if}
+                        {#if animal.loteOuPasto}
+                            <span class="badge badge-info badge-sm"
+                                >{animal.loteOuPasto}</span
+                            >
+                        {/if}
+                        {#if animal.dataNascimento}
+                            <span class="badge badge-ghost badge-sm">
+                                {calcularIdade(animal.dataNascimento)}
+                                {#if animal.dataNascimentoAproximada}(aprox.){/if}
+                            </span>
+                        {/if}
+                    </div>
+
+                    {#if (animal.identificadores?.length ?? 0) > 1}
+                        <div class="mt-3">
+                            <p class="text-xs text-base-content/50 mb-1">
+                                Todos os identificadores:
+                            </p>
+                            <div class="flex flex-wrap gap-1">
+                                {#each animal.identificadores ?? [] as ident}
+                                    <span
+                                        class="badge badge-sm font-mono {ident.ehPrincipal
+                                            ? 'badge-primary'
+                                            : 'badge-ghost'}"
+                                    >
+                                        {TipoIdentificadorLabels[ident.tipo] ??
+                                            ident.tipo}: {ident.valor}
+                                    </span>
+                                {/each}
+                            </div>
                         </div>
                     {/if}
                 </div>
-                <div>
-                    <div
-                        class="badge badge-neutral badge-sm mb-1 uppercase font-bold text-[10px]"
-                    >
-                        Prontuário
-                    </div>
-                    <h2 class="text-2xl font-black leading-tight">
-                        {animal?.name}
-                        {getAnimalName(animal)}
-                    </h2>
-                    <p class="text-xs opacity-90">
-                        {animal?.raca?.nome || "Raça não informada"} • {calculateAge(
-                            animal?.dataNascimento,
-                        )}
-                    </p>
-                </div>
+
+                <button
+                    class="btn btn-primary btn-sm gap-1 shrink-0"
+                    onclick={openVacinarModal}
+                >
+                    <IconVaccines width="16" height="16" />
+                    Registrar Vacina
+                </button>
             </div>
         </div>
 
-        <div class="p-5 space-y-5">
-            <!-- Dados Clínicos do Animal -->
-            <div
-                class="grid grid-cols-2 gap-3 text-xs bg-base-200/60 p-3.5 rounded-xl border border-base-300"
-            >
-                <div class="col-span-2">
-                    <span class="text-base-content/60 block"
-                        >ID do Paciente:</span
-                    >
-                    <span
-                        class="font-mono text-[11px] text-base-content/80 break-all"
-                        >{animal?.id}</span
-                    >
-                </div>
-                <div>
-                    <span class="text-base-content/60 block">Nome:</span>
-                    <span class="font-bold text-sm text-base-content"
-                        >{animal?.nome}</span
-                    >
-                </div>
-                <div>
-                    <span class="text-base-content/60 block"
-                        >Data de Nascimento:</span
-                    >
-                    <span class="font-bold text-sm text-base-content"
-                        >{formatDate(animal?.dataNascimento)}</span
-                    >
-                </div>
-                <div>
-                    <span class="text-base-content/60 block">Raça:</span>
-                    <span class="font-bold text-sm text-base-content"
-                        >{animal?.raca?.nome || "-"}</span
-                    >
-                </div>
+        <!-- ── Histórico Vacinal ──────────────────────────────────────────── -->
+        <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-base-200">
+                <h2 class="font-semibold">
+                    Histórico Vacinal — {aplicacoes.length} dose(s)
+                </h2>
             </div>
 
-            <!-- Seção Cartão de Vacinas -->
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <IconVaccines
-                            width="20"
-                            height="20"
-                            class="text-primary"
-                        />
-                        <h3 class="font-black text-base text-base-content">
-                            Cartão de Vacinação
-                        </h3>
-                    </div>
+            {#if aplicacoes.length === 0}
+                <div class="text-center py-12 text-base-content/50">
+                    <IconVaccines
+                        width="36"
+                        height="36"
+                        class="mx-auto mb-3 opacity-30"
+                    />
+                    <p>Nenhuma vacinação registrada.</p>
                     <button
-                        type="button"
-                        onclick={() => {}}
-                        class="btn btn-secondary btn-sm gap-1.5 shadow-xs"
+                        class="btn btn-primary btn-sm mt-4"
+                        onclick={openVacinarModal}
                     >
-                        <IconAdd width="16" height="16" />
-                        <span>Aplicar Vacina</span>
+                        Registrar primeira vacina
                     </button>
                 </div>
-
-                {#if isLoading}
-                    <div class="p-8 text-center">
-                        <span
-                            class="loading loading-spinner loading-md text-primary"
-                        ></span>
-                        <p class="text-xs text-base-content/60 mt-2">
-                            Atualizando cartão...
-                        </p>
-                    </div>
-                {:else if !animalCartao || !animalCartao.vacinasAplicadas || animalCartao.vacinasAplicadas.length === 0}
-                    <div
-                        class="alert alert-warning/20 border border-warning/30 text-xs p-4 rounded-xl flex items-start gap-3"
-                    >
-                        <IconWarning
-                            width="20"
-                            height="20"
-                            class="text-warning shrink-0"
-                        />
-                        <div>
-                            <p class="font-bold text-base-content">
-                                Nenhuma vacina registrada ainda
-                            </p>
-                            <p class="text-base-content/70 mt-0.5">
-                                Este animal ainda não possui vacinas no cartão.
-                                Clique em <b>"+ Aplicar Vacina"</b> para imunizá-lo.
-                            </p>
-                        </div>
-                    </div>
-                {:else}
-                    <div
-                        class="overflow-x-auto border border-base-300 rounded-xl"
-                    >
-                        <table class="table table-zebra table-sm w-full">
-                            <thead
-                                class="bg-base-200 text-base-content font-bold"
-                            >
-                                <tr>
-                                    <th>Vacina</th>
-                                    <th>Data Aplicação</th>
-                                    <th>Próxima Dose</th>
-                                    <th class="text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {#each animalCartao.vacinasAplicadas as aplicacao}
-                                    {@const dias =
-                                        aplicacao?.reaplicarEmXDias || 365}
-                                    Number(aplicacao?.reaplicarEmXDias) || 365}
-                                    <tr>
-                                        <td
-                                            class="font-bold text-primary flex items-center gap-1.5"
-                                        >
-                                            <IconVaccines
-                                                width="16"
-                                                height="16"
-                                            />
-                                            <span
-                                                >{aplicacao?.vacinaName ||
-                                                    "Vacina"}</span
+            {:else}
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead>
+                            <tr class="text-xs uppercase text-base-content/50">
+                                <th>Vacina / Dose</th>
+                                <th>Aplicação</th>
+                                <th>Próxima Dose</th>
+                                <th>Lote / Laboratório</th>
+                                <th>Responsável / Aplicador</th>
+                                <th>Comprovante</th>
+                                <th class="text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {#each aplicacoes as apl}
+                                <tr class="hover:bg-base-200/50 align-top">
+                                    <td>
+                                        <p class="font-medium">
+                                            {apl.vacina?.name ?? "—"}
+                                        </p>
+                                        {#if apl.doseMl}
+                                            <p
+                                                class="text-xs text-base-content/60"
                                             >
-                                        </td>
-                                        <td class="text-xs">
-                                            {formatDate(
-                                                aplicacao?.dataAplicacao,
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="badge badge-sm badge-info badge-soft font-semibold"
+                                                {Number(apl.doseMl).toFixed(1)} mL
+                                            </p>
+                                        {/if}
+                                    </td>
+                                    <td class="text-sm"
+                                        >{formatDate(apl.dataAplicacao)}</td
+                                    >
+                                    <td>
+                                        <StatusVacinaBadge
+                                            dataProximaDose={apl.dataProximaDose}
+                                        />
+                                    </td>
+                                    <td class="text-sm">
+                                        <p class="font-mono text-xs">
+                                            {apl.numeroLote}
+                                        </p>
+                                        {#if apl.laboratorioFabricante}
+                                            <p
+                                                class="text-xs text-base-content/60"
                                             >
-                                                {calculateNextDose(
-                                                    aplicacao.dataAplicacao,
-                                                    dias,
-                                                )}
-                                            </span>
-                                        </td>
-                                        <td class="text-right">
+                                                {apl.laboratorioFabricante}
+                                            </p>
+                                        {/if}
+                                    </td>
+                                    <td class="text-sm">
+                                        <p class="text-xs font-medium">
+                                            {apl.veterinarioResponsavel}
+                                        </p>
+                                        {#if apl.aplicador}
+                                            <p
+                                                class="text-xs text-base-content/60"
+                                            >
+                                                {apl.aplicador}
+                                            </p>
+                                        {/if}
+                                    </td>
+                                    <td>
+                                        <ComprovanteStatusBadge
+                                            status={apl.statusComprovante ?? 0}
+                                            temComprovanteAnexo={apl.temComprovanteAnexo ??
+                                                false}
+                                            aplicacaoId={apl.id!}
+                                        />
+                                    </td>
+                                    <td class="text-right">
+                                        <div class="flex justify-end gap-1">
+                                            {#if !apl.temComprovanteAnexo}
+                                                <button
+                                                    class="btn btn-xs btn-ghost gap-1"
+                                                    onclick={() =>
+                                                        openUpload(apl)}
+                                                    title="Anexar PDF assinado"
+                                                >
+                                                    <IconUpload
+                                                        width="13"
+                                                        height="13"
+                                                    />
+                                                    Anexar
+                                                </button>
+                                            {:else}
+                                                <a
+                                                    href={aplicacaoVacinaService.getComprovanteUrl(
+                                                        apl.id!,
+                                                    )}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="btn btn-xs btn-ghost gap-1"
+                                                >
+                                                    <IconDownload
+                                                        width="13"
+                                                        height="13"
+                                                    />
+                                                    Atestado
+                                                </a>
+                                            {/if}
                                             <button
-                                                type="button"
-                                                class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                                                title="Remover aplicação"
-                                                onclick={() => {}}
+                                                class="btn btn-xs btn-ghost text-error"
+                                                onclick={() => openDelete(apl)}
                                             >
                                                 <IconDelete
-                                                    width="16"
-                                                    height="16"
+                                                    width="13"
+                                                    height="13"
                                                 />
                                             </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {#if apl.observacoes}
+                                    <tr class="bg-base-200/30">
+                                        <td
+                                            colspan="7"
+                                            class="text-xs text-base-content/60 italic py-1 px-4"
+                                        >
+                                            📝 {apl.observacoes}
                                         </td>
                                     </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
-                {/if}
-            </div>
-        </div>
-
-        <div
-            class="p-4 bg-base-200/50 border-t border-base-300 flex justify-between items-center text-xs"
-        >
-            <button
-                type="button"
-                onclick={() => {}}
-                class="btn btn-ghost btn-xs gap-1.5"
-            >
-                <IconEdit width="14" height="14" />
-                <span>Editar Dados do Animal</span>
-            </button>
-            <button
-                type="button"
-                onclick={() => {}}
-                class="btn btn-ghost btn-xs"
-            >
-                Fechar Prontuário
-            </button>
+                                {/if}
+                            {/each}
+                        </tbody>
+                    </table>
+                </div>
+            {/if}
         </div>
     </div>
-</div>
+{/if}
+
+<!-- ── Modal: Registrar Vacinação ────────────────────────────────────────── -->
+<FormModal
+    isOpen={showVacinarModal}
+    title="Registrar Vacinação"
+    isLoading={isSubmittingVacina}
+    submitText="Registrar"
+    onClose={() => {
+        showVacinarModal = false;
+    }}
+    onSubmit={submitVacinar}
+>
+    {#if vacinarError}
+        <div class="alert alert-error text-sm py-2">{vacinarError}</div>
+    {/if}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs">Vacina *</label>
+            <select
+                class="select select-bordered w-full"
+                bind:value={vacinarForm.vacinaId}
+            >
+                <option value="">— Selecione —</option>
+                {#each vacinasCatalogo as v}
+                    <option value={v.id}>{v.name}</option>
+                {/each}
+            </select>
+        </div>
+        <div>
+            <Input
+                label="Data de Aplicação *"
+                type="date"
+                bind:value={vacinarForm.dataAplicacao}
+                required
+            />
+        </div>
+        <div>
+            <Input
+                label="Próxima Dose"
+                type="date"
+                bind:value={vacinarForm.dataProximaDose}
+            />
+            <p class="text-xs text-base-content/50">
+                Opcional — calculado automaticamente.
+            </p>
+        </div>
+        <div>
+            <Input
+                label="Número do Lote *"
+                placeholder="LOT-2024-001"
+                bind:value={vacinarForm.numeroLote}
+                required
+            />
+        </div>
+        <div>
+            <label class="label label-text text-xs">Dose (mL)</label>
+            <input
+                type="number"
+                step="0.1"
+                min="0"
+                class="input input-bordered w-full"
+                bind:value={vacinarForm.doseMl}
+            />
+        </div>
+        <div class="sm:col-span-2">
+            <Input
+                label="Veterinário Responsável *"
+                placeholder="Dr. João Silva – CRMV-SP 12345"
+                bind:value={vacinarForm.veterinarioResponsavel}
+                required
+            />
+        </div>
+        <div>
+            <Input
+                label="Aplicador"
+                placeholder="Residente, técnico…"
+                bind:value={vacinarForm.aplicador}
+            />
+        </div>
+        <div>
+            <Input
+                label="Laboratório Fabricante"
+                placeholder="MSD Saúde Animal…"
+                bind:value={vacinarForm.laboratorioFabricante}
+            />
+        </div>
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs">Observações</label>
+            <textarea
+                class="textarea textarea-bordered w-full"
+                rows="2"
+                bind:value={vacinarForm.observacoes}
+            ></textarea>
+        </div>
+    </div>
+</FormModal>
+
+<!-- ── Modal: Upload Comprovante ─────────────────────────────────────────── -->
+<FormModal
+    isOpen={showUploadModal}
+    title="Anexar Comprovante Assinado (PDF)"
+    isLoading={isUploading}
+    submitText="Enviar PDF"
+    onClose={() => {
+        showUploadModal = false;
+    }}
+    onSubmit={submitUpload}
+>
+    {#if uploadError}
+        <div class="alert alert-error text-sm py-2">{uploadError}</div>
+    {/if}
+    <p class="text-sm text-base-content/70 mb-3">
+        Vacina: <strong>{uploadTargetAplicacao?.vacina?.name ?? "—"}</strong><br
+        />
+        Aplicada em:
+        <strong>{formatDate(uploadTargetAplicacao?.dataAplicacao)}</strong>
+    </p>
+    <input
+        type="file"
+        accept=".pdf,application/pdf"
+        class="file-input file-input-bordered w-full"
+        onchange={(e) => {
+            const input = e.currentTarget as HTMLInputElement;
+            uploadFile = input.files?.[0] ?? null;
+        }}
+    />
+</FormModal>
+
+<!-- ── Modal: Excluir Aplicação ──────────────────────────────────────────── -->
+<Modal
+    isOpen={showDeleteModal}
+    title="Excluir Registro de Vacinação"
+    message="Deseja excluir o registro da vacina '{deletingApl?.vacina?.name ??
+        ''}' aplicada em {formatDate(
+        deletingApl?.dataAplicacao,
+    )}? Esta ação é irreversível."
+    confirmText="Excluir"
+    cancelText="Cancelar"
+    isDangerous={true}
+    isLoading={isDeleting}
+    onConfirm={confirmDelete}
+    onClose={() => {
+        showDeleteModal = false;
+        deletingApl = null;
+    }}
+/>

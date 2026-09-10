@@ -1,45 +1,68 @@
 import { ApiClient } from './client';
-import type { Animal, AnimalCreateDto, AnimalPatchDto, AnimalDetailResponseDto } from '../types';
+import type {
+    AnimaReadResponseDto,
+    AnimalDetailResponseDto,
+    AnimalProntuarioResponseDto,
+    AnimalCreateDto,
+    AnimalPatchDto,
+    AnimalShortResponseDto,
+} from '../types';
 
-export interface AnimalFilterParams {
-    name?: string;
-    racaId?: string;
-    cartaoVacinaId?: string;
-    dataNascimentoFrom?: string;
-    dataNascimentoTo?: string;
+export interface AnimalListParams {
+    page?: number;
+    RacaId?: string;
+    DataNascimentoFrom?: string;
+    DataNascimentoTo?: string;
+}
+
+export interface AnimalCountParams {
+    RacaId?: string;
+    DataNascimentoFrom?: string;
+    DataNascimentoTo?: string;
 }
 
 export const animalService = {
-    list: (page: number = 1, filters?: AnimalFilterParams) => {
-        const params = new URLSearchParams();
-        if (page) params.set('page', page.toString());
-        if (filters?.name) params.set('Name', filters.name);
-        if (filters?.racaId) params.set('RacaId', filters.racaId);
-        if (filters?.cartaoVacinaId) params.set('CartaoVacinaId', filters.cartaoVacinaId);
-        if (filters?.dataNascimentoFrom) params.set('DataNascimentoFrom', filters.dataNascimentoFrom);
-        if (filters?.dataNascimentoTo) params.set('DataNascimentoTo', filters.dataNascimentoTo);
-
-        const qs = params.toString();
-        return ApiClient.get<Animal[]>(`/animais${qs ? `?${qs}` : ''}`);
+    getList(params?: AnimalListParams): Promise<AnimaReadResponseDto[]> {
+        const qs = new URLSearchParams();
+        if (params?.page) qs.set('page', String(params.page));
+        if (params?.RacaId) qs.set('RacaId', params.RacaId);
+        if (params?.DataNascimentoFrom) qs.set('DataNascimentoFrom', params.DataNascimentoFrom);
+        if (params?.DataNascimentoTo) qs.set('DataNascimentoTo', params.DataNascimentoTo);
+        const q = qs.toString();
+        return ApiClient.get<AnimaReadResponseDto[]>(`/animais${q ? `?${q}` : ''}`);
     },
 
-    get: (id: string) => ApiClient.get<AnimalDetailResponseDto>(`/animais/${id}`),
+    search(name: string, page = 1): Promise<AnimalShortResponseDto[]> {
+        const qs = new URLSearchParams({ name, page: String(page) });
+        return ApiClient.get<AnimalShortResponseDto[]>(`/animais/search?${qs}`);
+    },
 
-    create: (data: AnimalCreateDto) => ApiClient.post<AnimalDetailResponseDto>('/animais', data),
+    getCount(params?: AnimalCountParams): Promise<number> {
+        const qs = new URLSearchParams();
+        if (params?.RacaId) qs.set('RacaId', params.RacaId);
+        if (params?.DataNascimentoFrom) qs.set('DataNascimentoFrom', params.DataNascimentoFrom);
+        if (params?.DataNascimentoTo) qs.set('DataNascimentoTo', params.DataNascimentoTo);
+        const q = qs.toString();
+        return ApiClient.getNumber(`/animais/count${q ? `?${q}` : ''}`);
+    },
 
-    update: (id: string, data: AnimalPatchDto) => ApiClient.patch<AnimalDetailResponseDto>(`/animais/${id}`, data),
+    getById(id: string): Promise<AnimalDetailResponseDto> {
+        return ApiClient.get<AnimalDetailResponseDto>(`/animais/${id}`);
+    },
 
-    delete: (id: string) => ApiClient.delete(`/animais/${id}`),
+    getProntuario(id: string): Promise<AnimalProntuarioResponseDto> {
+        return ApiClient.get<AnimalProntuarioResponseDto>(`/animais/${id}/prontuario`);
+    },
 
-    count: (filters?: AnimalFilterParams) => {
-        const params = new URLSearchParams();
-        if (filters?.name) params.set('Name', filters.name);
-        if (filters?.racaId) params.set('RacaId', filters.racaId);
-        if (filters?.cartaoVacinaId) params.set('CartaoVacinaId', filters.cartaoVacinaId);
-        if (filters?.dataNascimentoFrom) params.set('DataNascimentoFrom', filters.dataNascimentoFrom);
-        if (filters?.dataNascimentoTo) params.set('DataNascimentoTo', filters.dataNascimentoTo);
+    create(dto: AnimalCreateDto): Promise<AnimalDetailResponseDto> {
+        return ApiClient.post<AnimalDetailResponseDto>('/animais', dto);
+    },
 
-        const qs = params.toString();
-        return ApiClient.count(`/animais${qs ? `?${qs}` : ''}`);
-    }
+    patch(id: string, dto: AnimalPatchDto): Promise<AnimalDetailResponseDto> {
+        return ApiClient.patch<AnimalDetailResponseDto>(`/animais/${id}`, dto);
+    },
+
+    delete(id: string): Promise<void> {
+        return ApiClient.delete(`/animais/${id}`);
+    },
 };

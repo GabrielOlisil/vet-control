@@ -1,43 +1,71 @@
 import { ApiClient } from './client';
-import type { AplicacaoVacina, AplicacaoVacinaCreateDto, AplicacaoVacinaPatchDto, AplicacaoVacinaDetailResponseDto } from '../types';
+import type {
+    AplicacaoVacinaReadResponseDto,
+    AplicacaoVacinaDetailResponseDto,
+    AplicacaoVacinaCreateDto,
+    AplicacaoVacinaPatchDto,
+} from '../types';
 
-export interface AplicacaoVacinaFilterParams {
+export interface AplicacaoVacinaListParams {
     page?: number;
-    vacinaId?: string;
-    cartaoVacinaId?: string;
-    dataAplicacaoFrom?: string;
-    dataAplicacaoTo?: string;
+    VacinaId?: string;
+    AnimalId?: string;
+    DataAplicacaoFrom?: string;
+    DataAplicacaoTo?: string;
+}
+
+export interface AplicacaoVacinaCountParams {
+    VacinaId?: string;
+    AnimalId?: string;
+    DataAplicacaoFrom?: string;
+    DataAplicacaoTo?: string;
 }
 
 export const aplicacaoVacinaService = {
-    list: (filters?: AplicacaoVacinaFilterParams) => {
-        const params = new URLSearchParams();
-        if (filters?.page) params.set('page', filters.page.toString());
-        if (filters?.vacinaId) params.set('VacinaId', filters.vacinaId);
-        if (filters?.cartaoVacinaId) params.set('CartaoVacinaId', filters.cartaoVacinaId);
-        if (filters?.dataAplicacaoFrom) params.set('DataAplicacaoFrom', filters.dataAplicacaoFrom);
-        if (filters?.dataAplicacaoTo) params.set('DataAplicacaoTo', filters.dataAplicacaoTo);
-
-        const qs = params.toString();
-        return ApiClient.get<AplicacaoVacina[]>(`/aplicacoes-vacina${qs ? `?${qs}` : ''}`);
+    getList(params?: AplicacaoVacinaListParams): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const qs = new URLSearchParams();
+        if (params?.page) qs.set('page', String(params.page));
+        if (params?.VacinaId) qs.set('VacinaId', params.VacinaId);
+        if (params?.AnimalId) qs.set('AnimalId', params.AnimalId);
+        if (params?.DataAplicacaoFrom) qs.set('DataAplicacaoFrom', params.DataAplicacaoFrom);
+        if (params?.DataAplicacaoTo) qs.set('DataAplicacaoTo', params.DataAplicacaoTo);
+        const q = qs.toString();
+        return ApiClient.get<AplicacaoVacinaReadResponseDto[]>(`/aplicacoes-vacina${q ? `?${q}` : ''}`);
     },
 
-    get: (id: string) => ApiClient.get<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`),
+    getCount(params?: AplicacaoVacinaCountParams): Promise<number> {
+        const qs = new URLSearchParams();
+        if (params?.VacinaId) qs.set('VacinaId', params.VacinaId);
+        if (params?.AnimalId) qs.set('AnimalId', params.AnimalId);
+        if (params?.DataAplicacaoFrom) qs.set('DataAplicacaoFrom', params.DataAplicacaoFrom);
+        if (params?.DataAplicacaoTo) qs.set('DataAplicacaoTo', params.DataAplicacaoTo);
+        const q = qs.toString();
+        return ApiClient.getNumber(`/aplicacoes-vacina/count${q ? `?${q}` : ''}`);
+    },
 
-    create: (data: AplicacaoVacinaCreateDto) => ApiClient.post<AplicacaoVacinaDetailResponseDto>('/aplicacoes-vacina', data),
+    getById(id: string): Promise<AplicacaoVacinaDetailResponseDto> {
+        return ApiClient.get<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`);
+    },
 
-    update: (id: string, data: AplicacaoVacinaPatchDto) => ApiClient.patch<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`, data),
+    create(dto: AplicacaoVacinaCreateDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        return ApiClient.post<AplicacaoVacinaDetailResponseDto>('/aplicacoes-vacina', dto);
+    },
 
-    delete: (id: string) => ApiClient.delete(`/aplicacoes-vacina/${id}`),
+    patch(id: string, dto: AplicacaoVacinaPatchDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        return ApiClient.patch<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`, dto);
+    },
 
-    count: (filters?: Omit<AplicacaoVacinaFilterParams, 'page'>) => {
-        const params = new URLSearchParams();
-        if (filters?.vacinaId) params.set('VacinaId', filters.vacinaId);
-        if (filters?.cartaoVacinaId) params.set('CartaoVacinaId', filters.cartaoVacinaId);
-        if (filters?.dataAplicacaoFrom) params.set('DataAplicacaoFrom', filters.dataAplicacaoFrom);
-        if (filters?.dataAplicacaoTo) params.set('DataAplicacaoTo', filters.dataAplicacaoTo);
+    delete(id: string): Promise<void> {
+        return ApiClient.delete(`/aplicacoes-vacina/${id}`);
+    },
 
-        const qs = params.toString();
-        return ApiClient.count(`/aplicacoes-vacina${qs ? `?${qs}` : ''}`);
+    async uploadComprovante(id: string, file: File): Promise<void> {
+        const formData = new FormData();
+        formData.append('file', file);
+        return ApiClient.postForm(`/aplicacoes-vacina/${id}/comprovante`, formData);
+    },
+
+    getComprovanteUrl(id: string): string {
+        return `/api/v1/aplicacoes-vacina/${id}/comprovante`;
     },
 };
