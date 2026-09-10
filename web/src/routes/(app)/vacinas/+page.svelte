@@ -60,9 +60,11 @@
 
     function openFormModal(vacina?: Vacina) {
         if (vacina) {
+            editingId = vacina.id;
             editingId = vacina.id ?? null;
             formData = {
                 name: getVacinaName(vacina),
+                reaplicarEmXDias: vacina.reaplicarEmXDias || 365,
                 reaplicarEmXDias:
                     vacina.reaplicarEmXDias !== undefined
                         ? Number(vacina.reaplicarEmXDias)
@@ -115,6 +117,7 @@
     }
 
     async function handleDelete() {
+        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {

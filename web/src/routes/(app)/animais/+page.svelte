@@ -67,6 +67,7 @@
 
     function openFormModal(animal?: Animal) {
         if (animal) {
+            editingId = animal.id;
             editingId = animal.id ?? null;
             formData = {
                 name: getAnimalName(animal),
@@ -108,6 +109,7 @@
                 await animalService.update(editingId, payload);
             } else {
                 const cartao = await cartaoVacinaService.create({});
+                payload.cartaoVacinaId = cartao.id;
                 payload.cartaoVacinaId = cartao.id ?? null;
                 await animalService.create(payload);
             }
@@ -127,6 +129,7 @@
     }
 
     async function handleDelete() {
+        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {
@@ -250,6 +253,10 @@
                                         >
                                         <span
                                             class="text-[11px] text-base-content/50 font-mono"
+                                            >{animal.id.substring(
+                                                0,
+                                                8,
+                                            )}...</span
                                             >{animal.id
                                                 ? animal.id.substring(0, 8) +
                                                   "..."
@@ -329,6 +336,8 @@
         value={formData.racaId}
         onChange={(v: string) => (formData.racaId = v)}
         options={racas.map((r) => ({
+            value: r.id,
+            label: r.nome,
             value: r.id ?? "",
             label: r.nome || "Sem nome",
         }))}

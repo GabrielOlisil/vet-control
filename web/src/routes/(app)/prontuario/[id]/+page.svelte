@@ -66,6 +66,9 @@
         try {
             animal = await animalService.get(params.id);
 
+            animalCartao = await cartaoVacinaService.get(
+                animal?.cartaoVacina?.id!,
+            );
             if (animal?.cartaoVacina?.id) {
                 animalCartao = await cartaoVacinaService.get(
                     animal.cartaoVacina.id,
@@ -119,6 +122,7 @@
                         Prontuário
                     </div>
                     <h2 class="text-2xl font-black leading-tight">
+                        {animal?.name}
                         {getAnimalName(animal)}
                     </h2>
                     <p class="text-xs opacity-90">
@@ -235,8 +239,8 @@
                             <tbody>
                                 {#each animalCartao.vacinasAplicadas as aplicacao}
                                     {@const dias =
-                                        Number(aplicacao?.reaplicarEmXDias) ||
-                                        365}
+                                        aplicacao?.reaplicarEmXDias || 365}
+                                    Number(aplicacao?.reaplicarEmXDias) || 365}
                                     <tr>
                                         <td
                                             class="font-bold text-primary flex items-center gap-1.5"

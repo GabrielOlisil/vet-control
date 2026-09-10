@@ -57,8 +57,10 @@
 
     function openFormModal(raca?: Raca) {
         if (raca) {
+            editingId = raca.id;
             editingId = raca.id ?? null;
             formData = {
+                nome: raca.nome,
                 nome: raca.nome || "",
                 especieId: raca.especie?.id || "",
             };
@@ -102,6 +104,7 @@
     }
 
     async function handleDelete() {
+        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {
@@ -198,6 +201,9 @@
                                         <span
                                             class="badge badge-sm badge-outline font-semibold"
                                         >
+                                            {raca.especie.nome ||
+                                                raca.especie.fullName ||
+                                                "Espécie"}
                                             {raca.especie.fullName || "Espécie"}
                                         </span>
                                     {:else}

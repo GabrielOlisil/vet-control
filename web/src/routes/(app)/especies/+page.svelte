@@ -46,15 +46,19 @@
     }
 
     function filterEspecies() {
-        filteredEspecies = especies.filter((e) =>
+        filteredEspecies = especies.filter(
+            (e) => e.nome.toLowerCase().includes(searchName.toLowerCase()),
             (e.nome || "").toLowerCase().includes(searchName.toLowerCase()),
         );
     }
 
     function openFormModal(especie?: Especie) {
         if (especie) {
+            editingId = especie.id;
             editingId = especie.id ?? null;
             formData = {
+                nome: especie.nome,
+                nomeCientifico: especie.nomeCientifico,
                 nome: especie.nome || "",
                 nomeCientifico: especie.nomeCientifico || "",
             };
@@ -98,6 +102,7 @@
     }
 
     async function handleDelete() {
+        if (!deletingItem) return;
         if (!deletingItem?.id) return;
 
         try {

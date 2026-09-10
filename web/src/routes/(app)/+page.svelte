@@ -86,6 +86,7 @@
 
     // Modal de Aplicação de Vacina
     let showAplicacaoModal = $state(false);
+    let aplicacaoTargetAnimal = $state<Animal | null>(null);
     let aplicacaoTargetAnimal = $state<Animal | AnimalDetailResponseDto | null>(
         null,
     );
@@ -94,6 +95,7 @@
         dataAplicacao: string;
     }>({
         vacinaId: "",
+        dataAplicacao: new Date().toISOString().split("T")[0],
         dataAplicacao: new Date().toISOString().slice(0, 10),
     });
     let aplicacaoFormError = $state("");
@@ -203,6 +205,7 @@
     }
 
     // Selecionar e visualizar Prontuário do Animal
+    async function selectAnimalProntuario(animal: Animal) {
     async function selectAnimalProntuario(
         animal: Animal | AnimalDetailResponseDto,
     ) {
@@ -235,6 +238,7 @@
     // Modal Animal
     function openAnimalModal(animal?: Animal | null) {
         if (animal) {
+            editingAnimalId = animal.id;
             editingAnimalId = animal.id ?? null;
             animalForm = {
                 name: getAnimalName(animal),
@@ -278,6 +282,7 @@
             } else {
                 // Criar cartão de vacinas automático para o novo animal
                 const novoCartao = await cartaoVacinaService.create({});
+                payload.cartaoVacinaId = novoCartao.id;
                 payload.cartaoVacinaId = novoCartao.id ?? null;
 
                 const novoAnimal = await animalService.create(payload);
@@ -301,9 +306,11 @@
     // Modal Vacina
     function openVacinaModal(vacina?: Vacina) {
         if (vacina) {
+            editingVacinaId = vacina.id;
             editingVacinaId = vacina.id ?? null;
             vacinaForm = {
                 name: getVacinaName(vacina),
+                reaplicarEmXDias: vacina.reaplicarEmXDias || 365,
                 reaplicarEmXDias:
                     vacina.reaplicarEmXDias !== undefined
                         ? Number(vacina.reaplicarEmXDias)
@@ -354,14 +361,20 @@
     }
 
     // Modal Aplicação de Vacina (Direto no Animal)
+    function openAplicacaoModal(animal?: Animal | null) {
     function openAplicacaoModal(
         animal?: Animal | AnimalDetailResponseDto | null,
     ) {
         aplicacaoTargetAnimal =
+            animal ||
+            selectedAnimal ||
+            (animais.length > 0 ? animais[0] : null);
             animal ??
             selectedAnimal ??
             (animais.length > 0 ? (animais[0] ?? null) : null);
         aplicacaoForm = {
+            vacinaId: vacinas.length > 0 ? vacinas[0].id : "",
+            dataAplicacao: new Date().toISOString().split("T")[0],
             vacinaId: vacinas.length > 0 ? (vacinas[0]?.id ?? "") : "",
             dataAplicacao: new Date().toISOString().slice(0, 10),
         };
@@ -370,6 +383,7 @@
     }
 
     async function handleSaveAplicacao() {
+        if (!aplicacaoTargetAnimal) {
         if (!aplicacaoTargetAnimal?.id) {
             aplicacaoFormError = "Selecione um animal.";
             return;
@@ -388,6 +402,10 @@
             let cartaoId = animalFull.cartaoVacina?.id;
             if (!cartaoId) {
                 const novoCartao = await cartaoVacinaService.create({});
+                await animalService.update(aplicacaoTargetAnimal.id, {
+                    cartaoVacinaId: novoCartao.id,
+                });
+                cartaoId = novoCartao.id;
                 if (novoCartao.id) {
                     await animalService.update(aplicacaoTargetAnimal.id, {
                         cartaoVacinaId: novoCartao.id,
@@ -399,6 +417,7 @@
             await aplicacaoVacinaService.create({
                 vacinaId: aplicacaoForm.vacinaId,
                 dataAplicacao: aplicacaoForm.dataAplicacao,
+                cartaoVacinaId: cartaoId,
                 cartaoVacinaId: cartaoId || null,
             });
 
@@ -867,6 +886,7 @@
                                                         class="text-error flex items-center gap-2"
                                                         onclick={() =>
                                                             confirmDelete(
+                                                                animal.id,
                                                                 animal.id ?? "",
                                                                 "animal",
                                                                 getAnimalName(
@@ -1060,6 +1080,7 @@
                                             class="btn btn-ghost btn-xs text-error font-bold"
                                             onclick={() =>
                                                 confirmDelete(
+                                                    vacina.id,
                                                     vacina.id ?? "",
                                                     "vacina",
                                                     getVacinaName(vacina),
@@ -1112,6 +1133,8 @@
             value={animalForm.racaId}
             onChange={(v: string) => (animalForm.racaId = v)}
             options={racas.map((r) => ({
+                value: r.id,
+                label: r.nome,
                 value: r.id ?? "",
                 label: r.nome || "Sem nome",
             }))}
@@ -1206,6 +1229,7 @@
                 aplicacaoTargetAnimal = animais.find((a) => a.id === v) || null;
             }}
             options={animais.map((a) => ({
+                value: a.id,
                 value: a.id ?? "",
                 label: `${getAnimalName(a)} (${a.raca?.nome || "Sem raça"})`,
             }))}
@@ -1220,6 +1244,7 @@
             value={aplicacaoForm.vacinaId}
             onChange={(v: string) => (aplicacaoForm.vacinaId = v)}
             options={vacinas.map((v) => ({
+                value: v.id,
                 value: v.id ?? "",
                 label: `${getVacinaName(v)} (Reaplicar em ${v.reaplicarEmXDias} dias)`,
             }))}
