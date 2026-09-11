@@ -2,35 +2,35 @@ using Api.Models.Enums;
 
 namespace Api.DTOs;
 
-public sealed class AnimalSearchDto
+public sealed record AnimalSearchDto
 {
-    public Guid? RacaId { get; set; }
-    public SexoAnimal? Sexo { get; set; }
-    public OrigemAnimal? Origem { get; set; }
-    public bool? Ativo { get; set; }
-    public string? LoteOuPasto { get; set; }
-    public DateOnly? DataNascimentoFrom { get; set; }
-    public DateOnly? DataNascimentoTo { get; set; }
+    public Guid? RacaId { get; init; }
+    public SexoAnimal? Sexo { get; init; }
+    public OrigemAnimal? Origem { get; init; }
+    public bool? Ativo { get; init; }
+    public string? LoteOuPasto { get; init; }
+    public DateOnly? DataNascimentoFrom { get; init; }
+    public DateOnly? DataNascimentoTo { get; init; }
 }
 
-public sealed class AplicacaoVacinaSearchDto
+public sealed record AplicacaoVacinaSearchDto
 {
-    public Guid? VacinaId { get; set; }
-    public Guid? AnimalId { get; set; }
-    public DateOnly? DataAplicacaoFrom { get; set; }
-    public DateOnly? DataAplicacaoTo { get; set; }
+    public Guid? VacinaId { get; init; }
+    public Guid? AnimalId { get; init; }
+    public DateOnly? DataAplicacaoFrom { get; init; }
+    public DateOnly? DataAplicacaoTo { get; init; }
 }
 
-public sealed class RacaSearchDto
+public sealed record RacaSearchDto
 {
-    public Guid? EspecieId { get; set; }
+    public Guid? EspecieId { get; init; }
 }
 
-public sealed class VacinaSearchDto
+public sealed record VacinaSearchDto
 {
-    public Guid? EspecieId { get; set; }
-    public bool? ObrigatorioOrgaoSanitario { get; set; }
-    public uint? ReaplicarEmXDiasMin { get; set; }
-    public uint? ReaplicarEmXDiasMax { get; set; }
+    public Guid? EspecieId { get; init; }
+    public bool? ObrigatorioOrgaoSanitario { get; init; }
+    public uint? ReaplicarEmXDiasMin { get; init; }
+    public uint? ReaplicarEmXDiasMax { get; init; }
 }
 

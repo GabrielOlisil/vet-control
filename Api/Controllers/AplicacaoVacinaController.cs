@@ -1,4 +1,3 @@
-using Api.DTOs.AplicacoesVacina;
 using Api.DTOs;
 using Api.Mappers;
 using Api.Services.AplicacoesVacina;

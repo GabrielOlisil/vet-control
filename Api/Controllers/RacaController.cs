@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Api.DTOs.Racas;
 using Api.DTOs;
 using Api.Mappers;
 using Api.Services.Racas;
