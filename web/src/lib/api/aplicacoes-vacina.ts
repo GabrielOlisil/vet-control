@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { apiClient, extractErrorMessage, API_BASE_URL } from './client';
 import type {
     AplicacaoVacinaReadResponseDto,
     AplicacaoVacinaDetailResponseDto,
@@ -22,50 +22,105 @@ export interface AplicacaoVacinaCountParams {
 }
 
 export const aplicacaoVacinaService = {
-    getList(params?: AplicacaoVacinaListParams): Promise<AplicacaoVacinaReadResponseDto[]> {
-        const qs = new URLSearchParams();
-        if (params?.page) qs.set('page', String(params.page));
-        if (params?.VacinaId) qs.set('VacinaId', params.VacinaId);
-        if (params?.AnimalId) qs.set('AnimalId', params.AnimalId);
-        if (params?.DataAplicacaoFrom) qs.set('DataAplicacaoFrom', params.DataAplicacaoFrom);
-        if (params?.DataAplicacaoTo) qs.set('DataAplicacaoTo', params.DataAplicacaoTo);
-        const q = qs.toString();
-        return ApiClient.get<AplicacaoVacinaReadResponseDto[]>(`/aplicacoes-vacina${q ? `?${q}` : ''}`);
+    async getList(params?: AplicacaoVacinaListParams): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina', {
+            params: {
+                query: {
+                    page: params?.page,
+                    VacinaId: params?.VacinaId,
+                    AnimalId: params?.AnimalId,
+                    DataAplicacaoFrom: params?.DataAplicacaoFrom,
+                    DataAplicacaoTo: params?.DataAplicacaoTo,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar aplicações de vacina'));
+        }
+        return data ?? [];
     },
 
-    getCount(params?: AplicacaoVacinaCountParams): Promise<number> {
-        const qs = new URLSearchParams();
-        if (params?.VacinaId) qs.set('VacinaId', params.VacinaId);
-        if (params?.AnimalId) qs.set('AnimalId', params.AnimalId);
-        if (params?.DataAplicacaoFrom) qs.set('DataAplicacaoFrom', params.DataAplicacaoFrom);
-        if (params?.DataAplicacaoTo) qs.set('DataAplicacaoTo', params.DataAplicacaoTo);
-        const q = qs.toString();
-        return ApiClient.getNumber(`/aplicacoes-vacina/count${q ? `?${q}` : ''}`);
+    async getCount(params?: AplicacaoVacinaCountParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/count', {
+            params: {
+                query: {
+                    VacinaId: params?.VacinaId,
+                    AnimalId: params?.AnimalId,
+                    DataAplicacaoFrom: params?.DataAplicacaoFrom,
+                    DataAplicacaoTo: params?.DataAplicacaoTo,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar aplicações'));
+        }
+        return Number(data ?? 0);
     },
 
-    getById(id: string): Promise<AplicacaoVacinaDetailResponseDto> {
-        return ApiClient.get<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`);
+    async getById(id: string): Promise<AplicacaoVacinaDetailResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Aplicação de vacina não encontrada'));
+        }
+        return data;
     },
 
-    create(dto: AplicacaoVacinaCreateDto): Promise<AplicacaoVacinaDetailResponseDto> {
-        return ApiClient.post<AplicacaoVacinaDetailResponseDto>('/aplicacoes-vacina', dto);
+    async create(dto: AplicacaoVacinaCreateDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina', {
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao registrar vacinação'));
+        }
+        return data;
     },
 
-    patch(id: string, dto: AplicacaoVacinaPatchDto): Promise<AplicacaoVacinaDetailResponseDto> {
-        return ApiClient.patch<AplicacaoVacinaDetailResponseDto>(`/aplicacoes-vacina/${id}`, dto);
+    async patch(id: string, dto: AplicacaoVacinaPatchDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        const { data, error } = await apiClient.PATCH('/api/v1/aplicacoes-vacina/{id}', {
+            params: {
+                path: { id },
+            },
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao atualizar aplicação'));
+        }
+        return data;
     },
 
-    delete(id: string): Promise<void> {
-        return ApiClient.delete(`/aplicacoes-vacina/${id}`);
+    async delete(id: string): Promise<void> {
+        const { error } = await apiClient.DELETE('/api/v1/aplicacoes-vacina/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao excluir aplicação'));
+        }
     },
 
     async uploadComprovante(id: string, file: File): Promise<void> {
         const formData = new FormData();
         formData.append('file', file);
-        return ApiClient.postForm(`/aplicacoes-vacina/${id}/comprovante`, formData);
+        const { error } = await apiClient.POST('/api/v1/aplicacoes-vacina/{id}/comprovante', {
+            params: {
+                path: { id },
+            },
+            body: formData as any,
+            bodySerializer(body) {
+                return body;
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao anexar comprovante PDF'));
+        }
     },
 
     getComprovanteUrl(id: string): string {
-        return `/api/v1/aplicacoes-vacina/${id}/comprovante`;
+        return `${API_BASE_URL}/api/v1/aplicacoes-vacina/${id}/comprovante`;
     },
 };

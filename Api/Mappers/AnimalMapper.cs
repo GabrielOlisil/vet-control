@@ -1,29 +1,38 @@
 using Api.DTOs.Animals;
-using Api.DTOs.Especies;
 using Api.DTOs.Racas;
 using Api.Models;
-using Api.Models.Enums;
 
 namespace Api.Mappers;
 
 public static class AnimalMapper
 {
-    public static AnimaReadResponseDto MapToHead(Animal animal) => new()
+    public static AnimalReadResponseDto MapToHead(Animal animal)
     {
-        Id = animal.Id,
-        Name = animal.Name,
-        Raca = animal.Raca != null ? new RacaShortResponseDto
+        var principal = animal.Identificadores.FirstOrDefault(i => i.IsPrincipal)
+            ?? animal.Identificadores.FirstOrDefault();
+
+        return new AnimalReadResponseDto
         {
-            Id = animal.Raca.Id,
-            Nome = animal.Raca.Nome,
-        } : null,
-        DataNascimento = animal.DataNascimento,
-    };
+            Id = animal.Id,
+            Name = animal.Name,
+            Sexo = animal.Sexo,
+            Origem = animal.OrigemAnimal,
+            DataNascimento = animal.DataNascimento,
+            LoteOuPasto = animal.LoteOuPasto,
+            Ativo = animal.Ativo,
+            Raca = animal.Raca != null ? RacaMapper.MapToShort(animal.Raca) : null,
+            IdentificadorPrincipal = principal != null
+                ? new IdentificadorResponseDto(principal.Id, principal.Tipo, principal.Valor, principal.IsPrincipal)
+                : null
+        };
+    }
 
     public static AnimalShortResponseDto MapToShort(Animal animal) => new()
     {
         Id = animal.Id,
-        Name = animal.Name
+        Name = animal.Name,
+        IdentificadorPrincipal = (animal.Identificadores.FirstOrDefault(i => i.IsPrincipal)
+            ?? animal.Identificadores.FirstOrDefault())?.Valor
     };
 
     public static AnimalDetailResponseDto MapToResponse(Animal animal)
@@ -41,24 +50,13 @@ public static class AnimalMapper
             Sexo = animal.Sexo,
             Origem = animal.OrigemAnimal,
             LoteOuPasto = animal.LoteOuPasto,
-            Raca = animal.Raca is null
-                ? null
-                : new RacaDetailResponseDto
-                {
-                    Id = animal.Raca.Id,
-                    Nome = animal.Raca.Nome,
-                    Especie = animal.Raca.Especie is null
-                        ? new EspecieShortResponseDto { Id = animal.Raca.EspecieId, FullName = string.Empty }
-                        : new EspecieShortResponseDto
-                        {
-                            Id = animal.Raca.Especie.Id,
-                            FullName = string.Concat(animal.Raca.Especie.Nome, "  |  ", animal.Raca.Especie.NomeCientifico),
-                        },
-                    AnimalCount = 0
-                },
+            Ativo = animal.Ativo,
+            Raca = animal.Raca is null ? null : RacaMapper.MapToRead(animal.Raca),
             Identificadores = identificadores,
             IdentificadorPrincipal = identificadores.FirstOrDefault(i => i.EhPrincipal)
-                ?? identificadores.FirstOrDefault()
+                ?? identificadores.FirstOrDefault(),
+            CreationDateTime = animal.CreationDateTime,
+            LastModificationDateTime = animal.LastModificationDateTime
         };
     }
 }

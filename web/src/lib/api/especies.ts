@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { apiClient, extractErrorMessage } from './client';
 import type {
     EspecieReadResponseDto,
     EspecieDetailResponseDto,
@@ -8,34 +8,81 @@ import type {
 } from '../types';
 
 export const especieService = {
-    getList(page?: number): Promise<EspecieReadResponseDto[]> {
-        const qs = page ? `?page=${page}` : '';
-        return ApiClient.get<EspecieReadResponseDto[]>(`/especies${qs}`);
+    async getList(page?: number): Promise<EspecieReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/especies', {
+            params: {
+                query: page ? { page } : undefined,
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar espécies'));
+        }
+        return data ?? [];
     },
 
-    search(search: string, nomeCientificoToo?: boolean, page = 1): Promise<EspecieShortResponseDto[]> {
-        const qs = new URLSearchParams({ search, page: String(page) });
-        if (nomeCientificoToo !== undefined) qs.set('nomeCientificoToo', String(nomeCientificoToo));
-        return ApiClient.get<EspecieShortResponseDto[]>(`/especies/search?${qs}`);
+    async search(search: string, nomeCientificoToo = false, page = 1): Promise<EspecieShortResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/especies/search', {
+            params: {
+                query: { search, nomeCientificoToo, page },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao buscar espécies'));
+        }
+        return data ?? [];
     },
 
-    getCount(): Promise<number> {
-        return ApiClient.getNumber('/especies/count');
+    async getCount(): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/especies/count');
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar espécies'));
+        }
+        return Number(data ?? 0);
     },
 
-    getById(id: string): Promise<EspecieDetailResponseDto> {
-        return ApiClient.get<EspecieDetailResponseDto>(`/especies/${id}`);
+    async getById(id: string): Promise<EspecieDetailResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/especies/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Espécie não encontrada'));
+        }
+        return data;
     },
 
-    create(dto: EspecieCreateDto): Promise<EspecieDetailResponseDto> {
-        return ApiClient.post<EspecieDetailResponseDto>('/especies', dto);
+    async create(dto: EspecieCreateDto): Promise<EspecieDetailResponseDto> {
+        const { data, error } = await apiClient.POST('/api/v1/especies', {
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao cadastrar espécie'));
+        }
+        return data;
     },
 
-    patch(id: string, dto: EspeciePatchDto): Promise<EspecieDetailResponseDto> {
-        return ApiClient.patch<EspecieDetailResponseDto>(`/especies/${id}`, dto);
+    async patch(id: string, dto: EspeciePatchDto): Promise<EspecieDetailResponseDto> {
+        const { data, error } = await apiClient.PATCH('/api/v1/especies/{id}', {
+            params: {
+                path: { id },
+            },
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao atualizar espécie'));
+        }
+        return data;
     },
 
-    delete(id: string): Promise<void> {
-        return ApiClient.delete(`/especies/${id}`);
+    async delete(id: string): Promise<void> {
+        const { error } = await apiClient.DELETE('/api/v1/especies/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao excluir espécie'));
+        }
     },
 };

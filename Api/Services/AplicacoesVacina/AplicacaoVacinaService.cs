@@ -37,7 +37,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             DataAplicacao = dto.DataAplicacao,
             DataProximaDose = dataProximaDose.Value,
             NumeroLote = dto.NumeroLote,
-            DoseMl = dto.DoseMl?.ToString(),
+            DoseMl = dto.DoseMl,
             Observacoes = dto.Observacoes
         };
 
@@ -57,6 +57,16 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             return null;
         }
 
+        if (dto.AnimalId.HasValue)
+        {
+            aplicacao.AnimalId = dto.AnimalId.Value;
+        }
+
+        if (dto.VacinaId.HasValue)
+        {
+            aplicacao.VacinaId = dto.VacinaId.Value;
+        }
+
         if (dto.DataAplicacao.HasValue)
         {
             aplicacao.DataAplicacao = dto.DataAplicacao.Value;
@@ -72,9 +82,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             aplicacao.NumeroLote = dto.NumeroLote;
         }
 
-        if (dto.DoseMl.HasValue)
+        if (dto.DoseMl is not null)
         {
-            aplicacao.DoseMl = dto.DoseMl.Value.ToString();
+            aplicacao.DoseMl = dto.DoseMl;
         }
 
         if (dto.Observacoes is not null)
@@ -106,6 +116,11 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
         return context.AplicacoesVacina
             .AsNoTracking()
             .Include(aplicacao => aplicacao.Vacina)
+                .ThenInclude(v => v!.Especie)
+            .Include(aplicacao => aplicacao.Animal)
+                .ThenInclude(a => a!.Identificadores)
+            .Include(aplicacao => aplicacao.Animal)
+                .ThenInclude(a => a!.Raca)
             .FirstOrDefaultAsync(aplicacao => aplicacao.Id == id, cancellationToken);
     }
 
@@ -114,7 +129,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
     {
         var query = context.AplicacoesVacina
             .Include(aplicacao => aplicacao.Vacina)
+            .Include(aplicacao => aplicacao.Animal)
+                .ThenInclude(a => a!.Identificadores)
             .AsNoTracking();
+
 
         if (search?.VacinaId is not null)
             query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId);

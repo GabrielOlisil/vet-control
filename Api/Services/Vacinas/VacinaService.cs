@@ -12,10 +12,15 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         CancellationToken cancellationToken = default)
     {
         var query = context.Vacinas
+            .Include(v => v.Especie)
             .AsNoTracking();
 
 
 
+        if (search?.EspecieId is not null)
+            query = query.Where(vacina => vacina.EspecieId == search.EspecieId);
+        if (search?.ObrigatorioOrgaoSanitario is not null)
+            query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario);
         if (search?.ReaplicarEmXDiasMin is not null)
             query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin);
         if (search?.ReaplicarEmXDiasMax is not null)
@@ -28,6 +33,8 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
     {
         return context.Vacinas
             .AsNoTracking()
+            .Include(v => v.Especie)
+            .Include(v => v.Aplicacoes)
             .Where(vacina => vacina.Id == id)
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -38,7 +45,10 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         {
             Id = Guid.NewGuid(),
             Name = dto.Name,
-            ReaplicarEmXDias = dto.ReaplicarEmXDias
+            Descricao = dto.Descricao,
+            ReaplicarEmXDias = dto.ReaplicarEmXDias,
+            ObrigatorioOrgaoSanitario = dto.ObrigatorioOrgaoSanitario,
+            EspecieId = dto.EspecieId
         };
 
         context.Vacinas.Add(vacina);
@@ -61,15 +71,31 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
             vacina.Name = dto.Name;
         }
 
+        if (dto.Descricao is not null)
+        {
+            vacina.Descricao = dto.Descricao;
+        }
+
         if (dto.ReaplicarEmXDias.HasValue)
         {
             vacina.ReaplicarEmXDias = dto.ReaplicarEmXDias.Value;
+        }
+
+        if (dto.ObrigatorioOrgaoSanitario.HasValue)
+        {
+            vacina.ObrigatorioOrgaoSanitario = dto.ObrigatorioOrgaoSanitario.Value;
+        }
+
+        if (dto.EspecieId.HasValue)
+        {
+            vacina.EspecieId = dto.EspecieId.Value;
         }
 
         await context.SaveChangesAsync(cancellationToken);
 
         return vacina;
     }
+
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {

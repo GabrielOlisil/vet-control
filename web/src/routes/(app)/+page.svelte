@@ -16,7 +16,7 @@
         TipoIdentificadorLabels,
         SexoAnimalLabels,
         OrigemAnimalLabels,
-        type AnimaReadResponseDto,
+        type AnimalReadResponseDto,
         type AnimalShortResponseDto,
         type AnimalCreateDto,
         type AnimalDetailResponseDto,
@@ -40,7 +40,8 @@
     let isLoadingStats = $state(true);
 
     // ── Listagem ──────────────────────────────────────────────────────────────
-    let animais = $state<AnimaReadResponseDto[]>([]);
+    let animais = $state<AnimalReadResponseDto[]>([]);
+
     let racas = $state<RacaReadResponseDto[]>([]);
     let vacinasCatalogo = $state<VacinaReadResponseDto[]>([]);
     let isLoadingAnimais = $state(true);
@@ -153,13 +154,23 @@
 
     async function submitVacina() {
         vacinaFormError = "";
-        if (!vacinaForm.name?.trim()) {
+        const name = vacinaForm.name?.trim();
+        if (!name) {
             vacinaFormError = "Nome da vacina é obrigatório.";
+            return;
+        }
+        const dias = Number(vacinaForm.reaplicarEmXDias);
+        if (!dias || dias < 1) {
+            vacinaFormError =
+                "Informe uma periodicidade válida (mínimo 1 dia).";
             return;
         }
         isSubmittingVacina = true;
         try {
-            await vacinaService.create(vacinaForm);
+            await vacinaService.create({
+                name,
+                reaplicarEmXDias: dias,
+            });
             showVacinaModal = false;
             vacinaForm = { name: "", reaplicarEmXDias: 365 };
             await loadAll();
@@ -173,7 +184,7 @@
 
     // ── Modal: Vacinar Animal ─────────────────────────────────────────────────
     let showAplicacaoModal = $state(false);
-    let aplicacaoPreAnimal = $state<AnimaReadResponseDto | null>(null);
+    let aplicacaoPreAnimal = $state<AnimalReadResponseDto | null>(null);
     let isSubmittingAplicacao = $state(false);
     let aplicacaoFormError = $state("");
     let aplicacaoForm = $state<AplicacaoVacinaCreateDto>({
@@ -189,7 +200,7 @@
         observacoes: undefined,
     });
 
-    function openAplicacaoModal(animal?: AnimaReadResponseDto) {
+    function openAplicacaoModal(animal?: AnimalReadResponseDto) {
         aplicacaoPreAnimal = animal ?? null;
         aplicacaoForm = {
             animalId: animal?.id ?? "",
@@ -469,7 +480,9 @@
                                         <span
                                             class="badge badge-outline badge-sm font-mono"
                                         >
-                                            {animal.id?.slice(0, 8) ?? "—"}
+                                            {animal.identificadorPrincipal
+                                                ?.valor ||
+                                                (animal.id?.slice(0, 8) ?? "—")}
                                         </span>
                                     </td>
                                     <td class="font-medium">
@@ -685,16 +698,59 @@
         required
     />
     <div>
-        <label class="label label-text text-xs font-medium"
-            >Reaplicar em (dias)</label
+        <label
+            for="vacinaDiasDashboard"
+            class="label label-text text-xs font-medium block"
+            >Reaplicar em (dias) *</label
         >
         <input
+            id="vacinaDiasDashboard"
             type="number"
             min="1"
             class="input input-bordered w-full"
             placeholder="365"
             bind:value={vacinaForm.reaplicarEmXDias}
+            required
         />
+        <div class="flex items-center gap-1.5 flex-wrap pt-1">
+            <span class="text-xs text-base-content/50">Atalhos:</span>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    vacinaForm.reaplicarEmXDias = 365;
+                }}
+            >
+                365d (Anual)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    vacinaForm.reaplicarEmXDias = 180;
+                }}
+            >
+                180d (Semestral)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    vacinaForm.reaplicarEmXDias = 90;
+                }}
+            >
+                90d (Trimestral)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    vacinaForm.reaplicarEmXDias = 30;
+                }}
+            >
+                30d (Mensal)
+            </button>
+        </div>
         <p class="text-xs text-base-content/50 mt-1">
             Ex: 365 = Anual | 180 = Semestral | 30 = Mensal
         </p>

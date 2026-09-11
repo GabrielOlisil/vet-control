@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { apiClient, extractErrorMessage } from './client';
 import type {
     VacinaReadResponseDto,
     VacinaDetailResponseDto,
@@ -8,41 +8,94 @@ import type {
 } from '../types';
 
 export interface VacinaListParams {
+    EspecieId?: string;
+    ObrigatorioOrgaoSanitario?: boolean;
     ReaplicarEmXDiasMin?: number;
     ReaplicarEmXDiasMax?: number;
 }
 
 export const vacinaService = {
-    getList(params?: VacinaListParams): Promise<VacinaReadResponseDto[]> {
-        const qs = new URLSearchParams();
-        if (params?.ReaplicarEmXDiasMin !== undefined) qs.set('ReaplicarEmXDiasMin', String(params.ReaplicarEmXDiasMin));
-        if (params?.ReaplicarEmXDiasMax !== undefined) qs.set('ReaplicarEmXDiasMax', String(params.ReaplicarEmXDiasMax));
-        const q = qs.toString();
-        return ApiClient.get<VacinaReadResponseDto[]>(`/vacinas${q ? `?${q}` : ''}`);
+    async getList(params?: VacinaListParams): Promise<VacinaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/vacinas', {
+            params: {
+                query: {
+                    EspecieId: params?.EspecieId,
+                    ObrigatorioOrgaoSanitario: params?.ObrigatorioOrgaoSanitario,
+                    ReaplicarEmXDiasMin: params?.ReaplicarEmXDiasMin,
+                    ReaplicarEmXDiasMax: params?.ReaplicarEmXDiasMax,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar vacinas'));
+        }
+        return data ?? [];
     },
 
-    search(search: string, page = 1): Promise<VacinaShortResponseDto[]> {
-        const qs = new URLSearchParams({ search, page: String(page) });
-        return ApiClient.get<VacinaShortResponseDto[]>(`/vacinas/search?${qs}`);
+
+    async search(search: string, page = 1): Promise<VacinaShortResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/vacinas/search', {
+            params: {
+                query: { search, page },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao buscar vacinas'));
+        }
+        return data ?? [];
     },
 
-    getCount(): Promise<number> {
-        return ApiClient.getNumber('/vacinas/count');
+    async getCount(): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/vacinas/count');
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar vacinas'));
+        }
+        return Number(data ?? 0);
     },
 
-    getById(id: string): Promise<VacinaDetailResponseDto> {
-        return ApiClient.get<VacinaDetailResponseDto>(`/vacinas/${id}`);
+    async getById(id: string): Promise<VacinaDetailResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/vacinas/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Vacina não encontrada'));
+        }
+        return data;
     },
 
-    create(dto: VacinaCreateDto): Promise<VacinaDetailResponseDto> {
-        return ApiClient.post<VacinaDetailResponseDto>('/vacinas', dto);
+    async create(dto: VacinaCreateDto): Promise<VacinaDetailResponseDto> {
+        const { data, error } = await apiClient.POST('/api/v1/vacinas', {
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao cadastrar vacina'));
+        }
+        return data;
     },
 
-    patch(id: string, dto: VacinaPatchDto): Promise<VacinaDetailResponseDto> {
-        return ApiClient.patch<VacinaDetailResponseDto>(`/vacinas/${id}`, dto);
+    async patch(id: string, dto: VacinaPatchDto): Promise<VacinaDetailResponseDto> {
+        const { data, error } = await apiClient.PATCH('/api/v1/vacinas/{id}', {
+            params: {
+                path: { id },
+            },
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao atualizar vacina'));
+        }
+        return data;
     },
 
-    delete(id: string): Promise<void> {
-        return ApiClient.delete(`/vacinas/${id}`);
+    async delete(id: string): Promise<void> {
+        const { error } = await apiClient.DELETE('/api/v1/vacinas/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao excluir vacina'));
+        }
     },
 };

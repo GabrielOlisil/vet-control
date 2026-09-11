@@ -12,7 +12,7 @@
         TipoIdentificadorLabels,
         SexoAnimalLabels,
         OrigemAnimalLabels,
-        type AnimaReadResponseDto,
+        type AnimalReadResponseDto,
         type AnimalDetailResponseDto,
         type AnimalCreateDto,
         type AnimalPatchDto,
@@ -24,7 +24,8 @@
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
 
     // ── Estado ────────────────────────────────────────────────────────────────
-    let animais = $state<AnimaReadResponseDto[]>([]);
+    let animais = $state<AnimalReadResponseDto[]>([]);
+
     let racas = $state<RacaReadResponseDto[]>([]);
     let totalAnimais = $state(0);
     let currentPage = $state(1);
@@ -61,7 +62,7 @@
         showModal = true;
     }
 
-    async function openEdit(animal: AnimaReadResponseDto) {
+    async function openEdit(animal: AnimalReadResponseDto) {
         try {
             const detail: AnimalDetailResponseDto = await animalService.getById(
                 animal.id!,
@@ -129,10 +130,10 @@
 
     // ── Deletar ───────────────────────────────────────────────────────────────
     let showDeleteModal = $state(false);
-    let deletingAnimal = $state<AnimaReadResponseDto | null>(null);
+    let deletingAnimal = $state<AnimalReadResponseDto | null>(null);
     let isDeleting = $state(false);
 
-    function openDelete(animal: AnimaReadResponseDto) {
+    function openDelete(animal: AnimalReadResponseDto) {
         deletingAnimal = animal;
         showDeleteModal = true;
     }
@@ -300,7 +301,8 @@
                                     <span
                                         class="badge badge-outline font-mono badge-sm"
                                     >
-                                        {animal.id?.slice(0, 8) ?? "—"}
+                                        {animal.identificadorPrincipal?.valor ||
+                                            (animal.id?.slice(0, 8) ?? "—")}
                                     </span>
                                 </td>
                                 <td class="font-medium"

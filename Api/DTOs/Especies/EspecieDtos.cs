@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Api.DTOs.Racas;
+using Api.DTOs.Vacinas;
 using Api.Models.Enums;
 
 namespace Api.DTOs.Especies;
@@ -26,6 +28,15 @@ public sealed class EspeciePatchDto
     [StringLength(100)] public string? IconeKey { get; set; }
 }
 
+public sealed class EspecieShortResponseDto
+{
+    public Guid Id { get; set; }
+
+    public required string Nome { get; set; }
+
+    public string FullName { get; set; } = string.Empty;
+}
+
 public sealed class EspecieReadResponseDto
 {
     public Guid Id { get; set; }
@@ -34,13 +45,7 @@ public sealed class EspecieReadResponseDto
     public string? NomeCientifico { get; set; }
     public PorteAnimal PortePadrao { get; set; }
     public string IconeKey { get; set; } = "paw";
-}
-
-public sealed class EspecieShortResponseDto
-{
-    public Guid Id { get; set; }
-
-    public required string FullName { get; set; }
+    public uint RaceCount { get; set; }
 }
 
 public sealed class EspecieDetailResponseDto
@@ -52,4 +57,11 @@ public sealed class EspecieDetailResponseDto
     public PorteAnimal PortePadrao { get; set; }
     public string IconeKey { get; set; } = "paw";
     public uint RaceCount { get; set; }
+
+    public List<RacaReadResponseDto> Racas { get; set; } = [];
+    public List<VacinaReadResponseDto> VacinasRestritas { get; set; } = [];
+
+    public DateTimeOffset CreationDateTime { get; set; }
+    public DateTimeOffset? LastModificationDateTime { get; set; }
 }
+

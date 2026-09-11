@@ -15,7 +15,7 @@
         type AplicacaoVacinaDetailResponseDto,
         type AplicacaoVacinaCreateDto,
         type VacinaReadResponseDto,
-        type AnimaReadResponseDto,
+        type AnimalReadResponseDto,
     } from "$lib/types";
 
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
@@ -29,7 +29,7 @@
     let isLoading = $state(true);
 
     let vacinas = $state<VacinaReadResponseDto[]>([]);
-    let animais = $state<AnimaReadResponseDto[]>([]);
+    let animais = $state<AnimalReadResponseDto[]>([]);
 
     // Filtros
     let filterVacinaId = $state("");
@@ -272,9 +272,34 @@
                                 <td>
                                     <a
                                         href="/prontuario/{apl.animalId}"
-                                        class="link link-hover text-sm font-mono"
+                                        class="link link-hover text-sm inline-flex items-center gap-1.5"
                                     >
-                                        {apl.animalId?.slice(0, 8)}…
+                                        {#if apl.animal?.name}
+                                            <span
+                                                class="font-medium text-base-content"
+                                                >{apl.animal.name}</span
+                                            >
+                                            {#if apl.animal.identificadorPrincipal}
+                                                <span
+                                                    class="badge badge-outline badge-xs font-mono"
+                                                    >{apl.animal
+                                                        .identificadorPrincipal}</span
+                                                >
+                                            {/if}
+                                        {:else if apl.animal?.identificadorPrincipal}
+                                            <span class="font-mono"
+                                                >{apl.animal
+                                                    .identificadorPrincipal}</span
+                                            >
+                                        {:else}
+                                            <span
+                                                class="font-mono text-base-content/60"
+                                                >{apl.animalId?.slice(
+                                                    0,
+                                                    8,
+                                                )}…</span
+                                            >
+                                        {/if}
                                     </a>
                                 </td>
                                 <td class="text-sm"

@@ -16,10 +16,13 @@
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+    import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
 
     let especies = $state<EspecieReadResponseDto[]>([]);
+    let totalEspecies = $state(0);
     let isLoading = $state(true);
     let searchName = $state("");
+    let filterPorte = $state<number | null>(null);
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
@@ -27,7 +30,7 @@
     let formNome = $state("");
     let formNomeCientifico = $state("");
     let formPortePadrao = $state(1); // Médio
-    let formIconeKey = $state("outros");
+    let formIconeKey = $state("bovino");
 
     let formError = $state("");
     let isSubmitting = $state(false);
@@ -56,13 +59,18 @@
     ];
 
     onMount(() => {
-        loadEspecies();
+        loadData();
     });
 
-    async function loadEspecies() {
+    async function loadData() {
         try {
             isLoading = true;
-            especies = await especieService.getList();
+            const [list, count] = await Promise.all([
+                especieService.getList(),
+                especieService.getCount(),
+            ]);
+            especies = list;
+            totalEspecies = count;
         } catch (error) {
             console.error("Erro ao carregar espécies:", error);
         } finally {
@@ -71,15 +79,18 @@
     }
 
     const filteredEspecies = $derived(
-        especies.filter(
-            (e) =>
+        especies.filter((e) => {
+            const matchesSearch =
                 (e.nome || "")
                     .toLowerCase()
-                    .includes(searchName.toLowerCase()) ||
+                    .includes(searchName.toLowerCase().trim()) ||
                 (e.nomeCientifico || "")
                     .toLowerCase()
-                    .includes(searchName.toLowerCase()),
-        ),
+                    .includes(searchName.toLowerCase().trim());
+            const matchesPorte =
+                filterPorte === null || Number(e.portePadrao) === filterPorte;
+            return matchesSearch && matchesPorte;
+        }),
     );
 
     function openFormModal(especie?: EspecieReadResponseDto) {
@@ -88,7 +99,7 @@
             formNome = especie.nome || "";
             formNomeCientifico = especie.nomeCientifico || "";
             formPortePadrao = Number(especie.portePadrao ?? 1);
-            formIconeKey = especie.iconeKey || "outros";
+            formIconeKey = especie.iconeKey || "bovino";
         } else {
             editingId = null;
             formNome = "";
@@ -126,7 +137,7 @@
                 await especieService.create(createDto);
             }
             showFormModal = false;
-            await loadEspecies();
+            await loadData();
         } catch (error: unknown) {
             formError =
                 error instanceof Error
@@ -150,7 +161,7 @@
             isDeleting = true;
             await especieService.delete(deletingItem.id);
             showDeleteModal = false;
-            await loadEspecies();
+            await loadData();
         } catch (error: unknown) {
             alert(
                 error instanceof Error
@@ -177,7 +188,8 @@
                 <span>Espécies Biológicas</span>
             </h1>
             <p class="text-xs text-base-content/70 mt-1">
-                Classificação taxonômica das espécies atendidas na instituição.
+                {totalEspecies} espécie(s) cadastrada(s) para classificação zootécnica
+                e clínica.
             </p>
         </div>
         <button
@@ -194,16 +206,52 @@
     <div
         class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
     >
-        <div class="p-4 border-b border-base-200 bg-base-100">
-            <input
-                type="text"
-                placeholder="Pesquisar por nome vulgar ou científico..."
-                value={searchName}
-                oninput={(e) => {
-                    searchName = (e.target as HTMLInputElement).value;
-                }}
-                class="input input-bordered w-full max-w-sm input-sm focus:input-primary"
-            />
+        <div
+            class="p-4 border-b border-base-200 bg-base-100 flex flex-col sm:flex-row gap-3 items-center justify-between"
+        >
+            <div class="w-full sm:w-auto flex-1 max-w-sm relative">
+                <input
+                    type="text"
+                    placeholder="Pesquisar por nome vulgar ou científico..."
+                    bind:value={searchName}
+                    class="input input-bordered w-full input-sm focus:input-primary pl-9"
+                />
+                <IconSearch
+                    width="16"
+                    height="16"
+                    class="absolute left-3 top-2.5 text-base-content/40"
+                />
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+                <span class="text-xs font-semibold text-base-content/60 mr-1"
+                    >Porte:</span
+                >
+                <button
+                    type="button"
+                    class="btn btn-xs {filterPorte === null
+                        ? 'btn-primary'
+                        : 'btn-ghost'}"
+                    onclick={() => {
+                        filterPorte = null;
+                    }}
+                >
+                    Todos
+                </button>
+                {#each porteOptions as opt}
+                    <button
+                        type="button"
+                        class="btn btn-xs {filterPorte === opt.value
+                            ? 'btn-primary'
+                            : 'btn-ghost'}"
+                        onclick={() => {
+                            filterPorte = opt.value;
+                        }}
+                    >
+                        {opt.label}
+                    </button>
+                {/each}
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -220,6 +268,11 @@
                         <IconBiotech width="48" height="48" />
                     </div>
                     <p class="font-bold">Nenhuma espécie encontrada</p>
+                    <p class="text-xs text-base-content/50">
+                        {searchName || filterPorte !== null
+                            ? "Tente alterar os filtros de busca."
+                            : "Cadastre novas espécies para começar o mapeamento taxonômico."}
+                    </p>
                 </div>
             {:else}
                 <table class="table table-zebra w-full">
@@ -311,7 +364,7 @@
     {/if}
 
     <Input
-        label="Nome Vulgar"
+        label="Nome Vulgar *"
         id="nome"
         bind:value={formNome}
         placeholder="Ex: Bovino, Equino, Ovino, Canino..."

@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { apiClient, extractErrorMessage } from './client';
 import type {
     RacaReadResponseDto,
     RacaDetailResponseDto,
@@ -8,33 +8,81 @@ import type {
 } from '../types';
 
 export const racaService = {
-    getList(especieId?: string): Promise<RacaReadResponseDto[]> {
-        const qs = especieId ? `?EspecieId=${encodeURIComponent(especieId)}` : '';
-        return ApiClient.get<RacaReadResponseDto[]>(`/racas${qs}`);
+    async getList(especieId?: string): Promise<RacaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/racas', {
+            params: {
+                query: especieId ? { EspecieId: especieId } : undefined,
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar raças'));
+        }
+        return data ?? [];
     },
 
-    search(search: string, page = 1): Promise<RacaShortResponseDto[]> {
-        const qs = new URLSearchParams({ search, page: String(page) });
-        return ApiClient.get<RacaShortResponseDto[]>(`/racas/search?${qs}`);
+    async search(search: string, page = 1): Promise<RacaShortResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/racas/search', {
+            params: {
+                query: { search, page },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao buscar raças'));
+        }
+        return data ?? [];
     },
 
-    getCount(): Promise<number> {
-        return ApiClient.getNumber('/racas/count');
+    async getCount(): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/racas/count');
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar raças'));
+        }
+        return Number(data ?? 0);
     },
 
-    getById(id: string): Promise<RacaDetailResponseDto> {
-        return ApiClient.get<RacaDetailResponseDto>(`/racas/${id}`);
+    async getById(id: string): Promise<RacaDetailResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/racas/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Raça não encontrada'));
+        }
+        return data;
     },
 
-    create(dto: RacaCreateDto): Promise<RacaDetailResponseDto> {
-        return ApiClient.post<RacaDetailResponseDto>('/racas', dto);
+    async create(dto: RacaCreateDto): Promise<RacaDetailResponseDto> {
+        const { data, error } = await apiClient.POST('/api/v1/racas', {
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao cadastrar raça'));
+        }
+        return data;
     },
 
-    patch(id: string, dto: RacaPatchDto): Promise<RacaDetailResponseDto> {
-        return ApiClient.patch<RacaDetailResponseDto>(`/racas/${id}`, dto);
+    async patch(id: string, dto: RacaPatchDto): Promise<RacaDetailResponseDto> {
+        const { data, error } = await apiClient.PATCH('/api/v1/racas/{id}', {
+            params: {
+                path: { id },
+            },
+            body: dto,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao atualizar raça'));
+        }
+        return data;
     },
 
-    delete(id: string): Promise<void> {
-        return ApiClient.delete(`/racas/${id}`);
+    async delete(id: string): Promise<void> {
+        const { error } = await apiClient.DELETE('/api/v1/racas/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao excluir raça'));
+        }
     },
 };

@@ -9,9 +9,25 @@ public static class AplicacaoVacinaMapper
     public static AplicacaoVacinaReadResponseDto MapToHead(AplicacaoVacina aplicacao) => new()
     {
         Id = aplicacao.Id,
-        Vacina = new VacinaShortResponseDto { Id = aplicacao.VacinaId, Name = aplicacao.Vacina?.Name ?? string.Empty },
         AnimalId = aplicacao.AnimalId,
-        DataAplicacao = aplicacao.DataAplicacao
+        VacinaId = aplicacao.VacinaId,
+        Animal = aplicacao.Animal != null ? AnimalMapper.MapToShort(aplicacao.Animal) : null,
+        Vacina = aplicacao.Vacina != null
+            ? VacinaMapper.MapToShort(aplicacao.Vacina)
+            : new VacinaShortResponseDto { Id = aplicacao.VacinaId, Name = string.Empty },
+        DataAplicacao = aplicacao.DataAplicacao,
+        DataProximaDose = aplicacao.DataProximaDose,
+        NumeroLote = aplicacao.NumeroLote,
+        DoseMl = aplicacao.DoseMl,
+    };
+
+    public static AplicacaoVacinaShortResponseDto MapToShort(AplicacaoVacina aplicacao) => new()
+    {
+        Id = aplicacao.Id,
+        VacinaId = aplicacao.VacinaId,
+        Vacina = aplicacao.Vacina != null ? VacinaMapper.MapToShort(aplicacao.Vacina) : null,
+        DataAplicacao = aplicacao.DataAplicacao,
+        NumeroLote = aplicacao.NumeroLote,
     };
 
     public static AplicacaoVacinaDetailResponseDto MapToResponse(AplicacaoVacina aplicacao) => new()
@@ -19,26 +35,16 @@ public static class AplicacaoVacinaMapper
         Id = aplicacao.Id,
         AnimalId = aplicacao.AnimalId,
         VacinaId = aplicacao.VacinaId,
-        Vacina = aplicacao.Vacina is null
-            ? null
-            : new VacinaDetailResponseDto
-            {
-                Id = aplicacao.Vacina.Id,
-                Name = aplicacao.Vacina.Name,
-                ReaplicarEmXDias = aplicacao.Vacina.ReaplicarEmXDias,
-                CriadoEm = aplicacao.Vacina.CreationDateTime.DateTime
-            },
+        Animal = aplicacao.Animal != null ? AnimalMapper.MapToHead(aplicacao.Animal) : null,
+        Vacina = aplicacao.Vacina != null ? VacinaMapper.MapToRead(aplicacao.Vacina) : null,
         DataAplicacao = aplicacao.DataAplicacao,
         DataProximaDose = aplicacao.DataProximaDose,
         NumeroLote = aplicacao.NumeroLote,
-        LaboratorioFabricante = null,
-        DoseMl = aplicacao.DoseMl != null ? decimal.TryParse(aplicacao.DoseMl, out var d) ? d : null : null,
-        VeterinarioResponsavel = string.Empty,
-        Aplicador = null,
+        DoseMl = aplicacao.DoseMl,
         Observacoes = aplicacao.Observacoes,
         StatusComprovante = Api.Models.Enums.StatusComprovanteVacina.NaoEmitido,
         TemComprovanteAnexo = false,
-        CriadoEm = aplicacao.CreationDateTime,
-        AtualizadoEm = aplicacao.LastModificationDateTime
+        CreationDateTime = aplicacao.CreationDateTime,
+        LastModificationDateTime = aplicacao.LastModificationDateTime
     };
 }

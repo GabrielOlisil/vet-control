@@ -11,7 +11,7 @@ namespace Api.Controllers;
 public class AnimalController(IAnimalService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AnimaReadResponseDto>>> GetAll(
+    public async Task<ActionResult<List<AnimalReadResponseDto>>> GetAll(
         [FromQuery] AnimalSearchDto search, [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
@@ -19,6 +19,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
         var responses = animals.Select(AnimalMapper.MapToHead).ToList();
         return Ok(responses);
     }
+
 
     [HttpGet("search")]
     public async Task<ActionResult<List<AnimalShortResponseDto>>> GetAllByName(CancellationToken cancellationToken, [FromQuery] int page = 1,

@@ -9,19 +9,32 @@ public static class VacinaMapper
     {
         Id = vacina.Id,
         Name = vacina.Name,
-        ReaplicarEmXDias = vacina.ReaplicarEmXDias
+        Descricao = vacina.Descricao,
+        ReaplicarEmXDias = vacina.ReaplicarEmXDias,
+        ObrigatorioOrgaoSanitario = vacina.ObrigatorioOrgaoSanitario,
+        EspecieId = vacina.EspecieId,
+        Especie = vacina.Especie != null ? EspecieMapper.MapToShort(vacina.Especie) : null
     };
 
     public static VacinaShortResponseDto MapToShort(Vacina vacina) => new()
     {
         Id = vacina.Id,
         Name = vacina.Name,
+        Descricao = vacina.Descricao
     };
+
     public static VacinaDetailResponseDto MapToResponse(Vacina vacina) => new()
     {
         Id = vacina.Id,
         Name = vacina.Name,
+        Descricao = vacina.Descricao,
         ReaplicarEmXDias = vacina.ReaplicarEmXDias,
-        CriadoEm = DateTime.UtcNow
+        ObrigatorioOrgaoSanitario = vacina.ObrigatorioOrgaoSanitario,
+        EspecieId = vacina.EspecieId,
+        Especie = vacina.Especie != null ? EspecieMapper.MapToHead(vacina.Especie) : null,
+        TotalAplicacoes = (uint)vacina.Aplicacoes.Count,
+        CreationDateTime = vacina.CreationDateTime,
+        LastModificationDateTime = vacina.LastModificationDateTime
     };
 }
+

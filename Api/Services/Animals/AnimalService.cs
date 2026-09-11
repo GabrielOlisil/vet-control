@@ -26,11 +26,20 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
     {
         var query = context.Animals
             .Include(e => e.Raca)
+                .ThenInclude(r => r!.Especie)
             .Include(a => a.Identificadores)
             .AsNoTracking();
 
         if (search?.RacaId is not null)
             query = query.Where(animal => animal.RacaId == search.RacaId);
+        if (search?.Sexo is not null)
+            query = query.Where(animal => animal.Sexo == search.Sexo);
+        if (search?.Origem is not null)
+            query = query.Where(animal => animal.OrigemAnimal == search.Origem);
+        if (search?.Ativo is not null)
+            query = query.Where(animal => animal.Ativo == search.Ativo);
+        if (!string.IsNullOrWhiteSpace(search?.LoteOuPasto))
+            query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
         if (search?.DataNascimentoFrom is not null)
             query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom);
         if (search?.DataNascimentoTo is not null)
@@ -68,6 +77,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             Sexo = dto.Sexo,
             OrigemAnimal = dto.Origem,
             LoteOuPasto = dto.LoteOuPasto,
+            Ativo = dto.Ativo,
             Identificadores = dto.Identificadores.Select(i => new IdentificadorAnimal
             {
                 Id = Guid.NewGuid(),
@@ -124,6 +134,11 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             animal.LoteOuPasto = dto.LoteOuPasto;
         }
 
+        if (dto.Ativo.HasValue)
+        {
+            animal.Ativo = dto.Ativo.Value;
+        }
+
         if (dto.Identificadores is not null)
         {
             // Replace all identificadores
@@ -168,6 +183,14 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         if (search?.RacaId is not null)
             query = query.Where(animal => animal.RacaId == search.RacaId);
+        if (search?.Sexo is not null)
+            query = query.Where(animal => animal.Sexo == search.Sexo);
+        if (search?.Origem is not null)
+            query = query.Where(animal => animal.OrigemAnimal == search.Origem);
+        if (search?.Ativo is not null)
+            query = query.Where(animal => animal.Ativo == search.Ativo);
+        if (!string.IsNullOrWhiteSpace(search?.LoteOuPasto))
+            query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
         if (search?.DataNascimentoFrom is not null)
             query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom);
         if (search?.DataNascimentoTo is not null)
@@ -175,6 +198,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         return query.CountAsync(cancellationToken);
     }
+
 
     public Task<List<Animal>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
     {

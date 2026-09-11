@@ -1,67 +1,29 @@
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+import createClient from 'openapi-fetch';
+import type { paths } from '$lib/types/contract';
 
-export class ApiClient {
-    static async get<T>(endpoint: string): Promise<T> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`);
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-        return response.json();
-    }
+export const API_BASE_URL = 'http://localhost:8080';
 
-    static async getNumber(endpoint: string): Promise<number> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`);
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-        const value = await response.json();
-        return Number(value);
-    }
+export const apiClient = createClient<paths>({
+    baseUrl: API_BASE_URL,
+});
 
-    static async post<T>(endpoint: string, data: unknown): Promise<T> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+/**
+ * Extrai uma mensagem de erro legível de respostas da API (incluindo ASP.NET Core ProblemDetails).
+ */
+export function extractErrorMessage(error: unknown, fallback = 'Erro na requisição'): string {
+    if (!error) return fallback;
+    if (typeof error === 'string') return error;
+    if (typeof error === 'object') {
+        const err = error as Record<string, unknown>;
+        if (err.errors && typeof err.errors === 'object') {
+            const messages = Object.values(err.errors as Record<string, string[]>)
+                .flat()
+                .filter(Boolean);
+            if (messages.length > 0) return messages.join('; ');
         }
-        return response.json();
+        if (err.detail && typeof err.detail === 'string') return err.detail;
+        if (err.title && typeof err.title === 'string') return err.title;
+        if (err.message && typeof err.message === 'string') return err.message;
     }
-
-    static async postForm(endpoint: string, formData: FormData): Promise<void> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'POST',
-            body: formData,
-        });
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-    }
-
-    static async patch<T>(endpoint: string, data: unknown): Promise<T> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-        return response.json();
-    }
-
-    static async delete(endpoint: string): Promise<void> {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-    }
+    return fallback;
 }

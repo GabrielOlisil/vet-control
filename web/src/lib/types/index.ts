@@ -12,7 +12,7 @@ export type AnimalCreateDto = Schemas['AnimalCreateDto'];
 export type AnimalDetailResponseDto = Schemas['AnimalDetailResponseDto'];
 export type AnimalPatchDto = Schemas['AnimalPatchDto'];
 export type AnimalShortResponseDto = Schemas['AnimalShortResponseDto'];
-export type AnimaReadResponseDto = Schemas['AnimaReadResponseDto'];
+export type AnimalReadResponseDto = Schemas['AnimalReadResponseDto'];
 export type AnimalProntuarioResponseDto = Schemas['AnimalProntuarioResponseDto'];
 
 // ── Identificador ────────────────────────────────────────────────────────────

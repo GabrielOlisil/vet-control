@@ -12,12 +12,16 @@ public static class EspecieMapper
         NomeCientifico = especie.NomeCientifico,
         PortePadrao = especie.PortePadrao,
         IconeKey = especie.IconeKey,
+        RaceCount = (uint)especie.Racas.Count,
     };
 
     public static EspecieShortResponseDto MapToShort(Especie especie) => new()
     {
         Id = especie.Id,
-        FullName = string.Concat(especie.Nome, "  |  ", especie.NomeCientifico),
+        Nome = especie.Nome,
+        FullName = string.IsNullOrWhiteSpace(especie.NomeCientifico)
+            ? especie.Nome
+            : string.Concat(especie.Nome, "  |  ", especie.NomeCientifico),
     };
 
     public static EspecieDetailResponseDto MapToResponse(Especie especie) => new()
@@ -27,6 +31,11 @@ public static class EspecieMapper
         NomeCientifico = especie.NomeCientifico,
         PortePadrao = especie.PortePadrao,
         IconeKey = especie.IconeKey,
-        RaceCount = (uint)especie.Racas.Count
+        RaceCount = (uint)especie.Racas.Count,
+        Racas = especie.Racas.Select(RacaMapper.MapToRead).ToList(),
+        VacinasRestritas = especie.VacinasRestritas.Select(VacinaMapper.MapToRead).ToList(),
+        CreationDateTime = especie.CreationDateTime,
+        LastModificationDateTime = especie.LastModificationDateTime
     };
 }
+

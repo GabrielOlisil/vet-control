@@ -10,12 +10,15 @@ public static class RacaMapper
     {
         Id = raca.Id,
         Nome = raca.Nome,
-        Especie = new EspecieShortResponseDto
-        {
-            Id = raca.EspecieId,
-            FullName = string.Concat([.. raca.Especie?.Nome ?? string.Empty,
-            " ", raca.Especie?.NomeCientifico ?? string.Empty])
-        },
+        EspecieId = raca.EspecieId,
+        Especie = raca.Especie != null
+            ? EspecieMapper.MapToShort(raca.Especie)
+            : new EspecieShortResponseDto
+            {
+                Id = raca.EspecieId,
+                Nome = string.Empty,
+                FullName = string.Empty
+            },
     };
 
     public static RacaShortResponseDto MapToShort(Raca raca) => new()
@@ -23,15 +26,15 @@ public static class RacaMapper
         Id = raca.Id,
         Nome = raca.Nome,
     };
+
     public static RacaDetailResponseDto MapToResponse(Raca raca) => new()
     {
         Id = raca.Id,
         Nome = raca.Nome,
-        Especie = new EspecieShortResponseDto()
-        {
-            Id = raca.EspecieId,
-            FullName = string.Concat([.. raca.Especie?.Nome ?? string.Empty,
-            " ", raca.Especie?.NomeCientifico ?? string.Empty])
-        },
+        EspecieId = raca.EspecieId,
+        Especie = raca.Especie != null ? EspecieMapper.MapToHead(raca.Especie) : null,
+        AnimalCount = (uint)raca.Animais.Count,
+        CreationDateTime = raca.CreationDateTime,
+        LastModificationDateTime = raca.LastModificationDateTime
     };
 }

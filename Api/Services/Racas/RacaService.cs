@@ -38,10 +38,15 @@ public sealed class RacaService(ApiContext context) : IRacaService
             raca.Nome = dto.Nome;
         }
 
+        if (dto.EspecieId.HasValue)
+        {
+            raca.EspecieId = dto.EspecieId.Value;
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 
         return raca;
+
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

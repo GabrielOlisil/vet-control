@@ -15,6 +15,10 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
+                    Sexo?: components["schemas"]["SexoAnimal"];
+                    Origem?: components["schemas"]["OrigemAnimal"];
+                    Ativo?: boolean;
+                    LoteOuPasto?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                     page?: number | string;
@@ -31,9 +35,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["AnimaReadResponseDto"][];
-                        "application/json": components["schemas"]["AnimaReadResponseDto"][];
-                        "text/json": components["schemas"]["AnimaReadResponseDto"][];
+                        "text/plain": components["schemas"]["AnimalReadResponseDto"][];
+                        "application/json": components["schemas"]["AnimalReadResponseDto"][];
+                        "text/json": components["schemas"]["AnimalReadResponseDto"][];
                     };
                 };
             };
@@ -124,6 +128,10 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
+                    Sexo?: components["schemas"]["SexoAnimal"];
+                    Origem?: components["schemas"]["OrigemAnimal"];
+                    Ativo?: boolean;
+                    LoteOuPasto?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                 };
@@ -1043,6 +1051,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    EspecieId?: string;
+                    ObrigatorioOrgaoSanitario?: boolean;
                     ReaplicarEmXDiasMin?: number | string;
                     ReaplicarEmXDiasMax?: number | string;
                 };
@@ -1278,6 +1288,7 @@ export interface components {
             sexo?: components["schemas"]["SexoAnimal"];
             origem?: components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
+            ativo?: boolean;
             identificadores: components["schemas"]["IdentificadorCreateDto"][];
         };
         AnimalDetailResponseDto: {
@@ -1290,9 +1301,14 @@ export interface components {
             sexo?: components["schemas"]["SexoAnimal"];
             origem?: components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
-            raca?: null | components["schemas"]["RacaDetailResponseDto"];
+            ativo?: boolean;
+            raca?: null | components["schemas"]["RacaReadResponseDto"];
             identificadores?: components["schemas"]["IdentificadorResponseDto"][];
             identificadorPrincipal?: null | components["schemas"]["IdentificadorResponseDto"];
+            /** Format: date-time */
+            creationDateTime?: string;
+            /** Format: date-time */
+            lastModificationDateTime?: null | string;
         };
         AnimalPatchDto: {
             name?: null | string;
@@ -1304,24 +1320,31 @@ export interface components {
             sexo?: null | components["schemas"]["SexoAnimal"];
             origem?: null | components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
+            ativo?: null | boolean;
             identificadores?: null | components["schemas"]["IdentificadorCreateDto"][];
         };
         AnimalProntuarioResponseDto: {
             animal: components["schemas"]["AnimalDetailResponseDto"];
             aplicacoesVacina?: components["schemas"]["AplicacaoVacinaDetailResponseDto"][];
         };
+        AnimalReadResponseDto: {
+            /** Format: uuid */
+            id?: string;
+            name?: null | string;
+            sexo?: components["schemas"]["SexoAnimal"];
+            origem?: components["schemas"]["OrigemAnimal"];
+            /** Format: date */
+            dataNascimento?: string;
+            loteOuPasto?: null | string;
+            ativo?: boolean;
+            raca?: null | components["schemas"]["RacaShortResponseDto"];
+            identificadorPrincipal?: null | components["schemas"]["IdentificadorResponseDto"];
+        };
         AnimalShortResponseDto: {
             /** Format: uuid */
             id?: string;
             name?: null | string;
-        };
-        AnimaReadResponseDto: {
-            /** Format: uuid */
-            id?: string;
-            name?: null | string;
-            raca?: null | components["schemas"]["RacaShortResponseDto"];
-            /** Format: date */
-            dataNascimento?: string;
+            identificadorPrincipal?: null | string;
         };
         AplicacaoVacinaCreateDto: {
             /** Format: uuid */
@@ -1333,12 +1356,11 @@ export interface components {
             /** Format: date */
             dataProximaDose?: null | string;
             numeroLote: string;
-            laboratorioFabricante?: null | string;
-            /** Format: double */
-            doseMl?: null | number | string;
-            veterinarioResponsavel: string;
-            aplicador?: null | string;
+            doseMl?: unknown;
             observacoes?: null | string;
+            veterinarioResponsavel?: null | string;
+            aplicador?: null | string;
+            laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaDetailResponseDto: {
             /** Format: uuid */
@@ -1347,46 +1369,60 @@ export interface components {
             animalId?: string;
             /** Format: uuid */
             vacinaId?: string;
-            vacina?: null | components["schemas"]["VacinaDetailResponseDto"];
+            animal?: null | components["schemas"]["AnimalReadResponseDto"];
+            vacina?: null | components["schemas"]["VacinaReadResponseDto"];
             /** Format: date */
             dataAplicacao?: string;
             /** Format: date */
             dataProximaDose?: string;
             numeroLote: string;
-            laboratorioFabricante?: null | string;
-            /** Format: double */
-            doseMl?: null | number | string;
-            veterinarioResponsavel: string;
-            aplicador?: null | string;
+            doseMl?: null | string;
             observacoes?: null | string;
+            veterinarioResponsavel?: null | string;
+            aplicador?: null | string;
+            laboratorioFabricante?: null | string;
             statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
             temComprovanteAnexo?: boolean;
+            /** Format: date-time */
+            creationDateTime?: string;
+            /** Format: date-time */
+            lastModificationDateTime?: null | string;
             /** Format: date-time */
             criadoEm?: string;
             /** Format: date-time */
             atualizadoEm?: null | string;
         };
         AplicacaoVacinaPatchDto: {
+            /** Format: uuid */
+            animalId?: null | string;
+            /** Format: uuid */
+            vacinaId?: null | string;
             /** Format: date */
             dataAplicacao?: null | string;
             /** Format: date */
             dataProximaDose?: null | string;
             numeroLote?: null | string;
-            laboratorioFabricante?: null | string;
-            /** Format: double */
-            doseMl?: null | number | string;
+            doseMl?: unknown;
+            observacoes?: null | string;
             veterinarioResponsavel?: null | string;
             aplicador?: null | string;
-            observacoes?: null | string;
+            laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaReadResponseDto: {
             /** Format: uuid */
             id?: string;
-            vacina: components["schemas"]["VacinaShortResponseDto"];
             /** Format: uuid */
             animalId?: string;
+            /** Format: uuid */
+            vacinaId?: string;
+            animal?: null | components["schemas"]["AnimalShortResponseDto"];
+            vacina?: null | components["schemas"]["VacinaShortResponseDto"];
             /** Format: date */
             dataAplicacao?: string;
+            /** Format: date */
+            dataProximaDose?: string;
+            numeroLote?: string;
+            doseMl?: null | string;
         };
         EspecieCreateDto: {
             nome: string;
@@ -1403,6 +1439,12 @@ export interface components {
             iconeKey?: string;
             /** Format: uint32 */
             raceCount?: number | string;
+            racas?: components["schemas"]["RacaReadResponseDto"][];
+            vacinasRestritas?: components["schemas"]["VacinaReadResponseDto"][];
+            /** Format: date-time */
+            creationDateTime?: string;
+            /** Format: date-time */
+            lastModificationDateTime?: null | string;
         };
         EspeciePatchDto: {
             nome?: null | string;
@@ -1417,11 +1459,14 @@ export interface components {
             nomeCientifico?: null | string;
             portePadrao?: components["schemas"]["PorteAnimal"];
             iconeKey?: string;
+            /** Format: uint32 */
+            raceCount?: number | string;
         };
         EspecieShortResponseDto: {
             /** Format: uuid */
             id?: string;
-            fullName: string;
+            nome: string;
+            fullName?: string;
         };
         IdentificadorCreateDto: {
             tipo: components["schemas"]["TipoIdentificador"];
@@ -1449,17 +1494,27 @@ export interface components {
             /** Format: uuid */
             id?: string;
             nome: string;
-            especie: components["schemas"]["EspecieShortResponseDto"];
+            /** Format: uuid */
+            especieId?: string;
+            especie?: null | components["schemas"]["EspecieReadResponseDto"];
             /** Format: uint32 */
             animalCount?: number | string;
+            /** Format: date-time */
+            creationDateTime?: string;
+            /** Format: date-time */
+            lastModificationDateTime?: null | string;
         };
         RacaPatchDto: {
             nome?: null | string;
+            /** Format: uuid */
+            especieId?: null | string;
         };
         RacaReadResponseDto: {
             /** Format: uuid */
             id?: string;
             nome: string;
+            /** Format: uuid */
+            especieId?: string;
             especie: components["schemas"]["EspecieShortResponseDto"];
         };
         RacaShortResponseDto: {
@@ -1472,34 +1527,59 @@ export interface components {
         TipoIdentificador: number;
         VacinaCreateDto: {
             name: string;
+            descricao?: null | string;
             /** Format: uint32 */
             reaplicarEmXDias?: number | string;
+            obrigatorioOrgaoSanitario?: boolean;
+            /** Format: uuid */
+            especieId?: null | string;
         };
         VacinaDetailResponseDto: {
             /** Format: uuid */
             id?: string;
             name: string;
+            descricao?: null | string;
             /** Format: uint32 */
             reaplicarEmXDias?: number | string;
+            obrigatorioOrgaoSanitario?: boolean;
+            /** Format: uuid */
+            especieId?: null | string;
+            especie?: null | components["schemas"]["EspecieReadResponseDto"];
+            /** Format: uint32 */
+            totalAplicacoes?: number | string;
+            /** Format: date-time */
+            creationDateTime?: string;
+            /** Format: date-time */
+            lastModificationDateTime?: null | string;
             /** Format: date-time */
             criadoEm?: string;
         };
         VacinaPatchDto: {
             name?: null | string;
+            descricao?: null | string;
             /** Format: uint32 */
             reaplicarEmXDias?: null | number | string;
+            obrigatorioOrgaoSanitario?: null | boolean;
+            /** Format: uuid */
+            especieId?: null | string;
         };
         VacinaReadResponseDto: {
             /** Format: uuid */
             id?: string;
             name: string;
+            descricao?: null | string;
             /** Format: uint32 */
             reaplicarEmXDias?: number | string;
+            obrigatorioOrgaoSanitario?: boolean;
+            /** Format: uuid */
+            especieId?: null | string;
+            especie?: null | components["schemas"]["EspecieShortResponseDto"];
         };
         VacinaShortResponseDto: {
             /** Format: uuid */
             id?: string;
             name: string;
+            descricao?: null | string;
         };
     };
     responses: never;

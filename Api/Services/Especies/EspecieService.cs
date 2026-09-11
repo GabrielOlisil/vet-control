@@ -11,6 +11,7 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
     public Task<List<Especie>> GetAllAsync(int? page, CancellationToken cancellationToken = default)
     {
         var query = context.Especies
+            .Include(e => e.Racas)
             .AsNoTracking();
 
         if (!page.HasValue)
@@ -27,8 +28,10 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
         return context.Especies
             .AsNoTracking()
             .Include(e => e.Racas)
+            .Include(e => e.VacinasRestritas)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
+
 
     public async Task<Especie> CreateAsync(EspecieCreateDto dto, CancellationToken cancellationToken = default)
     {

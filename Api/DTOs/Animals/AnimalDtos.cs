@@ -28,6 +28,8 @@ public sealed class AnimalCreateDto
 
     public string? LoteOuPasto { get; set; }
 
+    public bool Ativo { get; set; } = true;
+
     [Required]
     [MinLength(1)]
     public required List<IdentificadorCreateDto> Identificadores { get; set; }
@@ -49,6 +51,8 @@ public sealed class AnimalPatchDto
 
     public string? LoteOuPasto { get; set; }
 
+    public bool? Ativo { get; set; }
+
     public List<IdentificadorCreateDto>? Identificadores { get; set; }
 }
 
@@ -57,17 +61,34 @@ public sealed class AnimalShortResponseDto
     public Guid Id { get; set; }
 
     public string? Name { get; set; }
+
+    public string? IdentificadorPrincipal { get; set; }
 }
 
-public sealed class AnimaReadResponseDto
+public class AnimalReadResponseDto
 {
     public Guid Id { get; set; }
 
     public string? Name { get; set; }
 
-    public RacaShortResponseDto? Raca { get; set; }
+    public SexoAnimal Sexo { get; set; }
+
+    public OrigemAnimal Origem { get; set; }
 
     public DateOnly DataNascimento { get; set; }
+
+    public string? LoteOuPasto { get; set; }
+
+    public bool Ativo { get; set; } = true;
+
+    public RacaShortResponseDto? Raca { get; set; }
+
+    public IdentificadorResponseDto? IdentificadorPrincipal { get; set; }
+}
+
+// Alias de compatibilidade com versões anteriores
+public sealed class AnimaReadResponseDto : AnimalReadResponseDto
+{
 }
 
 public sealed class AnimalDetailResponseDto
@@ -86,11 +107,17 @@ public sealed class AnimalDetailResponseDto
 
     public string? LoteOuPasto { get; set; }
 
-    public RacaDetailResponseDto? Raca { get; set; }
+    public bool Ativo { get; set; } = true;
+
+    public RacaReadResponseDto? Raca { get; set; }
 
     public List<IdentificadorResponseDto> Identificadores { get; set; } = [];
 
     public IdentificadorResponseDto? IdentificadorPrincipal { get; set; }
+
+    public DateTimeOffset CreationDateTime { get; set; }
+
+    public DateTimeOffset? LastModificationDateTime { get; set; }
 }
 
 public sealed class AnimalProntuarioResponseDto
@@ -98,3 +125,4 @@ public sealed class AnimalProntuarioResponseDto
     public required AnimalDetailResponseDto Animal { get; set; }
     public List<AplicacaoVacinaDetailResponseDto> AplicacoesVacina { get; set; } = [];
 }
+
