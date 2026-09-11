@@ -1,4 +1,3 @@
-using Api.DTOs.Vacinas;
 using Api.DTOs;
 using Api.Models;
 

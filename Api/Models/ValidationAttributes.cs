@@ -19,7 +19,8 @@ public sealed class PastOrPresentDateAttribute : ValidationAttribute
 {
     public override bool IsValid(object? value)
     {
-        return value is DateOnly date && date != default && date <= DateOnly.FromDateTime(DateTime.Today);
+        var maxDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        return value is DateOnly date && date != default && date <= maxDate;
     }
 
     public override string FormatErrorMessage(string name)

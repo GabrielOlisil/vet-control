@@ -1,9 +1,10 @@
 import { apiClient, extractErrorMessage, API_BASE_URL } from './client';
-import type {
-    AplicacaoVacinaReadResponseDto,
-    AplicacaoVacinaDetailResponseDto,
-    AplicacaoVacinaCreateDto,
-    AplicacaoVacinaPatchDto,
+import {
+    hoje,
+    type AplicacaoVacinaReadResponseDto,
+    type AplicacaoVacinaDetailResponseDto,
+    type AplicacaoVacinaCreateDto,
+    type AplicacaoVacinaPatchDto,
 } from '../types';
 
 export interface AplicacaoVacinaListParams {
@@ -70,8 +71,22 @@ export const aplicacaoVacinaService = {
     },
 
     async create(dto: AplicacaoVacinaCreateDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        const payload: AplicacaoVacinaCreateDto = {
+            ...dto,
+            animalId: dto.animalId,
+            vacinaId: dto.vacinaId,
+            numeroLote: dto.numeroLote?.trim() ?? '',
+            dataAplicacao: dto.dataAplicacao || hoje(),
+            dataProximaDose: dto.dataProximaDose?.trim() ? dto.dataProximaDose.trim() : undefined,
+            doseMl: dto.doseMl !== undefined && dto.doseMl !== null && String(dto.doseMl).trim() !== '' ? String(dto.doseMl).trim() : undefined,
+            veterinarioResponsavel: dto.veterinarioResponsavel?.trim() || undefined,
+            aplicador: dto.aplicador?.trim() || undefined,
+            laboratorioFabricante: dto.laboratorioFabricante?.trim() || undefined,
+            observacoes: dto.observacoes?.trim() || undefined,
+        };
+
         const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina', {
-            body: dto,
+            body: payload,
         });
         if (error || !data) {
             throw new Error(extractErrorMessage(error, 'Erro ao registrar vacinação'));
@@ -80,11 +95,22 @@ export const aplicacaoVacinaService = {
     },
 
     async patch(id: string, dto: AplicacaoVacinaPatchDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        const payload: AplicacaoVacinaPatchDto = {
+            ...dto,
+            numeroLote: dto.numeroLote !== undefined ? (dto.numeroLote?.trim() || null) : undefined,
+            dataProximaDose: dto.dataProximaDose !== undefined ? (dto.dataProximaDose?.trim() || null) : undefined,
+            doseMl: dto.doseMl !== undefined && dto.doseMl !== null && String(dto.doseMl).trim() !== '' ? String(dto.doseMl).trim() : undefined,
+            veterinarioResponsavel: dto.veterinarioResponsavel !== undefined ? (dto.veterinarioResponsavel?.trim() || null) : undefined,
+            aplicador: dto.aplicador !== undefined ? (dto.aplicador?.trim() || null) : undefined,
+            laboratorioFabricante: dto.laboratorioFabricante !== undefined ? (dto.laboratorioFabricante?.trim() || null) : undefined,
+            observacoes: dto.observacoes !== undefined ? (dto.observacoes?.trim() || null) : undefined,
+        };
+
         const { data, error } = await apiClient.PATCH('/api/v1/aplicacoes-vacina/{id}', {
             params: {
                 path: { id },
             },
-            body: dto,
+            body: payload,
         });
         if (error || !data) {
             throw new Error(extractErrorMessage(error, 'Erro ao atualizar aplicação'));

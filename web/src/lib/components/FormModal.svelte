@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Snippet } from 'svelte';
+    import type { Snippet } from "svelte";
 
     let {
         isOpen = false,
@@ -29,9 +29,21 @@
 </script>
 
 {#if isOpen}
-    <dialog class="modal modal-open">
-        <div class="modal-box bg-base-100 text-base-content max-w-2xl shadow-2xl p-0 overflow-hidden">
-            <div class="px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+    <dialog
+        class="modal modal-open"
+        open
+        onclose={handleClose}
+        oncancel={(e) => {
+            e.preventDefault();
+            handleClose();
+        }}
+    >
+        <div
+            class="modal-box bg-base-100 text-base-content max-w-2xl shadow-2xl p-0 overflow-hidden"
+        >
+            <div
+                class="px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-200/50"
+            >
                 <h3 class="font-bold text-lg">{title}</h3>
                 <button
                     type="button"
@@ -52,7 +64,9 @@
                 <div class="p-6 max-h-[75vh] overflow-y-auto space-y-2">
                     {@render children?.()}
                 </div>
-                <div class="px-6 py-4 bg-base-200/50 border-t border-base-200 flex justify-end gap-2">
+                <div
+                    class="px-6 py-4 bg-base-200/50 border-t border-base-200 flex justify-end gap-2"
+                >
                     <button
                         type="button"
                         onclick={handleClose}
@@ -67,7 +81,8 @@
                         class="btn btn-primary"
                     >
                         {#if isLoading}
-                            <span class="loading loading-spinner loading-sm"></span>
+                            <span class="loading loading-spinner loading-sm"
+                            ></span>
                             Salvando...
                         {:else}
                             {submitText}

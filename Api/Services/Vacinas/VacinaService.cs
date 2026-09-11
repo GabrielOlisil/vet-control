@@ -1,5 +1,4 @@
 using Api.Database;
-using Api.DTOs.Vacinas;
 using Api.DTOs;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;

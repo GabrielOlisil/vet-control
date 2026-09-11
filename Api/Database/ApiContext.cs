@@ -47,12 +47,12 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
 
         foreach (var entity in entitiesCreated)
         {
-            entity.CreationDateTime = DateTimeOffset.Now;
+            entity.CreationDateTime = DateTimeOffset.UtcNow;
         }
 
         foreach (var entity in entitiesModified)
         {
-            entity.LastModificationDateTime = DateTimeOffset.Now;
+            entity.LastModificationDateTime = DateTimeOffset.UtcNow;
         }
     }
 }

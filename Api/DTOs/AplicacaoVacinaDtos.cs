@@ -51,6 +51,7 @@ public sealed record AplicacaoVacinaCreateDto
     [Required]
     public required string NumeroLote { get; init; }
 
+    [JsonConverter(typeof(StringOrNumberConverter))]
     public string? DoseMl { get; init; }
 
     public string? Observacoes { get; init; }
@@ -76,6 +77,7 @@ public sealed record AplicacaoVacinaPatchDto
 
     public string? NumeroLote { get; init; }
 
+    [JsonConverter(typeof(StringOrNumberConverter))]
     public string? DoseMl { get; init; }
 
     public string? Observacoes { get; init; }
@@ -118,6 +120,7 @@ public sealed record AplicacaoVacinaReadResponseDto
 
     public string NumeroLote { get; init; } = string.Empty;
 
+    [JsonConverter(typeof(StringOrNumberConverter))]
     public string? DoseMl { get; init; }
 }
 
@@ -135,12 +138,11 @@ public sealed record AplicacaoVacinaDetailResponseDto
 
     public DateOnly DataAplicacao { get; init; }
 
-    public DateOnly? DataProximaDose =>
-        Vacina is not null && Vacina.ReaplicarEmXDias > 0
-            ? DataAplicacao.AddDays(Vacina.ReaplicarEmXDias)
-            : null;
+    public DateOnly DataProximaDose { get; init; }
+
     public required string NumeroLote { get; init; }
 
+    [JsonConverter(typeof(StringOrNumberConverter))]
     public string? DoseMl { get; init; }
 
     public string? Observacoes { get; init; }

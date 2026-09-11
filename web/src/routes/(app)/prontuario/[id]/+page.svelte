@@ -44,13 +44,13 @@
         animalId: animalId,
         vacinaId: "",
         dataAplicacao: hoje(),
-        dataProximaDose: undefined,
+        dataProximaDose: "",
         numeroLote: "",
-        doseMl: undefined,
+        doseMl: "",
         veterinarioResponsavel: "",
-        aplicador: undefined,
-        laboratorioFabricante: undefined,
-        observacoes: undefined,
+        aplicador: "",
+        laboratorioFabricante: "",
+        observacoes: "",
     });
 
     function openVacinarModal() {
@@ -58,13 +58,13 @@
             animalId: animalId,
             vacinaId: "",
             dataAplicacao: hoje(),
-            dataProximaDose: undefined,
+            dataProximaDose: "",
             numeroLote: "",
-            doseMl: undefined,
+            doseMl: "",
             veterinarioResponsavel: "",
-            aplicador: undefined,
-            laboratorioFabricante: undefined,
-            observacoes: undefined,
+            aplicador: "",
+            laboratorioFabricante: "",
+            observacoes: "",
         };
         vacinarError = "";
         showVacinarModal = true;
@@ -94,6 +94,49 @@
                 e instanceof Error ? e.message : "Erro ao registrar vacinação.";
         } finally {
             isSubmittingVacina = false;
+        }
+    }
+
+    // ── Modal: Nova Vacina no Catálogo ────────────────────────────────────────
+    let showNovaVacinaModal = $state(false);
+    let isSubmittingNovaVacina = $state(false);
+    let novaVacinaError = $state("");
+    let novaVacinaForm = $state<{ name: string; reaplicarEmXDias: number }>({
+        name: "",
+        reaplicarEmXDias: 365,
+    });
+
+    async function submitNovaVacina() {
+        novaVacinaError = "";
+        if (!novaVacinaForm.name.trim()) {
+            novaVacinaError = "Informe o nome da vacina.";
+            return;
+        }
+        if (
+            !novaVacinaForm.reaplicarEmXDias ||
+            novaVacinaForm.reaplicarEmXDias < 1
+        ) {
+            novaVacinaError =
+                "Informe uma periodicidade válida (mínimo 1 dia).";
+            return;
+        }
+        isSubmittingNovaVacina = true;
+        try {
+            const nova = await vacinaService.create({
+                name: novaVacinaForm.name.trim(),
+                reaplicarEmXDias: Number(novaVacinaForm.reaplicarEmXDias),
+            });
+            showNovaVacinaModal = false;
+            novaVacinaForm = { name: "", reaplicarEmXDias: 365 };
+            vacinasCatalogo = await vacinaService.getList();
+            if (nova?.id) {
+                vacinarForm.vacinaId = nova.id;
+            }
+        } catch (e: unknown) {
+            novaVacinaError =
+                e instanceof Error ? e.message : "Erro ao cadastrar vacina.";
+        } finally {
+            isSubmittingNovaVacina = false;
         }
     }
 
@@ -456,7 +499,20 @@
     {/if}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs">Vacina *</label>
+            <div class="flex items-center justify-between">
+                <label class="label label-text text-xs">Vacina *</label>
+                <button
+                    type="button"
+                    class="btn btn-ghost btn-xs text-primary"
+                    onclick={() => {
+                        novaVacinaForm = { name: "", reaplicarEmXDias: 365 };
+                        novaVacinaError = "";
+                        showNovaVacinaModal = true;
+                    }}
+                >
+                    + Nova vacina no catálogo
+                </button>
+            </div>
             <select
                 class="select select-bordered w-full"
                 bind:value={vacinarForm.vacinaId}
@@ -466,6 +522,27 @@
                     <option value={v.id}>{v.name}</option>
                 {/each}
             </select>
+            {#if vacinasCatalogo.length === 0}
+                <div
+                    class="alert alert-warning text-xs mt-2 py-2 flex items-center justify-between"
+                >
+                    <span>Nenhuma vacina cadastrada no catálogo.</span>
+                    <button
+                        type="button"
+                        class="btn btn-xs btn-outline"
+                        onclick={() => {
+                            novaVacinaForm = {
+                                name: "",
+                                reaplicarEmXDias: 365,
+                            };
+                            novaVacinaError = "";
+                            showNovaVacinaModal = true;
+                        }}
+                    >
+                        Cadastrar Vacina
+                    </button>
+                </div>
+            {/if}
         </div>
         <div>
             <Input
@@ -521,7 +598,7 @@
         <div>
             <Input
                 label="Laboratório Fabricante"
-                placeholder="MSD Saúde Animal…"
+                placeholder="Ex: Zoetis, MSD…"
                 bind:value={vacinarForm.laboratorioFabricante}
             />
         </div>
@@ -533,6 +610,87 @@
                 bind:value={vacinarForm.observacoes}
             ></textarea>
         </div>
+    </div>
+</FormModal>
+
+<!-- ── Modal: Nova Vacina no Catálogo ──────────────────────────────────────── -->
+<FormModal
+    isOpen={showNovaVacinaModal}
+    title="Nova Vacina no Catálogo"
+    isLoading={isSubmittingNovaVacina}
+    submitText="Salvar Vacina"
+    onClose={() => {
+        showNovaVacinaModal = false;
+        novaVacinaError = "";
+    }}
+    onSubmit={submitNovaVacina}
+>
+    {#if novaVacinaError}
+        <div class="alert alert-error text-sm py-2">{novaVacinaError}</div>
+    {/if}
+    <Input
+        label="Nome da Vacina"
+        placeholder="Ex: Febre Aftosa, Raiva, V10…"
+        bind:value={novaVacinaForm.name}
+        required
+    />
+    <div>
+        <label
+            for="vacinaDiasProntuario"
+            class="label label-text text-xs font-medium block"
+            >Reaplicar em (dias) *</label
+        >
+        <input
+            id="vacinaDiasProntuario"
+            type="number"
+            min="1"
+            class="input input-bordered w-full"
+            placeholder="365"
+            bind:value={novaVacinaForm.reaplicarEmXDias}
+            required
+        />
+        <div class="flex items-center gap-1.5 flex-wrap pt-1">
+            <span class="text-xs text-base-content/50">Atalhos:</span>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    novaVacinaForm.reaplicarEmXDias = 365;
+                }}
+            >
+                365d (Anual)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    novaVacinaForm.reaplicarEmXDias = 180;
+                }}
+            >
+                180d (Semestral)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    novaVacinaForm.reaplicarEmXDias = 90;
+                }}
+            >
+                90d (Trimestral)
+            </button>
+            <button
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                onclick={() => {
+                    novaVacinaForm.reaplicarEmXDias = 30;
+                }}
+            >
+                30d (Mensal)
+            </button>
+        </div>
+        <p class="text-xs text-base-content/50 mt-1">
+            Ex: 365 = Anual | 180 = Semestral | 30 = Mensal
+        </p>
     </div>
 </FormModal>
 

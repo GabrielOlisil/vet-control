@@ -69,6 +69,10 @@ export const animalService = {
             params: {
                 query: {
                     RacaId: params?.RacaId,
+                    Sexo: params?.Sexo,
+                    Origem: params?.Origem,
+                    Ativo: params?.Ativo,
+                    LoteOuPasto: params?.LoteOuPasto,
                     DataNascimentoFrom: params?.DataNascimentoFrom,
                     DataNascimentoTo: params?.DataNascimentoTo,
                 },
@@ -105,8 +109,23 @@ export const animalService = {
     },
 
     async create(dto: AnimalCreateDto): Promise<AnimalDetailResponseDto> {
+        const idents = (dto.identificadores || [])
+            .filter((i) => i.valor && i.valor.trim() !== '')
+            .map((i, idx, arr) => ({
+                tipo: i.tipo ?? 0,
+                valor: i.valor.trim(),
+                ehPrincipal: !arr.some((x) => x.ehPrincipal) ? idx === 0 : Boolean(i.ehPrincipal),
+            }));
+        const payload: AnimalCreateDto = {
+            ...dto,
+            name: dto.name?.trim() || undefined,
+            racaId: dto.racaId || undefined,
+            loteOuPasto: dto.loteOuPasto?.trim() || undefined,
+            identificadores: idents,
+        };
+
         const { data, error } = await apiClient.POST('/api/v1/animais', {
-            body: dto,
+            body: payload,
         });
         if (error || !data) {
             throw new Error(extractErrorMessage(error, 'Erro ao cadastrar animal'));
@@ -115,11 +134,28 @@ export const animalService = {
     },
 
     async patch(id: string, dto: AnimalPatchDto): Promise<AnimalDetailResponseDto> {
+        const idents = dto.identificadores
+            ? dto.identificadores
+                .filter((i) => i.valor && i.valor.trim() !== '')
+                .map((i, idx, arr) => ({
+                    tipo: i.tipo ?? 0,
+                    valor: i.valor.trim(),
+                    ehPrincipal: !arr.some((x) => x.ehPrincipal) ? idx === 0 : Boolean(i.ehPrincipal),
+                }))
+            : undefined;
+        const payload: AnimalPatchDto = {
+            ...dto,
+            name: dto.name !== undefined ? (dto.name?.trim() || null) : undefined,
+            racaId: dto.racaId !== undefined ? (dto.racaId || null) : undefined,
+            loteOuPasto: dto.loteOuPasto !== undefined ? (dto.loteOuPasto?.trim() || null) : undefined,
+            identificadores: idents,
+        };
+
         const { data, error } = await apiClient.PATCH('/api/v1/animais/{id}', {
             params: {
                 path: { id },
             },
-            body: dto,
+            body: payload,
         });
         if (error || !data) {
             throw new Error(extractErrorMessage(error, 'Erro ao atualizar animal'));

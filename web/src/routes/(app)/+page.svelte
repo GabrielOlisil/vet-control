@@ -167,13 +167,16 @@
         }
         isSubmittingVacina = true;
         try {
-            await vacinaService.create({
+            const nova = await vacinaService.create({
                 name,
                 reaplicarEmXDias: dias,
             });
             showVacinaModal = false;
             vacinaForm = { name: "", reaplicarEmXDias: 365 };
             await loadAll();
+            if (nova?.id) {
+                aplicacaoForm.vacinaId = nova.id;
+            }
         } catch (e: unknown) {
             vacinaFormError =
                 e instanceof Error ? e.message : "Erro ao salvar vacina.";
@@ -256,7 +259,7 @@
                 animalService.getCount(),
                 aplicacaoVacinaService.getCount(),
                 vacinaService.getCount(),
-                animalService.getList({ page: 1 }),
+                animalService.getList(),
                 racaService.getList(),
                 vacinaService.getList(),
             ]);
@@ -515,8 +518,10 @@
                                         <div class="flex justify-end gap-1">
                                             <button
                                                 class="btn btn-xs btn-primary"
-                                                onclick={() =>
-                                                    openAplicacaoModal(animal)}
+                                                onclick={(e) => {
+                                                    e.stopPropagation();
+                                                    openAplicacaoModal(animal);
+                                                }}
                                             >
                                                 Vacinar
                                             </button>
@@ -801,7 +806,22 @@
         {/if}
 
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs font-medium">Vacina *</label>
+            <div class="flex items-center justify-between">
+                <label class="label label-text text-xs font-medium"
+                    >Vacina *</label
+                >
+                <button
+                    type="button"
+                    class="btn btn-ghost btn-xs text-primary"
+                    onclick={() => {
+                        vacinaForm = { name: "", reaplicarEmXDias: 365 };
+                        vacinaFormError = "";
+                        showVacinaModal = true;
+                    }}
+                >
+                    + Nova vacina no catálogo
+                </button>
+            </div>
             <select
                 class="select select-bordered w-full"
                 bind:value={aplicacaoForm.vacinaId}
@@ -811,6 +831,24 @@
                     <option value={v.id}>{v.name}</option>
                 {/each}
             </select>
+            {#if vacinasCatalogo.length === 0}
+                <div
+                    class="alert alert-warning text-xs mt-2 py-2 flex items-center justify-between"
+                >
+                    <span>Nenhuma vacina cadastrada no catálogo.</span>
+                    <button
+                        type="button"
+                        class="btn btn-xs btn-outline"
+                        onclick={() => {
+                            vacinaForm = { name: "", reaplicarEmXDias: 365 };
+                            vacinaFormError = "";
+                            showVacinaModal = true;
+                        }}
+                    >
+                        Cadastrar Vacina
+                    </button>
+                </div>
+            {/if}
         </div>
 
         <div>

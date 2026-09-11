@@ -97,6 +97,7 @@
             if (editingId) {
                 const patchDto: RacaPatchDto = {
                     nome: formNome.trim(),
+                    especieId: formEspecieId || undefined,
                 };
                 await racaService.patch(editingId, patchDto);
             } else {

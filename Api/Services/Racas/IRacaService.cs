@@ -1,4 +1,3 @@
-using Api.DTOs.Racas;
 using Api.DTOs;
 using Api.Models;
 

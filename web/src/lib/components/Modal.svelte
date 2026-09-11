@@ -27,8 +27,18 @@
 </script>
 
 {#if isOpen}
-    <dialog class="modal modal-open">
-        <div class="modal-box bg-base-100 text-base-content shadow-2xl max-w-md">
+    <dialog
+        class="modal modal-open"
+        open
+        onclose={onClose}
+        oncancel={(e) => {
+            e.preventDefault();
+            onClose();
+        }}
+    >
+        <div
+            class="modal-box bg-base-100 text-base-content shadow-2xl max-w-md"
+        >
             <h3 class="font-bold text-lg">{title}</h3>
             <p class="py-4 text-sm text-base-content/80">{message}</p>
             <div class="modal-action gap-2">
@@ -44,7 +54,9 @@
                     type="button"
                     onclick={handleConfirm}
                     disabled={isLoading}
-                    class="btn {isDangerous ? 'btn-error text-white' : 'btn-primary'}"
+                    class="btn {isDangerous
+                        ? 'btn-error text-white'
+                        : 'btn-primary'}"
                 >
                     {#if isLoading}
                         <span class="loading loading-spinner loading-sm"></span>
@@ -55,6 +67,11 @@
                 </button>
             </div>
         </div>
-        <button type="button" class="modal-backdrop bg-black/40 backdrop-blur-xs cursor-default" onclick={onClose} aria-label="Fechar"></button>
+        <button
+            type="button"
+            class="modal-backdrop bg-black/40 backdrop-blur-xs cursor-default"
+            onclick={onClose}
+            aria-label="Fechar"
+        ></button>
     </dialog>
 {/if}

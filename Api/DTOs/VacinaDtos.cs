@@ -52,7 +52,7 @@ public sealed record VacinaReadResponseDto
 
     public string? Descricao { get; init; }
 
-    public int ReaplicarEmXDias { get; init; }
+    public uint ReaplicarEmXDias { get; init; }
 
     public bool ObrigatorioOrgaoSanitario { get; init; }
 

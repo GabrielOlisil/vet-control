@@ -77,6 +77,10 @@ export function formatarPeriodo(dias?: number | string): string {
  * Retorna a data de hoje em formato YYYY-MM-DD.
  */
 export function hoje(): string {
-    return new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 

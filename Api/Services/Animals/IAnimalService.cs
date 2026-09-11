@@ -1,4 +1,3 @@
-using Api.DTOs.Animals;
 using Api.DTOs;
 using Api.Models;
 

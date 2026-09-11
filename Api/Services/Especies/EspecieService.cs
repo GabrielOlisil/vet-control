@@ -1,5 +1,4 @@
 using Api.Database;
-using Api.DTOs.Especies;
 using Api.DTOs;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;

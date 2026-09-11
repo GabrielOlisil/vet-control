@@ -1,6 +1,4 @@
 using Api.Database;
-using Api.DTOs.Animals;
-using Api.DTOs.AplicacoesVacina;
 using Api.DTOs;
 using Api.Mappers;
 using Api.Models;
@@ -48,11 +46,10 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         query = query.OrderBy(animal => animal.Name).ThenBy(animal => animal.CreationDateTime)
                     .ThenBy(animal => animal.Id);
 
-        if (!page.HasValue)
+        if (page.HasValue)
         {
-            page = 1;
+            query = query.Skip((page.Value - 1) * 10).Take(10);
         }
-        query = query.Skip((page.Value - 1) * 10).Take(10);
 
         return query.ToListAsync(cancellationToken);
     }

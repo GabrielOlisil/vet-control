@@ -1,5 +1,4 @@
-using Api.DTOs.Animals;
-using Api.DTOs.Racas;
+using Api.DTOs;
 using Api.Models;
 
 namespace Api.Mappers;
