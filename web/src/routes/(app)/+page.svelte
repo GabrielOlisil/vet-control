@@ -83,7 +83,7 @@
         name: "",
         dataNascimento: hoje(),
         dataNascimentoAproximada: false,
-        racaId: undefined,
+        racaId: "",
         sexo: 0,
         origem: 0,
         loteOuPasto: "",
@@ -134,55 +134,13 @@
             name: "",
             dataNascimento: hoje(),
             dataNascimentoAproximada: false,
-            racaId: undefined,
+            racaId: "",
             sexo: 0,
             origem: 0,
             loteOuPasto: "",
             identificadores: [{ tipo: 0, valor: "", ehPrincipal: true }],
         };
         animalFormError = "";
-    }
-
-    // ── Modal: Nova Vacina ────────────────────────────────────────────────────
-    let showVacinaModal = $state(false);
-    let isSubmittingVacina = $state(false);
-    let vacinaFormError = $state("");
-    let vacinaForm = $state<VacinaCreateDto>({
-        name: "",
-        reaplicarEmXDias: 365,
-    });
-
-    async function submitVacina() {
-        vacinaFormError = "";
-        const name = vacinaForm.name?.trim();
-        if (!name) {
-            vacinaFormError = "Nome da vacina é obrigatório.";
-            return;
-        }
-        const dias = Number(vacinaForm.reaplicarEmXDias);
-        if (!dias || dias < 1) {
-            vacinaFormError =
-                "Informe uma periodicidade válida (mínimo 1 dia).";
-            return;
-        }
-        isSubmittingVacina = true;
-        try {
-            const nova = await vacinaService.create({
-                name,
-                reaplicarEmXDias: dias,
-            });
-            showVacinaModal = false;
-            vacinaForm = { name: "", reaplicarEmXDias: 365 };
-            await loadAll();
-            if (nova?.id) {
-                aplicacaoForm.vacinaId = nova.id;
-            }
-        } catch (e: unknown) {
-            vacinaFormError =
-                e instanceof Error ? e.message : "Erro ao salvar vacina.";
-        } finally {
-            isSubmittingVacina = false;
-        }
     }
 
     // ── Modal: Vacinar Animal ─────────────────────────────────────────────────
@@ -194,13 +152,13 @@
         animalId: "",
         vacinaId: "",
         dataAplicacao: hoje(),
-        dataProximaDose: undefined,
+        dataProximaDose: "",
         numeroLote: "",
-        doseMl: undefined,
+        doseMl: "",
         veterinarioResponsavel: "",
-        aplicador: undefined,
-        laboratorioFabricante: undefined,
-        observacoes: undefined,
+        aplicador: "",
+        laboratorioFabricante: "",
+        observacoes: "",
     });
 
     function openAplicacaoModal(animal?: AnimalReadResponseDto) {
@@ -209,13 +167,13 @@
             animalId: animal?.id ?? "",
             vacinaId: "",
             dataAplicacao: hoje(),
-            dataProximaDose: undefined,
+            dataProximaDose: "",
             numeroLote: "",
-            doseMl: undefined,
+            doseMl: "",
             veterinarioResponsavel: "",
-            aplicador: undefined,
-            laboratorioFabricante: undefined,
-            observacoes: undefined,
+            aplicador: "",
+            laboratorioFabricante: "",
+            observacoes: "",
         };
         aplicacaoFormError = "";
         showAplicacaoModal = true;
@@ -325,16 +283,6 @@
                 <IconAdd width="16" height="16" />
                 Novo Paciente
             </button>
-            <button
-                class="btn btn-ghost btn-sm gap-1"
-                onclick={() => {
-                    vacinaForm = { name: "", reaplicarEmXDias: 365 };
-                    showVacinaModal = true;
-                }}
-            >
-                <IconAdd width="16" height="16" />
-                Nova Vacina
-            </button>
         </div>
     </div>
 
@@ -390,9 +338,6 @@
                 class="grow"
                 bind:value={searchTerm}
             />
-            {#if isSearching}
-                <span class="loading loading-spinner loading-xs"></span>
-            {/if}
         </label>
 
         {#if searchTerm.trim().length >= 2 && searchResults.length > 0}
@@ -681,87 +626,6 @@
     </button>
 </FormModal>
 
-<!-- ── Modal: Nova Vacina ────────────────────────────────────────────────── -->
-<FormModal
-    isOpen={showVacinaModal}
-    title="Nova Vacina no Catálogo"
-    isLoading={isSubmittingVacina}
-    submitText="Salvar Vacina"
-    onClose={() => {
-        showVacinaModal = false;
-        vacinaFormError = "";
-    }}
-    onSubmit={submitVacina}
->
-    {#if vacinaFormError}
-        <div class="alert alert-error text-sm py-2">{vacinaFormError}</div>
-    {/if}
-    <Input
-        label="Nome da Vacina"
-        placeholder="Ex: Febre Aftosa, Brucelose…"
-        bind:value={vacinaForm.name}
-        required
-    />
-    <div>
-        <label
-            for="vacinaDiasDashboard"
-            class="label label-text text-xs font-medium block"
-            >Reaplicar em (dias) *</label
-        >
-        <input
-            id="vacinaDiasDashboard"
-            type="number"
-            min="1"
-            class="input input-bordered w-full"
-            placeholder="365"
-            bind:value={vacinaForm.reaplicarEmXDias}
-            required
-        />
-        <div class="flex items-center gap-1.5 flex-wrap pt-1">
-            <span class="text-xs text-base-content/50">Atalhos:</span>
-            <button
-                type="button"
-                class="btn btn-xs btn-outline btn-primary"
-                onclick={() => {
-                    vacinaForm.reaplicarEmXDias = 365;
-                }}
-            >
-                365d (Anual)
-            </button>
-            <button
-                type="button"
-                class="btn btn-xs btn-outline btn-primary"
-                onclick={() => {
-                    vacinaForm.reaplicarEmXDias = 180;
-                }}
-            >
-                180d (Semestral)
-            </button>
-            <button
-                type="button"
-                class="btn btn-xs btn-outline btn-primary"
-                onclick={() => {
-                    vacinaForm.reaplicarEmXDias = 90;
-                }}
-            >
-                90d (Trimestral)
-            </button>
-            <button
-                type="button"
-                class="btn btn-xs btn-outline btn-primary"
-                onclick={() => {
-                    vacinaForm.reaplicarEmXDias = 30;
-                }}
-            >
-                30d (Mensal)
-            </button>
-        </div>
-        <p class="text-xs text-base-content/50 mt-1">
-            Ex: 365 = Anual | 180 = Semestral | 30 = Mensal
-        </p>
-    </div>
-</FormModal>
-
 <!-- ── Modal: Vacinar Animal ─────────────────────────────────────────────── -->
 <FormModal
     isOpen={showAplicacaoModal}
@@ -782,7 +646,7 @@
         {#if !aplicacaoPreAnimal}
             <div class="sm:col-span-2">
                 <label class="label label-text text-xs font-medium"
-                    >Animal *</label
+                    >Animal</label
                 >
                 <select
                     class="select select-bordered w-full"
@@ -791,8 +655,10 @@
                     <option value="">— Selecione o animal —</option>
                     {#each animais as a}
                         <option value={a.id}
-                            >{getAnimalName(a)} ({a.raca?.nome ??
-                                "Sem raça"})</option
+                            >{a.name != undefined
+                                ? a.name
+                                : a.identificadorPrincipal?.valor}
+                            ({a.raca?.nome ?? "Sem raça"})</option
                         >
                     {/each}
                 </select>
@@ -805,55 +671,9 @@
             </div>
         {/if}
 
-        <div class="sm:col-span-2">
-            <div class="flex items-center justify-between">
-                <label class="label label-text text-xs font-medium"
-                    >Vacina *</label
-                >
-                <button
-                    type="button"
-                    class="btn btn-ghost btn-xs text-primary"
-                    onclick={() => {
-                        vacinaForm = { name: "", reaplicarEmXDias: 365 };
-                        vacinaFormError = "";
-                        showVacinaModal = true;
-                    }}
-                >
-                    + Nova vacina no catálogo
-                </button>
-            </div>
-            <select
-                class="select select-bordered w-full"
-                bind:value={aplicacaoForm.vacinaId}
-            >
-                <option value="">— Selecione a vacina —</option>
-                {#each vacinasCatalogo as v}
-                    <option value={v.id}>{v.name}</option>
-                {/each}
-            </select>
-            {#if vacinasCatalogo.length === 0}
-                <div
-                    class="alert alert-warning text-xs mt-2 py-2 flex items-center justify-between"
-                >
-                    <span>Nenhuma vacina cadastrada no catálogo.</span>
-                    <button
-                        type="button"
-                        class="btn btn-xs btn-outline"
-                        onclick={() => {
-                            vacinaForm = { name: "", reaplicarEmXDias: 365 };
-                            vacinaFormError = "";
-                            showVacinaModal = true;
-                        }}
-                    >
-                        Cadastrar Vacina
-                    </button>
-                </div>
-            {/if}
-        </div>
-
         <div>
             <Input
-                label="Data de Aplicação *"
+                label="Data de Aplicação"
                 type="date"
                 bind:value={aplicacaoForm.dataAplicacao}
                 required
@@ -872,7 +692,7 @@
 
         <div>
             <Input
-                label="Número do Lote *"
+                label="Número do Lote "
                 placeholder="Ex: LOT-2024-001"
                 bind:value={aplicacaoForm.numeroLote}
                 required
@@ -893,7 +713,7 @@
 
         <div class="sm:col-span-2">
             <Input
-                label="Veterinário Responsável (Nome + CRMV) *"
+                label="Veterinário Responsável (Nome + CRMV) "
                 placeholder="Ex: Dr. João Silva – CRMV-SP 12345"
                 bind:value={aplicacaoForm.veterinarioResponsavel}
                 required

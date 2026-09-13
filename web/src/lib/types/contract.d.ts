@@ -1376,7 +1376,7 @@ export interface components {
             /** Format: date */
             dataProximaDose?: string;
             numeroLote: string;
-            doseMl?: null | string;
+            doseMl?: unknown;
             observacoes?: null | string;
             veterinarioResponsavel?: null | string;
             aplicador?: null | string;
@@ -1422,7 +1422,7 @@ export interface components {
             /** Format: date */
             dataProximaDose?: string;
             numeroLote?: string;
-            doseMl?: null | string;
+            doseMl?: unknown;
         };
         EspecieCreateDto: {
             nome: string;
@@ -1467,6 +1467,7 @@ export interface components {
             id?: string;
             nome: string;
             fullName?: string;
+            iconeKey?: string;
         };
         IdentificadorCreateDto: {
             tipo: components["schemas"]["TipoIdentificador"];

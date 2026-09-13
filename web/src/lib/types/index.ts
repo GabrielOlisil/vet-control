@@ -47,9 +47,11 @@ export type VacinaReadResponseDto = Schemas['VacinaReadResponseDto'];
 export type VacinaShortResponseDto = Schemas['VacinaShortResponseDto'];
 
 // ── Helpers de nome ──────────────────────────────────────────────────────────
-export function getAnimalName(animal?: { name?: string | null } | null): string {
-    if (!animal) return 'Sem nome';
-    return animal.name?.trim() || 'Sem nome';
+export function getAnimalName(animal?: { identificadorPrincipal?: any }): string | null {
+    if (!animal || !animal.identificadorPrincipal) return 'Sem nome';
+
+
+    return animal.identificadorPrincipal.valor ?? 'Sem nome';
 }
 
 export function getVacinaName(vacina?: { name?: string } | null): string {

@@ -31,6 +31,8 @@ export interface AnimalCountParams {
 
 export const animalService = {
     async getList(params?: AnimalListParams): Promise<AnimalReadResponseDto[]> {
+
+        apiClient.GET
         const { data, error } = await apiClient.GET('/api/v1/animais', {
             params: {
                 query: {

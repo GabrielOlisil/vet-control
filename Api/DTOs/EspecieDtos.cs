@@ -34,6 +34,8 @@ public sealed record EspecieShortResponseDto
     public required string Nome { get; init; }
 
     public string FullName { get; init; } = string.Empty;
+
+    public string IconeKey { get; set; } = string.Empty;
 }
 
 public sealed record EspecieReadResponseDto

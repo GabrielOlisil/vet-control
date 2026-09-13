@@ -22,6 +22,7 @@ public static class EspecieMapper
         FullName = string.IsNullOrWhiteSpace(especie.NomeCientifico)
             ? especie.Nome
             : string.Concat(especie.Nome, "  |  ", especie.NomeCientifico),
+        IconeKey = especie.IconeKey
     };
 
     public static EspecieDetailResponseDto MapToResponse(Especie especie) => new()

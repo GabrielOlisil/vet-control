@@ -93,7 +93,7 @@
                     >
                     <span
                         class="text-[10px] font-medium opacity-60 uppercase tracking-widest"
-                        >HVU / Fazenda Escola</span
+                        >Clinica Veterinária</span
                     >
                 </span>
             </a>

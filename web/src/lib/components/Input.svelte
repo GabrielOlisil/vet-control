@@ -12,6 +12,7 @@
         max = undefined,
         step = undefined,
         onChange = null,
+        list = undefined,
     }: {
         label?: string;
         id?: string;
@@ -25,6 +26,7 @@
         max?: number | string;
         step?: number | string;
         onChange?: ((value: any) => void) | null;
+        list?: string | undefined;
     } = $props();
 
     function handleChange(e: Event) {
@@ -65,6 +67,7 @@
         {min}
         {max}
         {step}
+        {list}
         onchange={handleChange}
         oninput={handleChange}
         class="input input-bordered w-full transition-all {error
