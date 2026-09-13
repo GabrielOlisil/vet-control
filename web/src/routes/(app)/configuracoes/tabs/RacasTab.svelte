@@ -23,6 +23,8 @@
     // ── Estado ────────────────────────────────────────────────────────────────
     let racas = $state<RacaReadResponseDto[]>([]);
     let especies = $state<EspecieReadResponseDto[]>([]);
+    let totalRacas = $state(0);
+    let currentPage = $state(1);
     let isLoading = $state(false);
     let hasLoaded = $state(false);
     let selectedEspecieId = $state<string>("");
@@ -43,12 +45,21 @@
     async function loadData() {
         try {
             isLoading = true;
-            const [esps, rcs] = await Promise.all([
+            const countParams = selectedEspecieId
+                ? { EspecieId: selectedEspecieId }
+                : undefined;
+            const params = {
+                page: currentPage,
+                EspecieId: selectedEspecieId || undefined,
+            };
+            const [esps, rcs, count] = await Promise.all([
                 especieService.getList(),
-                racaService.getList(selectedEspecieId || undefined),
+                racaService.getList(params),
+                racaService.getCount(countParams),
             ]);
             especies = esps;
             racas = rcs;
+            totalRacas = count;
             hasLoaded = true;
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
@@ -64,14 +75,8 @@
     });
 
     async function handleEspecieFilterChange() {
-        try {
-            isLoading = true;
-            racas = await racaService.getList(selectedEspecieId || undefined);
-        } catch (error) {
-            console.error("Erro ao filtrar raças:", error);
-        } finally {
-            isLoading = false;
-        }
+        currentPage = 1;
+        await loadData();
     }
 
     const filteredRacas = $derived(
@@ -170,7 +175,7 @@
             </h2>
             <p class="text-xs text-base-content/70 mt-1">
                 {#if hasLoaded}
-                    {racas.length} raça(s) cadastrada(s) vinculadas às espécies atendidas.
+                    {totalRacas} raça(s) cadastrada(s) vinculadas às espécies atendidas.
                 {:else}
                     Aguardando carregamento da aba...
                 {/if}
@@ -325,6 +330,37 @@
                         {/each}
                     </tbody>
                 </table>
+            {/if}
+
+            {#if totalRacas > 0}
+                <div
+                    class="flex items-center justify-between p-3 border-t border-base-200"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage === 1}
+                        onclick={() => {
+                            currentPage--;
+                            loadData();
+                        }}>← Anterior</button
+                    >
+                    <span class="btn btn-sm btn-ghost no-animation"
+                        >Página {currentPage} de {Math.max(
+                            1,
+                            Math.ceil(totalRacas / 10),
+                        )}</span
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage * 10 >= totalRacas}
+                        onclick={() => {
+                            currentPage++;
+                            loadData();
+                        }}>Próxima →</button
+                    >
+                </div>
             {/if}
         </div>
     </div>

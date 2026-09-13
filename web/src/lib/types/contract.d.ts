@@ -729,6 +729,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    PortePadrao?: components["schemas"]["PorteAnimal"];
                     page?: number | string;
                 };
                 header?: never;
@@ -835,7 +836,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    PortePadrao?: components["schemas"]["PorteAnimal"];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -961,6 +964,7 @@ export interface paths {
             parameters: {
                 query?: {
                     EspecieId?: string;
+                    page?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -1185,7 +1189,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    EspecieId?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1227,6 +1233,7 @@ export interface paths {
                     ObrigatorioOrgaoSanitario?: boolean;
                     ReaplicarEmXDiasMin?: number | string;
                     ReaplicarEmXDiasMax?: number | string;
+                    page?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -1418,7 +1425,12 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    EspecieId?: string;
+                    ObrigatorioOrgaoSanitario?: boolean;
+                    ReaplicarEmXDiasMin?: number | string;
+                    ReaplicarEmXDiasMax?: number | string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1682,8 +1694,10 @@ export interface components {
             animalId: string;
             cicloFinalizado?: boolean;
         };
-        OrigemAnimal: number;
-        PorteAnimal: number;
+        /** @enum {unknown} */
+        OrigemAnimal: "Interno" | "Externo";
+        /** @enum {unknown} */
+        PorteAnimal: "Pequeno" | "Medio" | "Grande";
         RacaCreateDto: {
             nome: string;
             /** Format: uuid */
@@ -1721,9 +1735,12 @@ export interface components {
             id?: string;
             nome: string;
         };
-        SexoAnimal: number;
-        StatusComprovanteVacina: number;
-        TipoIdentificador: number;
+        /** @enum {unknown} */
+        SexoAnimal: "Femea" | "Macho" | "Indefinido";
+        /** @enum {unknown} */
+        StatusComprovanteVacina: "NaoEmitido" | "PendenteAssinatura" | "Assinado";
+        /** @enum {unknown} */
+        TipoIdentificador: "BrincoVisual" | "BrincoEletronico" | "Sisbov" | "Microchip" | "RegistroAssociado" | "Tatuagem" | "NomeUnico";
         VacinaCreateDto: {
             name: string;
             descricao?: null | string;

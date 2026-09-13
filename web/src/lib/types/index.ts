@@ -2,10 +2,26 @@
  * Centralização dos tipos gerados a partir do contrato OpenAPI (./contract.d.ts)
  */
 export type * from './contract';
-import type { components } from './contract';
+import type { components, paths } from './contract';
 
 // Schemas OpenAPI
 export type Schemas = components['schemas'];
+
+export type PorteAnimal = Schemas['PorteAnimal'];
+export type SexoAnimal = Schemas['SexoAnimal'];
+export type OrigemAnimal = Schemas['OrigemAnimal'];
+export type StatusComprovanteVacina = Schemas['StatusComprovanteVacina'];
+export type TipoIdentificador = Schemas['TipoIdentificador'];
+
+// ── Query Params ─────────────────────────────────────────────────────────────
+export type AnimalQueryParams = NonNullable<paths['/api/v1/animais']['get']['parameters']['query']>;
+export type AnimalCountQueryParams = NonNullable<paths['/api/v1/animais/count']['get']['parameters']['query']>;
+export type VacinaQueryParams = NonNullable<paths['/api/v1/vacinas']['get']['parameters']['query']>;
+export type VacinaCountQueryParams = NonNullable<paths['/api/v1/vacinas/count']['get']['parameters']['query']>;
+export type RacaQueryParams = NonNullable<paths['/api/v1/racas']['get']['parameters']['query']>;
+export type RacaCountQueryParams = NonNullable<paths['/api/v1/racas/count']['get']['parameters']['query']>;
+export type EspecieQueryParams = NonNullable<paths['/api/v1/especies']['get']['parameters']['query']>;
+export type EspecieCountQueryParams = NonNullable<paths['/api/v1/especies/count']['get']['parameters']['query']>;
 
 // ── Animal ──────────────────────────────────────────────────────────────────
 export type AnimalCreateDto = Schemas['AnimalCreateDto'];

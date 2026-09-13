@@ -10,9 +10,12 @@ namespace Api.Controllers;
 public class EspecieController(IEspecieService especieService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EspecieReadResponseDto>>> GetAll([FromQuery] int? page, CancellationToken cancellationToken)
+    public async Task<ActionResult<List<EspecieReadResponseDto>>> GetAll(
+        [FromQuery] EspecieSearchDto search,
+        [FromQuery] int? page,
+        CancellationToken cancellationToken)
     {
-        var especies = await especieService.GetAllAsync(page, cancellationToken);
+        var especies = await especieService.GetAllAsync(page, search, cancellationToken);
         var responses = especies.Select(EspecieMapper.MapToHead).ToList();
         return Ok(responses);
     }
@@ -32,9 +35,9 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    public async Task<ActionResult<int>> Count([FromQuery] EspecieSearchDto search, CancellationToken cancellationToken)
     {
-        return Ok(await especieService.Count(cancellationToken)); //impl pagination
+        return Ok(await especieService.Count(search, cancellationToken));
     }
 
     [HttpGet("{id:guid}")]

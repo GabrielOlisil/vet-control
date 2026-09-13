@@ -3,6 +3,8 @@
  * Uso: SexoAnimalLabels[animal.sexo] => "Macho"
  */
 
+import type { StatusComprovanteVacina } from ".";
+
 export const SexoAnimalLabels: Record<number, string> = {
     0: 'Macho',
     1: 'Fêmea',
@@ -31,12 +33,10 @@ export const TipoIdentificadorLabels: Record<number, string> = {
 };
 
 export const StatusComprovanteLabels: Record<
-    number,
-    { label: string; color: string }
-> = {
-    0: { label: 'Não Emitido', color: 'badge-ghost' },
-    1: { label: 'Pendente Assinatura', color: 'badge-warning' },
-    2: { label: 'Assinado', color: 'badge-success' },
+    StatusComprovanteVacina, string> = {
+    NaoEmitido: 'badge-ghost',
+    PendenteAssinatura: 'badge-warning',
+    Assinado: 'badge-success',
 };
 
 /**

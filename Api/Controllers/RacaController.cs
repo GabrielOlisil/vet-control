@@ -11,10 +11,12 @@ namespace Api.Controllers;
 public class RacaController(IRacaService racaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<RacaReadResponseDto>>> GetAll([FromQuery] RacaSearchDto search,
+    public async Task<ActionResult<List<RacaReadResponseDto>>> GetAll(
+        [FromQuery] RacaSearchDto search,
+        [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
-        var racas = await racaService.GetAllAsync(search, cancellationToken);
+        var racas = await racaService.GetAllAsync(page, search, cancellationToken);
         var responses = racas.Select(RacaMapper.MapToRead).ToList();
         return Ok(responses);
     }
@@ -83,9 +85,9 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    public async Task<ActionResult<int>> Count([FromQuery] RacaSearchDto search, CancellationToken cancellationToken)
     {
-        return Ok(await racaService.Count(cancellationToken));
+        return Ok(await racaService.Count(search, cancellationToken));
     }
 
     [HttpDelete("{id:guid}")]

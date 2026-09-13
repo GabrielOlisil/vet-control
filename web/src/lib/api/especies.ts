@@ -5,13 +5,30 @@ import type {
     EspecieShortResponseDto,
     EspecieCreateDto,
     EspeciePatchDto,
+    PorteAnimal,
 } from '../types';
 
+export interface EspecieListParams {
+    page?: number | string;
+    PortePadrao?: PorteAnimal;
+}
+
+export interface EspecieCountParams {
+    PortePadrao?: PorteAnimal;
+}
+
 export const especieService = {
-    async getList(page?: number): Promise<EspecieReadResponseDto[]> {
+    async getList(params?: EspecieListParams | number): Promise<EspecieReadResponseDto[]> {
+        const query = typeof params === 'number'
+            ? { page: params }
+            : {
+                page: params?.page,
+                PortePadrao: params?.PortePadrao,
+            };
+
         const { data, error } = await apiClient.GET('/api/v1/especies', {
             params: {
-                query: page ? { page } : undefined,
+                query: query.page !== undefined || query.PortePadrao !== undefined ? query : undefined,
             },
         });
         if (error) {
@@ -32,8 +49,12 @@ export const especieService = {
         return data ?? [];
     },
 
-    async getCount(): Promise<number> {
-        const { data, error } = await apiClient.GET('/api/v1/especies/count');
+    async getCount(params?: EspecieCountParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/especies/count', {
+            params: {
+                query: params?.PortePadrao !== undefined ? { PortePadrao: params.PortePadrao } : undefined,
+            },
+        });
         if (error) {
             throw new Error(extractErrorMessage(error, 'Erro ao contar espécies'));
         }

@@ -81,10 +81,10 @@
         dataNascimento: hoje(),
         dataNascimentoAproximada: false,
         racaId: undefined,
-        sexo: 0,
-        origem: 0,
+        sexo: "Indefinido",
+        origem: "Interno",
         loteOuPasto: "",
-        identificadores: [{ tipo: 0, valor: "", ehPrincipal: true }],
+        identificadores: [{ tipo: "NomeUnico", valor: "", ehPrincipal: true }],
     });
 
     let form = $state<AnimalCreateDto>(emptyForm());
@@ -108,14 +108,14 @@
                 dataNascimentoAproximada:
                     detail.dataNascimentoAproximada ?? false,
                 racaId: detail.raca?.id ?? undefined,
-                sexo: detail.sexo ?? 0,
-                origem: detail.origem ?? 0,
+                sexo: detail.sexo ?? "Indefinido",
+                origem: detail.origem ?? "Interno",
                 loteOuPasto: detail.loteOuPasto ?? "",
                 identificadores: detail.identificadores?.map((i) => ({
                     tipo: i.tipo,
                     valor: i.valor,
                     ehPrincipal: i.ehPrincipal,
-                })) ?? [{ tipo: 0, valor: "", ehPrincipal: true }],
+                })) ?? [{ tipo: "NomeUnico", valor: "", ehPrincipal: true }],
             };
             formError = "";
             showModal = true;
@@ -202,7 +202,7 @@
     function addIdent() {
         form.identificadores = [
             ...form.identificadores,
-            { tipo: 0, valor: "", ehPrincipal: false },
+            { tipo: "NomeUnico", valor: "", ehPrincipal: false },
         ];
     }
     function removeIdent(i: number) {
@@ -434,12 +434,16 @@
                         }}>← Anterior</button
                     >
                     <span class="btn btn-sm btn-ghost no-animation"
-                        >Página {currentPage}</span
+                        >Página {currentPage} de {Math.max(
+                            1,
+                            Math.ceil(totalAnimais / 10),
+                        )}</span
                     >
                     <button
                         type="button"
                         class="btn btn-sm btn-ghost"
-                        disabled={animais.length === 0}
+                        disabled={currentPage * 10 >= totalAnimais ||
+                            animais.length === 0}
                         onclick={() => {
                             currentPage++;
                             load();

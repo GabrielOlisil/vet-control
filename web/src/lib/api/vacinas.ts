@@ -8,10 +8,18 @@ import type {
 } from '../types';
 
 export interface VacinaListParams {
+    page?: number | string;
     EspecieId?: string;
     ObrigatorioOrgaoSanitario?: boolean;
-    ReaplicarEmXDiasMin?: number;
-    ReaplicarEmXDiasMax?: number;
+    ReaplicarEmXDiasMin?: number | string;
+    ReaplicarEmXDiasMax?: number | string;
+}
+
+export interface VacinaCountParams {
+    EspecieId?: string;
+    ObrigatorioOrgaoSanitario?: boolean;
+    ReaplicarEmXDiasMin?: number | string;
+    ReaplicarEmXDiasMax?: number | string;
 }
 
 export const vacinaService = {
@@ -19,6 +27,7 @@ export const vacinaService = {
         const { data, error } = await apiClient.GET('/api/v1/vacinas', {
             params: {
                 query: {
+                    page: params?.page,
                     EspecieId: params?.EspecieId,
                     ObrigatorioOrgaoSanitario: params?.ObrigatorioOrgaoSanitario,
                     ReaplicarEmXDiasMin: params?.ReaplicarEmXDiasMin,
@@ -45,8 +54,19 @@ export const vacinaService = {
         return data ?? [];
     },
 
-    async getCount(): Promise<number> {
-        const { data, error } = await apiClient.GET('/api/v1/vacinas/count');
+    async getCount(params?: VacinaCountParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/vacinas/count', {
+            params: {
+                query: params
+                    ? {
+                        EspecieId: params.EspecieId,
+                        ObrigatorioOrgaoSanitario: params.ObrigatorioOrgaoSanitario,
+                        ReaplicarEmXDiasMin: params.ReaplicarEmXDiasMin,
+                        ReaplicarEmXDiasMax: params.ReaplicarEmXDiasMax,
+                    }
+                    : undefined,
+            },
+        });
         if (error) {
             throw new Error(extractErrorMessage(error, 'Erro ao contar vacinas'));
         }

@@ -26,6 +26,14 @@ builder.Services.AddScoped<IAplicacaoVacinaService, AplicacaoVacinaService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+}
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 

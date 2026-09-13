@@ -4,6 +4,7 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import VacinaSelect from "$lib/components/VacinaSelect.svelte";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
@@ -37,31 +38,6 @@
     let isLoading = $state(true);
     let loadError = $state("");
 
-    let searchVacinaTerm = $state("");
-
-    let searchVacinaResults = $state<VacinaShortResponseDto[]>([]);
-    let isSearchingVacinas = $state(false);
-    let searchDebounce: ReturnType<typeof setTimeout>;
-
-    $effect(() => {
-        const term = searchVacinaTerm;
-        clearTimeout(searchDebounce);
-        if (term.trim().length < 2) {
-            searchVacinaResults = [];
-            return;
-        }
-        isSearchingVacinas = true;
-        searchDebounce = setTimeout(async () => {
-            try {
-                searchVacinaResults = await vacinaService.search(term);
-            } catch {
-                searchVacinaResults = [];
-            } finally {
-                isSearchingVacinas = false;
-            }
-        }, 350);
-    });
-
     // ── Modal: Registrar Vacina ───────────────────────────────────────────────
     let showVacinarModal = $state(false);
     let isSubmittingVacina = $state(false);
@@ -80,7 +56,6 @@
     });
 
     function openVacinarModal() {
-        searchVacinaResults = [];
         vacinarForm = {
             animalId: animalId,
             vacinaId: "",
@@ -236,9 +211,7 @@
                         </h1>
                         {#if animal.identificadorPrincipal}
                             <span class="badge badge-outline font-mono text-sm">
-                                {TipoIdentificadorLabels[
-                                    animal.identificadorPrincipal.tipo
-                                ] ?? ""}:
+                                {animal.identificadorPrincipal.tipo ?? ""}:
                                 {animal.identificadorPrincipal.valor}
                             </span>
                         {/if}
@@ -247,14 +220,12 @@
                     <div class="flex flex-wrap gap-2 mt-2">
                         {#if animal.sexo !== undefined}
                             <span class="badge badge-ghost badge-sm"
-                                >{SexoAnimalLabels[animal.sexo] ??
-                                    animal.sexo}</span
+                                >{animal.sexo ?? animal.sexo}</span
                             >
                         {/if}
                         {#if animal.origem !== undefined}
                             <span class="badge badge-ghost badge-sm"
-                                >{OrigemAnimalLabels[animal.origem] ??
-                                    animal.origem}</span
+                                >{animal.origem ?? animal.origem}</span
                             >
                         {/if}
                         {#if animal.raca?.nome}
@@ -293,8 +264,7 @@
                                             ? 'badge-primary'
                                             : 'badge-ghost'}"
                                     >
-                                        {TipoIdentificadorLabels[ident.tipo] ??
-                                            ident.tipo}: {ident.valor}
+                                        {ident.tipo ?? ident.tipo}: {ident.valor}
                                     </span>
                                 {/each}
                             </div>
@@ -398,7 +368,8 @@
                                     </td>
                                     <td>
                                         <ComprovanteStatusBadge
-                                            status={apl.statusComprovante ?? 0}
+                                            status={apl.statusComprovante ??
+                                                "NaoEmitido"}
                                             temComprovanteAnexo={apl.temComprovanteAnexo ??
                                                 false}
                                             aplicacaoId={apl.id!}
@@ -482,28 +453,11 @@
     {/if}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="sm:col-span-2">
-            <div class="flex items-center justify-between">
-                <label for="select-vacina" class="label label-text text-xs"
-                    >Vacina *</label
-                >
-            </div>
-
-            <label class="input">
-                <input
-                    type="text"
-                    list="vacinas"
-                    bind:value={searchVacinaTerm}
-                />
-                {#if isSearchingVacinas}
-                    <span class="loading loading-spinner loading-xs"></span>
-                {/if}
-            </label>
-
-            <datalist id="vacinas">
-                {#each searchVacinaResults as v}
-                    <option value={v.id}>{v.name}</option>
-                {/each}
-            </datalist>
+            <VacinaSelect
+                label="Vacina *"
+                bind:value={vacinarForm.vacinaId}
+                required
+            />
         </div>
         <div>
             <Input

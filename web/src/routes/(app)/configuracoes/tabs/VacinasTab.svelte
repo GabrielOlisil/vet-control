@@ -24,6 +24,7 @@
     let vacinas = $state<VacinaReadResponseDto[]>([]);
     let especies = $state<EspecieReadResponseDto[]>([]);
     let total = $state(0);
+    let currentPage = $state(1);
     let isLoading = $state(false);
     let hasLoaded = $state(false);
     let searchTerm = $state("");
@@ -33,7 +34,7 @@
     async function load() {
         isLoading = true;
         try {
-            const params =
+            const countParams =
                 selectedPeriodo !== null
                     ? {
                           ReaplicarEmXDiasMin: selectedPeriodo,
@@ -41,9 +42,17 @@
                       }
                     : undefined;
 
+            const params = {
+                page: currentPage,
+                ReaplicarEmXDiasMin:
+                    selectedPeriodo !== null ? selectedPeriodo : undefined,
+                ReaplicarEmXDiasMax:
+                    selectedPeriodo !== null ? selectedPeriodo : undefined,
+            };
+
             const [list, count, espList] = await Promise.all([
                 vacinaService.getList(params),
-                vacinaService.getCount(),
+                vacinaService.getCount(countParams),
                 especieService.getList(),
             ]);
             vacinas = list;
@@ -264,6 +273,7 @@
                         : 'btn-ghost'}"
                     onclick={() => {
                         selectedPeriodo = null;
+                        currentPage = 1;
                         load();
                     }}
                 >
@@ -277,6 +287,7 @@
                             : 'btn-ghost'}"
                         onclick={() => {
                             selectedPeriodo = p.dias;
+                            currentPage = 1;
                             load();
                         }}
                     >
@@ -423,6 +434,37 @@
                         {/each}
                     </tbody>
                 </table>
+            {/if}
+
+            {#if total > 0}
+                <div
+                    class="flex items-center justify-between p-3 border-t border-base-200"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage === 1}
+                        onclick={() => {
+                            currentPage--;
+                            load();
+                        }}>← Anterior</button
+                    >
+                    <span class="btn btn-sm btn-ghost no-animation"
+                        >Página {currentPage} de {Math.max(
+                            1,
+                            Math.ceil(total / 10),
+                        )}</span
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage * 10 >= total}
+                        onclick={() => {
+                            currentPage++;
+                            load();
+                        }}>Próxima →</button
+                    >
+                </div>
             {/if}
         </div>
     </div>

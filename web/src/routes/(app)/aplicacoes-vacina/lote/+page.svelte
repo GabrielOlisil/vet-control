@@ -6,6 +6,9 @@
     import { especieService } from "$lib/api/especies";
     import { racaService } from "$lib/api/racas";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
+    import VacinaSelect, {
+        type VacinaOption,
+    } from "$lib/components/VacinaSelect.svelte";
     import Input from "$lib/components/Input.svelte";
     import {
         getAnimalName,
@@ -38,7 +41,7 @@
     let observacoes = $state("");
 
     // ── Catálogos e Listas ────────────────────────────────────────────────────
-    let vacinas = $state<VacinaReadResponseDto[]>([]);
+    let selectedVacina = $state<VacinaOption | null>(null);
     let animais = $state<AnimalReadResponseDto[]>([]);
     let especies = $state<EspecieReadResponseDto[]>([]);
     let racas = $state<RacaReadResponseDto[]>([]);
@@ -62,13 +65,11 @@
     onMount(async () => {
         isLoading = true;
         try {
-            const [vList, aList, eList, rList] = await Promise.all([
-                vacinaService.getList(),
-                animalService.getList({ page: 1 }),
+            const [aList, eList, rList] = await Promise.all([
+                animalService.getList(),
                 especieService.getList(),
                 racaService.getList(),
             ]);
-            vacinas = vList;
             animais = aList;
             especies = eList;
             racas = rList;
@@ -80,11 +81,6 @@
             isLoading = false;
         }
     });
-
-    // Vacina selecionada atual
-    const selectedVacina = $derived(
-        vacinas.find((v) => v.id === vacinaId) ?? null,
-    );
 
     // Animais filtrados e ordenados
     const racasFiltradas = $derived(
@@ -311,32 +307,17 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <!-- Vacina -->
                         <div class="sm:col-span-2">
-                            <label
-                                class="label label-text text-xs font-semibold"
-                                for="vacinaSelect"
-                            >
-                                Vacina Imunobiológica *
-                            </label>
-                            <select
+                            <VacinaSelect
+                                label="Vacina Imunobiológica"
                                 id="vacinaSelect"
-                                class="select select-bordered w-full"
                                 bind:value={vacinaId}
-                            >
-                                <option value=""
-                                    >— Selecione a vacina do lote —</option
-                                >
-                                {#each vacinas as v}
-                                    <option value={v.id}>
-                                        {v.name} ({v.especie?.fullName ||
-                                            "Geral"})
-                                        {#if v.reaplicarEmXDias}
-                                            — Reaplicar em {v.reaplicarEmXDias} dias
-                                        {/if}
-                                    </option>
-                                {/each}
-                            </select>
+                                required
+                                onSelect={(v) => {
+                                    selectedVacina = v;
+                                }}
+                            />
                             {#if selectedVacina?.reaplicarEmXDias}
-                                <p class="text-xs text-info mt-1">
+                                <p class="text-xs text-info -mt-1 mb-2">
                                     Esta vacina possui intervalo de reforço
                                     padrão de {selectedVacina.reaplicarEmXDias} dias.
                                 </p>

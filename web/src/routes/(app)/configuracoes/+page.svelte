@@ -61,24 +61,22 @@
 
     <!-- Navigation Tabs -->
     <div class="border-b border-base-300">
-        <div class="tabs tabs-border gap-2" role="tablist">
+        <div
+            class="tabs tabs-box bg-base-200/50 p-1.5 border-b border-base-200"
+            role="tablist"
+        >
             <button
                 type="button"
                 role="tab"
                 class="tab gap-2 pb-3 pt-2 text-sm font-semibold transition-all {activeTab ===
                 'vacinas'
-                    ? 'tab-active font-black text-primary border-b-2 border-primary'
+                    ? 'tab-active font-black text-primary bg-base-100 shadow-xs font-bold'
                     : 'text-base-content/60 hover:text-base-content'}"
                 onclick={() => selectTab("vacinas")}
                 aria-selected={activeTab === "vacinas"}
             >
                 <IconVaccines width="18" height="18" />
                 <span>Vacinas</span>
-                <span
-                    class="badge badge-xs {activeTab === 'vacinas'
-                        ? 'badge-primary'
-                        : 'badge-ghost'}">1ª Aba</span
-                >
             </button>
 
             <button
@@ -86,7 +84,7 @@
                 role="tab"
                 class="tab gap-2 pb-3 pt-2 text-sm font-semibold transition-all {activeTab ===
                 'animais'
-                    ? 'tab-active font-black text-primary border-b-2 border-primary'
+                    ? 'tab-active font-black text-primary bg-base-100 shadow-xs font-bold'
                     : 'text-base-content/60 hover:text-base-content'}"
                 onclick={() => selectTab("animais")}
                 aria-selected={activeTab === "animais"}
@@ -100,7 +98,7 @@
                 role="tab"
                 class="tab gap-2 pb-3 pt-2 text-sm font-semibold transition-all {activeTab ===
                 'especies'
-                    ? 'tab-active font-black text-primary border-b-2 border-primary'
+                    ? 'tab-active font-black text-primary bg-base-100 shadow-xs font-bold'
                     : 'text-base-content/60 hover:text-base-content'}"
                 onclick={() => selectTab("especies")}
                 aria-selected={activeTab === "especies"}

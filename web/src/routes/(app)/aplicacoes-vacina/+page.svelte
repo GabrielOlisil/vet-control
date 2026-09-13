@@ -3,6 +3,7 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import VacinaSelect from "$lib/components/VacinaSelect.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
@@ -398,16 +399,11 @@
             </select>
         </div>
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs">Vacina *</label>
-            <select
-                class="select select-bordered w-full"
+            <VacinaSelect
+                label="Vacina *"
                 bind:value={form.vacinaId}
-            >
-                <option value="">— Selecione a vacina —</option>
-                {#each vacinas as v}
-                    <option value={v.id}>{v.name}</option>
-                {/each}
-            </select>
+                required
+            />
         </div>
         <div>
             <Input

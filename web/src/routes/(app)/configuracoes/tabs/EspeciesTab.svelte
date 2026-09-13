@@ -9,6 +9,7 @@
         type EspecieReadResponseDto,
         type EspecieCreateDto,
         type EspeciePatchDto,
+        type PorteAnimal,
     } from "$lib/types";
 
     import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
@@ -23,17 +24,20 @@
     // ── Estado ────────────────────────────────────────────────────────────────
     let especies = $state<EspecieReadResponseDto[]>([]);
     let totalEspecies = $state(0);
+    let currentPage = $state(1);
     let isLoading = $state(false);
     let hasLoaded = $state(false);
     let searchName = $state("");
-    let filterPorte = $state<number | null>(null);
+    let filterPorte = $state<"Pequeno" | "Medio" | "Grande">();
 
     let showFormModal = $state(false);
     let editingId = $state<string | null>(null);
 
     let formNome = $state("");
     let formNomeCientifico = $state("");
-    let formPortePadrao = $state(1); // Médio
+    let formPortePadrao = $state<"Pequeno" | "Medio" | "Grande" | undefined>(
+        "Grande",
+    );
     let formIconeKey = $state("bovino");
 
     let formError = $state("");
@@ -56,19 +60,21 @@
         { value: "outros", label: "🐾 Outros" },
     ];
 
-    const porteOptions = [
-        { value: 0, label: PorteAnimalLabels[0] },
-        { value: 1, label: PorteAnimalLabels[1] },
-        { value: 2, label: PorteAnimalLabels[2] },
-    ];
+    const porteOption: PorteAnimal[] = ["Pequeno", "Medio", "Grande"];
 
     // ── Carregar Sob Demanda ──────────────────────────────────────────────────
     async function loadData() {
         try {
             isLoading = true;
+            const countParams =
+                filterPorte !== null ? { PortePadrao: filterPorte } : undefined;
+            const params = {
+                page: currentPage,
+                PortePadrao: filterPorte !== null ? filterPorte : undefined,
+            };
             const [list, count] = await Promise.all([
-                especieService.getList(),
-                especieService.getCount(),
+                especieService.getList(params),
+                especieService.getCount(countParams),
             ]);
             especies = list;
             totalEspecies = count;
@@ -88,16 +94,20 @@
 
     const filteredEspecies = $derived(
         especies.filter((e) => {
-            const matchesSearch =
-                (e.nome || "")
-                    .toLowerCase()
-                    .includes(searchName.toLowerCase().trim()) ||
-                (e.nomeCientifico || "")
-                    .toLowerCase()
-                    .includes(searchName.toLowerCase().trim());
-            const matchesPorte =
-                filterPorte === null || Number(e.portePadrao) === filterPorte;
-            return matchesSearch && matchesPorte;
+            if (filterPorte !== undefined && filterPorte !== null) {
+                if (e.portePadrao !== filterPorte) return false;
+            }
+
+            const termo = searchName?.trim().toLowerCase();
+            if (termo && termo.length > 0) {
+                const bateNome = e.nome?.toLowerCase().includes(termo) ?? false;
+                const bateCientifico =
+                    e.nomeCientifico?.toLowerCase().includes(termo) ?? false;
+
+                if (!bateNome && !bateCientifico) return false;
+            }
+
+            return true;
         }),
     );
 
@@ -106,13 +116,13 @@
             editingId = especie.id ?? null;
             formNome = especie.nome || "";
             formNomeCientifico = especie.nomeCientifico || "";
-            formPortePadrao = Number(especie.portePadrao ?? 1);
+            formPortePadrao = especie.portePadrao ?? "Grande";
             formIconeKey = especie.iconeKey || "bovino";
         } else {
             editingId = null;
             formNome = "";
             formNomeCientifico = "";
-            formPortePadrao = 1;
+            formPortePadrao = "Grande";
             formIconeKey = "bovino";
         }
         formError = "";
@@ -260,22 +270,26 @@
                         ? 'btn-primary'
                         : 'btn-ghost'}"
                     onclick={() => {
-                        filterPorte = null;
+                        filterPorte = undefined;
+                        currentPage = 1;
+                        loadData();
                     }}
                 >
                     Todos
                 </button>
-                {#each porteOptions as opt}
+                {#each porteOption as opt}
                     <button
                         type="button"
-                        class="btn btn-xs {filterPorte === opt.value
+                        class="btn btn-xs {filterPorte === opt
                             ? 'btn-primary'
                             : 'btn-ghost'}"
                         onclick={() => {
-                            filterPorte = opt.value;
+                            filterPorte = opt;
+                            currentPage = 1;
+                            loadData();
                         }}
                     >
-                        {opt.label}
+                        {opt}
                     </button>
                 {/each}
             </div>
@@ -350,9 +364,7 @@
                                 </td>
                                 <td>
                                     <span class="badge badge-sm badge-outline">
-                                        {PorteAnimalLabels[
-                                            especie.portePadrao ?? 1
-                                        ] ?? "Indefinido"}
+                                        {especie.portePadrao ?? "Indefinido"}
                                     </span>
                                 </td>
                                 <td class="text-right space-x-1">
@@ -377,6 +389,37 @@
                         {/each}
                     </tbody>
                 </table>
+            {/if}
+
+            {#if totalEspecies > 0}
+                <div
+                    class="flex items-center justify-between p-3 border-t border-base-200"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage === 1}
+                        onclick={() => {
+                            currentPage--;
+                            loadData();
+                        }}>← Anterior</button
+                    >
+                    <span class="btn btn-sm btn-ghost no-animation"
+                        >Página {currentPage} de {Math.max(
+                            1,
+                            Math.ceil(totalEspecies / 10),
+                        )}</span
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled={currentPage * 10 >= totalEspecies}
+                        onclick={() => {
+                            currentPage++;
+                            loadData();
+                        }}>Próxima →</button
+                    >
+                </div>
             {/if}
         </div>
     </div>
@@ -421,8 +464,8 @@
                 class="select select-bordered w-full"
                 bind:value={formPortePadrao}
             >
-                {#each porteOptions as opt}
-                    <option value={opt.value}>{opt.label}</option>
+                {#each porteOption as opt}
+                    <option value={opt}>{opt}</option>
                 {/each}
             </select>
         </div>

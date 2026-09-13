@@ -35,3 +35,9 @@ public sealed record VacinaSearchDto
     public uint? ReaplicarEmXDiasMax { get; init; }
 }
 
+public sealed record EspecieSearchDto
+{
+    public PorteAnimal? PortePadrao { get; init; }
+}
+
+

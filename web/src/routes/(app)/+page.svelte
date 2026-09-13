@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import VacinaSelect from "$lib/components/VacinaSelect.svelte";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
@@ -22,6 +23,7 @@
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
+    import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
 
     // ── Aba Ativa ─────────────────────────────────────────────────────────────
     type ActiveTab = "atrasadas" | "pendentes" | "proximas";
@@ -44,6 +46,7 @@
     let filterVacinaAtrasadas = $state("");
     let filterStatusAtrasadas = $state("");
     let isLoadingAtrasadas = $state(false);
+    let hasLoadedAtrasadas = $state(false);
 
     async function loadAtrasadas() {
         isLoadingAtrasadas = true;
@@ -57,6 +60,7 @@
                         ? Number(filterStatusAtrasadas)
                         : undefined,
             });
+            hasLoadedAtrasadas = true;
         } catch (err) {
             console.error(err);
         } finally {
@@ -71,6 +75,7 @@
     let filterVacinaPendentes = $state("");
     let filterStatusPendentes = $state("");
     let isLoadingPendentes = $state(false);
+    let hasLoadedPendentes = $state(false);
 
     async function loadPendentes() {
         isLoadingPendentes = true;
@@ -84,6 +89,7 @@
                         ? Number(filterStatusPendentes)
                         : undefined,
             });
+            hasLoadedPendentes = true;
         } catch (err) {
             console.error(err);
         } finally {
@@ -99,6 +105,7 @@
     let diasLimiteOption = $state("30");
     let customDataLimite = $state("");
     let isLoadingProximas = $state(false);
+    let hasLoadedProximas = $state(false);
 
     function getDataLimiteCalculada(): string | undefined {
         if (diasLimiteOption === "custom") {
@@ -123,11 +130,25 @@
                 vacinaId: filterVacinaProximas || undefined,
                 dataLimite,
             });
+            hasLoadedProximas = true;
         } catch (err) {
             console.error(err);
         } finally {
             isLoadingProximas = false;
         }
+    }
+
+    // ── Funções de Atualização por Aba ─────────────────────────────────────────
+    async function refreshAtrasadas() {
+        await Promise.all([loadAtrasadas(), loadKpis()]);
+    }
+
+    async function refreshPendentes() {
+        await Promise.all([loadPendentes(), loadKpis()]);
+    }
+
+    async function refreshProximas() {
+        await Promise.all([loadProximas(), loadKpis()]);
     }
 
     // ── Upload de Comprovante Modal ───────────────────────────────────────────
@@ -158,7 +179,10 @@
             );
             showUploadModal = false;
             await loadPendentes();
+            hasLoadedAtrasadas = false;
+            hasLoadedProximas = false;
             if (activeTab === "atrasadas") await loadAtrasadas();
+            await loadKpis();
         } catch (err) {
             uploadError =
                 err instanceof Error
@@ -214,7 +238,19 @@
         try {
             await aplicacaoVacinaService.create(aplicacaoForm);
             showAplicacaoModal = false;
-            await refreshActiveTab();
+            if (activeTab === "atrasadas") {
+                hasLoadedPendentes = false;
+                hasLoadedProximas = false;
+                await loadAtrasadas();
+            } else if (activeTab === "pendentes") {
+                hasLoadedAtrasadas = false;
+                hasLoadedProximas = false;
+                await loadPendentes();
+            } else if (activeTab === "proximas") {
+                hasLoadedAtrasadas = false;
+                hasLoadedPendentes = false;
+                await loadProximas();
+            }
             await loadKpis();
         } catch (err) {
             aplicacaoFormError =
@@ -250,11 +286,23 @@
     }
 
     $effect(() => {
-        // Recarregar quando alternar aba
+        // Carrega sob demanda apenas na primeira vez que a aba for acessada
         const tab = activeTab;
-        if (tab === "atrasadas") loadAtrasadas();
-        else if (tab === "pendentes") loadPendentes();
-        else if (tab === "proximas") loadProximas();
+        if (tab === "atrasadas" && !hasLoadedAtrasadas && !isLoadingAtrasadas) {
+            loadAtrasadas();
+        } else if (
+            tab === "pendentes" &&
+            !hasLoadedPendentes &&
+            !isLoadingPendentes
+        ) {
+            loadPendentes();
+        } else if (
+            tab === "proximas" &&
+            !hasLoadedProximas &&
+            !isLoadingProximas
+        ) {
+            loadProximas();
+        }
     });
 
     onMount(async () => {
@@ -376,15 +424,13 @@
                 <div class="stat-figure text-error">
                     <IconVaccines width="32" height="32" />
                 </div>
-                <div
-                    class="stat-title text-xs font-semibold uppercase tracking-wider text-error"
-                >
+                <div class="stat-title text-error text-wrap">
                     Vacinas Atrasadas
                 </div>
-                <div class="stat-value text-error font-extrabold">
+                <div class="stat-value text-error">
                     {countAtrasadas}
                 </div>
-                <div class="stat-desc">
+                <div class="stat-desc text-wrap">
                     Doses com prazo expirado sem reforço
                 </div>
             </button>
@@ -400,15 +446,13 @@
                 <div class="stat-figure text-warning">
                     <IconCalendar width="32" height="32" />
                 </div>
-                <div
-                    class="stat-title text-xs font-semibold uppercase tracking-wider text-warning"
-                >
+                <div class="stat-title text-warning text-wrap">
                     Pendentes de Assinatura
                 </div>
                 <div class="stat-value text-warning font-extrabold">
                     {pendentes.length}
                 </div>
-                <div class="stat-desc">
+                <div class="stat-desc text-wrap">
                     Sem comprovante ou aguardando emissão
                 </div>
             </button>
@@ -424,15 +468,11 @@
                 <div class="stat-figure text-info">
                     <IconPets width="32" height="32" />
                 </div>
-                <div
-                    class="stat-title text-xs font-semibold uppercase tracking-wider text-info"
-                >
-                    Próximas Doses
-                </div>
+                <div class="stat-title text-wrap text-info">Próximas Doses</div>
                 <div class="stat-value text-info font-extrabold">
                     {proximas.length}
                 </div>
-                <div class="stat-desc">
+                <div class="stat-desc text-wrap">
                     Doses a vencer no horizonte configurado
                 </div>
             </button>
@@ -454,7 +494,6 @@
                     : ''}"
                 onclick={() => {
                     activeTab = "atrasadas";
-                    pageAtrasadas = 1;
                 }}
             >
                 <IconVaccines width="18" height="18" />
@@ -475,7 +514,6 @@
                     : ''}"
                 onclick={() => {
                     activeTab = "pendentes";
-                    pagePendentes = 1;
                 }}
             >
                 <IconCalendar width="18" height="18" />
@@ -489,7 +527,6 @@
                     : ''}"
                 onclick={() => {
                     activeTab = "proximas";
-                    pageProximas = 1;
                 }}
             >
                 <IconCalendar width="18" height="18" />
@@ -501,7 +538,54 @@
             <!-- ══════════════════════════════════════════════════════════════════
                  ABA 1: VACINAS ATRASADAS
                  ══════════════════════════════════════════════════════════════════ -->
-            {#if activeTab === "atrasadas"}
+            <div class:hidden={activeTab !== "atrasadas"}>
+                <!-- Barra de Ações / Cabeçalho Aba 1 -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-base-200"
+                >
+                    <div>
+                        <h2
+                            class="text-base font-bold text-base-content flex items-center gap-2"
+                        >
+                            <IconVaccines
+                                width="20"
+                                height="20"
+                                class="text-error"
+                            />
+                            <span>Vacinas Atrasadas</span>
+                            {#if countAtrasadas > 0}
+                                <span
+                                    class="badge badge-sm badge-error text-white font-semibold"
+                                >
+                                    {countAtrasadas}
+                                    {countAtrasadas === 1
+                                        ? "pendência"
+                                        : "pendências"}
+                                </span>
+                            {/if}
+                        </h2>
+                        <p class="text-xs text-base-content/60 mt-0.5">
+                            Doses que ultrapassaram a data limite prevista sem
+                            comprovação de reforço.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+                            onclick={refreshAtrasadas}
+                            disabled={isLoadingAtrasadas}
+                            title="Recarregar lista de vacinas atrasadas"
+                        >
+                            <IconRefresh
+                                width="16"
+                                height="16"
+                                class={isLoadingAtrasadas ? "animate-spin" : ""}
+                            />
+                            <span>Atualizar</span>
+                        </button>
+                    </div>
+                </div>
                 <!-- Filtros da Aba 1 -->
                 <div
                     class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
@@ -760,11 +844,56 @@
                         </div>
                     </div>
                 {/if}
+            </div>
 
-                <!-- ══════════════════════════════════════════════════════════════════
+            <!-- ══════════════════════════════════════════════════════════════════
                  ABA 2: PENDENTES DE ASSINATURA
                  ══════════════════════════════════════════════════════════════════ -->
-            {:else if activeTab === "pendentes"}
+            <div class:hidden={activeTab !== "pendentes"}>
+                <!-- Barra de Ações / Cabeçalho Aba 2 -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-base-200"
+                >
+                    <div>
+                        <h2
+                            class="text-base font-bold text-base-content flex items-center gap-2"
+                        >
+                            <IconCalendar
+                                width="20"
+                                height="20"
+                                class="text-warning"
+                            />
+                            <span>Pendentes de Assinatura</span>
+                            {#if pendentes.length > 0}
+                                <span
+                                    class="badge badge-sm badge-warning text-base-content font-semibold"
+                                >
+                                    {pendentes.length}
+                                </span>
+                            {/if}
+                        </h2>
+                        <p class="text-xs text-base-content/60 mt-0.5">
+                            Aplicações registradas que ainda aguardam upload ou
+                            validação do comprovante.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+                            onclick={refreshPendentes}
+                            disabled={isLoadingPendentes}
+                            title="Recarregar pendentes de assinatura"
+                        >
+                            <IconRefresh
+                                width="16"
+                                height="16"
+                                class={isLoadingPendentes ? "animate-spin" : ""}
+                            />
+                            <span>Atualizar</span>
+                        </button>
+                    </div>
+                </div>
                 <!-- Filtros Aba 2 -->
                 <div
                     class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
@@ -1007,11 +1136,56 @@
                         </div>
                     </div>
                 {/if}
+            </div>
 
-                <!-- ══════════════════════════════════════════════════════════════════
+            <!-- ══════════════════════════════════════════════════════════════════
                  ABA 3: PRÓXIMAS DOSES
                  ══════════════════════════════════════════════════════════════════ -->
-            {:else if activeTab === "proximas"}
+            <div class:hidden={activeTab !== "proximas"}>
+                <!-- Barra de Ações / Cabeçalho Aba 3 -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-base-200"
+                >
+                    <div>
+                        <h2
+                            class="text-base font-bold text-base-content flex items-center gap-2"
+                        >
+                            <IconCalendar
+                                width="20"
+                                height="20"
+                                class="text-info"
+                            />
+                            <span>Próximas Doses a Vencer</span>
+                            {#if proximas.length > 0}
+                                <span
+                                    class="badge badge-sm badge-info text-white font-semibold"
+                                >
+                                    {proximas.length}
+                                </span>
+                            {/if}
+                        </h2>
+                        <p class="text-xs text-base-content/60 mt-0.5">
+                            Previsão de reforços vacinais programados dentro do
+                            horizonte selecionado.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+                            onclick={refreshProximas}
+                            disabled={isLoadingProximas}
+                            title="Recarregar próximas doses"
+                        >
+                            <IconRefresh
+                                width="16"
+                                height="16"
+                                class={isLoadingProximas ? "animate-spin" : ""}
+                            />
+                            <span>Atualizar</span>
+                        </button>
+                    </div>
+                </div>
                 <!-- Filtros Aba 3 -->
                 <div
                     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4"
@@ -1105,6 +1279,22 @@
                                 <option value={v.id}>{v.name}</option>
                             {/each}
                         </select>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button
+                            class="btn btn-outline btn-sm w-full"
+                            onclick={() => {
+                                diasLimiteOption = "30";
+                                customDataLimite = "";
+                                filterAnimalProximas = "";
+                                filterVacinaProximas = "";
+                                pageProximas = 1;
+                                loadProximas();
+                            }}
+                        >
+                            Limpar Filtros
+                        </button>
                     </div>
                 </div>
 
@@ -1272,7 +1462,7 @@
                         </div>
                     </div>
                 {/if}
-            {/if}
+            </div>
         </div>
     </div>
 </div>
@@ -1352,20 +1542,11 @@
 
         <!-- Vacina -->
         <div class="sm:col-span-2">
-            <label
-                class="label label-text text-xs font-medium"
-                for="modalVacinaSelect">Vacina *</label
-            >
-            <select
-                id="modalVacinaSelect"
-                class="select select-bordered w-full"
+            <VacinaSelect
+                label="Vacina *"
                 bind:value={aplicacaoForm.vacinaId}
-            >
-                <option value="">— Selecione a vacina —</option>
-                {#each vacinas as v}
-                    <option value={v.id}>{v.name}</option>
-                {/each}
-            </select>
+                required
+            />
         </div>
 
         <div>

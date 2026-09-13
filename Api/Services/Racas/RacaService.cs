@@ -63,9 +63,14 @@ public sealed class RacaService(ApiContext context) : IRacaService
         return true;
     }
 
-    public Task<int> Count(CancellationToken cancellationToken = default)
+    public Task<int> Count(RacaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        return context.Racas.CountAsync(cancellationToken);
+        var query = context.Racas.AsNoTracking();
+
+        if (search?.EspecieId is not null)
+            query = query.Where(raca => raca.EspecieId == search.EspecieId);
+
+        return query.CountAsync(cancellationToken);
     }
 
 
@@ -78,7 +83,7 @@ public sealed class RacaService(ApiContext context) : IRacaService
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 
-    public Task<List<Raca>> GetAllAsync(RacaSearchDto? search = null,
+    public Task<List<Raca>> GetAllAsync(int? page, RacaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = context.Racas.Include(e => e.Especie)
@@ -87,7 +92,14 @@ public sealed class RacaService(ApiContext context) : IRacaService
         if (search?.EspecieId is not null)
             query = query.Where(raca => raca.EspecieId == search.EspecieId);
 
-        return query.OrderBy(r => r.Nome).ToListAsync(cancellationToken);
+        query = query.OrderBy(r => r.Nome);
+
+        if (page.HasValue)
+        {
+            query = query.Skip((page.Value - 1) * 10).Take(10);
+        }
+
+        return query.ToListAsync(cancellationToken);
     }
 
     public Task<List<Raca>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)

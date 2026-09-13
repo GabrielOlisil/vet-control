@@ -1,23 +1,19 @@
 <script lang="ts">
     import { StatusComprovanteLabels } from "$lib/types/enums";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
+    import type { StatusComprovanteVacina } from "$lib/types";
 
     let {
-        status = 0,
+        status = "NaoEmitido",
         temComprovanteAnexo = false,
         aplicacaoId,
     }: {
-        status?: number;
+        status?: StatusComprovanteVacina;
         temComprovanteAnexo?: boolean;
         aplicacaoId: string;
     } = $props();
 
-    const info = $derived(
-        StatusComprovanteLabels[status] ?? {
-            label: "Desconhecido",
-            color: "badge-ghost",
-        },
-    );
+    const info = $derived(StatusComprovanteLabels[status] ?? "badge-ghost");
 
     const downloadUrl = $derived(
         temComprovanteAnexo
@@ -27,7 +23,7 @@
 </script>
 
 <div class="flex items-center gap-1.5 flex-wrap">
-    <span class="badge badge-sm {info.color}">{info.label}</span>
+    <span class="badge badge-sm {info}">{status}</span>
 
     {#if temComprovanteAnexo && downloadUrl}
         <a

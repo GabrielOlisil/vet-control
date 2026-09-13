@@ -6,13 +6,15 @@ import type {
     AnimalCreateDto,
     AnimalPatchDto,
     AnimalShortResponseDto,
+    SexoAnimal,
+    OrigemAnimal,
 } from '../types';
 
 export interface AnimalListParams {
     page?: number;
     RacaId?: string;
-    Sexo?: number;
-    Origem?: number;
+    Sexo?: SexoAnimal;
+    Origem?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
     DataNascimentoFrom?: string;
@@ -21,8 +23,8 @@ export interface AnimalListParams {
 
 export interface AnimalCountParams {
     RacaId?: string;
-    Sexo?: number;
-    Origem?: number;
+    Sexo?: SexoAnimal;
+    Origem?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
     DataNascimentoFrom?: string;

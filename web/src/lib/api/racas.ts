@@ -7,11 +7,27 @@ import type {
     RacaPatchDto,
 } from '../types';
 
+export interface RacaListParams {
+    page?: number | string;
+    EspecieId?: string;
+}
+
+export interface RacaCountParams {
+    EspecieId?: string;
+}
+
 export const racaService = {
-    async getList(especieId?: string): Promise<RacaReadResponseDto[]> {
+    async getList(params?: RacaListParams | string): Promise<RacaReadResponseDto[]> {
+        const query = typeof params === 'string'
+            ? { EspecieId: params }
+            : {
+                page: params?.page,
+                EspecieId: params?.EspecieId,
+            };
+
         const { data, error } = await apiClient.GET('/api/v1/racas', {
             params: {
-                query: especieId ? { EspecieId: especieId } : undefined,
+                query: query.page !== undefined || query.EspecieId !== undefined ? query : undefined,
             },
         });
         if (error) {
@@ -32,8 +48,13 @@ export const racaService = {
         return data ?? [];
     },
 
-    async getCount(): Promise<number> {
-        const { data, error } = await apiClient.GET('/api/v1/racas/count');
+    async getCount(params?: RacaCountParams | string): Promise<number> {
+        const especieId = typeof params === 'string' ? params : params?.EspecieId;
+        const { data, error } = await apiClient.GET('/api/v1/racas/count', {
+            params: {
+                query: especieId ? { EspecieId: especieId } : undefined,
+            },
+        });
         if (error) {
             throw new Error(extractErrorMessage(error, 'Erro ao contar raças'));
         }

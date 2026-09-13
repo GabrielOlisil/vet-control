@@ -7,14 +7,12 @@ namespace Api.Services.Vacinas;
 
 public sealed class VacinaService(ApiContext context) : IVacinaService
 {
-    public Task<List<Vacina>> GetAllAsync(VacinaSearchDto? search = null,
+    public Task<List<Vacina>> GetAllAsync(int? page, VacinaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = context.Vacinas
             .Include(v => v.Especie)
             .AsNoTracking();
-
-
 
         if (search?.EspecieId is not null)
             query = query.Where(vacina => vacina.EspecieId == search.EspecieId);
@@ -25,7 +23,14 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         if (search?.ReaplicarEmXDiasMax is not null)
             query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax);
 
-        return query.OrderBy(vacina => vacina.Name).ToListAsync(cancellationToken);
+        query = query.OrderBy(vacina => vacina.Name);
+
+        if (page.HasValue)
+        {
+            query = query.Skip((page.Value - 1) * 10).Take(10);
+        }
+
+        return query.ToListAsync(cancellationToken);
     }
 
     public Task<Vacina?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -109,9 +114,20 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         return true;
     }
 
-    public Task<int> Count(CancellationToken cancellationToken = default)
+    public Task<int> Count(VacinaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        return context.Vacinas.CountAsync(cancellationToken);
+        var query = context.Vacinas.AsNoTracking();
+
+        if (search?.EspecieId is not null)
+            query = query.Where(vacina => vacina.EspecieId == search.EspecieId);
+        if (search?.ObrigatorioOrgaoSanitario is not null)
+            query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario);
+        if (search?.ReaplicarEmXDiasMin is not null)
+            query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin);
+        if (search?.ReaplicarEmXDiasMax is not null)
+            query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax);
+
+        return query.CountAsync(cancellationToken);
     }
 
     public Task<List<Vacina>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)

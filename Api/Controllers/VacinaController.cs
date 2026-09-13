@@ -10,10 +10,12 @@ namespace Api.Controllers;
 public class VacinaController(IVacinaService vacinaService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<VacinaReadResponseDto>>> GetAll([FromQuery] VacinaSearchDto search,
+    public async Task<ActionResult<List<VacinaReadResponseDto>>> GetAll(
+        [FromQuery] VacinaSearchDto search,
+        [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
-        var vacinas = await vacinaService.GetAllAsync(search, cancellationToken);
+        var vacinas = await vacinaService.GetAllAsync(page, search, cancellationToken);
         var responses = vacinas.Select(VacinaMapper.MapToRead).ToList();
         return Ok(responses);
     }
@@ -72,9 +74,9 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count(CancellationToken cancellationToken)
+    public async Task<ActionResult<int>> Count([FromQuery] VacinaSearchDto search, CancellationToken cancellationToken)
     {
-        return Ok(await vacinaService.Count(cancellationToken));
+        return Ok(await vacinaService.Count(search, cancellationToken));
     }
 
     [HttpDelete("{id:guid}")]
