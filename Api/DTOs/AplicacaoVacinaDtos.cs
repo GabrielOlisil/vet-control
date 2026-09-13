@@ -48,6 +48,8 @@ public sealed record AplicacaoVacinaCreateDto
     [DataType(DataType.Date)]
     public DateOnly? DataProximaDose { get; init; }
 
+    public bool? CicloFinalizado { get; init; } = true;
+
     [Required]
     public required string NumeroLote { get; init; }
 
@@ -74,6 +76,12 @@ public sealed record AplicacaoVacinaPatchDto
 
     [DataType(DataType.Date)]
     public DateOnly? DataProximaDose { get; init; }
+
+    public bool? CicloFinalizado { get; init; }
+
+    public StatusComprovanteVacina? StatusComprovante { get; init; }
+
+    public string? ComprovanteDocumentoPath { get; init; }
 
     public string? NumeroLote { get; init; }
 
@@ -116,7 +124,13 @@ public sealed record AplicacaoVacinaReadResponseDto
 
     public DateOnly DataAplicacao { get; init; }
 
-    public DateOnly DataProximaDose { get; init; }
+    public DateOnly? DataProximaDose { get; init; }
+
+    public bool CicloFinalizado { get; init; } = true;
+
+    public StatusComprovanteVacina StatusComprovante { get; init; } = StatusComprovanteVacina.NaoEmitido;
+
+    public string? ComprovanteDocumentoPath { get; init; }
 
     public string NumeroLote { get; init; } = string.Empty;
 
@@ -138,7 +152,9 @@ public sealed record AplicacaoVacinaDetailResponseDto
 
     public DateOnly DataAplicacao { get; init; }
 
-    public DateOnly DataProximaDose { get; init; }
+    public DateOnly? DataProximaDose { get; init; }
+
+    public bool CicloFinalizado { get; init; } = true;
 
     public required string NumeroLote { get; init; }
 
@@ -155,7 +171,9 @@ public sealed record AplicacaoVacinaDetailResponseDto
 
     public StatusComprovanteVacina StatusComprovante { get; init; } = StatusComprovanteVacina.NaoEmitido;
 
-    public bool TemComprovanteAnexo { get; init; }
+    public string? ComprovanteDocumentoPath { get; init; }
+
+    public bool TemComprovanteAnexo => !string.IsNullOrWhiteSpace(ComprovanteDocumentoPath);
 
     public DateTimeOffset CreationDateTime { get; init; }
 
@@ -164,5 +182,40 @@ public sealed record AplicacaoVacinaDetailResponseDto
     public DateTimeOffset CriadoEm => CreationDateTime;
 
     public DateTimeOffset? AtualizadoEm => LastModificationDateTime;
+}
+
+public sealed record ItemAnimalLoteDto
+{
+    [Required]
+    [NonEmptyGuid]
+    public Guid AnimalId { get; init; }
+
+    public bool CicloFinalizado { get; init; } = true;
+}
+
+public sealed record AplicacaoVacinaLoteCreateDto
+{
+    [Required]
+    [NonEmptyGuid]
+    public Guid VacinaId { get; init; }
+
+    [Required]
+    public required string NumeroLote { get; init; }
+
+    [JsonConverter(typeof(StringOrNumberConverter))]
+    public string? DoseMl { get; init; }
+
+    [PastOrPresentDate]
+    [DataType(DataType.Date)]
+    public DateOnly DataAplicacao { get; init; }
+
+    [DataType(DataType.Date)]
+    public DateOnly? DataProximaDose { get; init; }
+
+    public string? Observacoes { get; init; }
+
+    [Required]
+    [MinLength(1, ErrorMessage = "A lista de animais deve conter pelo menos um animal.")]
+    public required List<ItemAnimalLoteDto> Animais { get; init; }
 }
 

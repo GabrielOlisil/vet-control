@@ -21,6 +21,7 @@
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
+    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
 
     // ── Estado ────────────────────────────────────────────────────────────────
     let aplicacoes = $state<AplicacaoVacinaReadResponseDto[]>([]);
@@ -168,10 +169,19 @@
             <h1 class="text-2xl font-bold">Livro de Aplicações de Vacinas</h1>
             <p class="text-sm text-base-content/60">{total} registro(s)</p>
         </div>
-        <button class="btn btn-primary btn-sm gap-1" onclick={openModal}>
-            <IconAdd width="16" height="16" />
-            Registrar Vacinação
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+            <a
+                href="/aplicacoes-vacina/lote"
+                class="btn btn-outline btn-primary btn-sm gap-1"
+            >
+                <IconVaccines width="16" height="16" />
+                Vacinação em Lote
+            </a>
+            <button class="btn btn-primary btn-sm gap-1" onclick={openModal}>
+                <IconAdd width="16" height="16" />
+                Registrar Vacinação
+            </button>
+        </div>
     </div>
 
     <!-- Filtros -->

@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /source
 
-COPY VetControl.slnx .
+COPY  VetControl.slnx .
 COPY ./Api/*.csproj ./Api/
 COPY ./Api/packages.lock.json ./Api
 RUN dotnet restore --locked-mode
@@ -50,9 +50,12 @@ RUN npm run build
 # RUN
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
+
+USER 1111
+
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 WORKDIR /app
-COPY --from=build /app ./
-COPY --from=front /app/build ./wwwroot
+COPY --from=build --chown=1111:1111 /app ./
+COPY --from=front --chown=1111:1111 /app/build ./wwwroot
 ENTRYPOINT ["dotnet", "Api.dll"]

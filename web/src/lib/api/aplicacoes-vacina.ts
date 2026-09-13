@@ -5,6 +5,7 @@ import {
     type AplicacaoVacinaDetailResponseDto,
     type AplicacaoVacinaCreateDto,
     type AplicacaoVacinaPatchDto,
+    type AplicacaoVacinaLoteCreateDto,
 } from '../types';
 
 export interface AplicacaoVacinaListParams {
@@ -20,6 +21,28 @@ export interface AplicacaoVacinaCountParams {
     AnimalId?: string;
     DataAplicacaoFrom?: string;
     DataAplicacaoTo?: string;
+    somenteAtrasadas?: boolean;
+}
+
+export interface AplicacaoVacinaAtrasadasParams {
+    page?: number;
+    animalId?: string;
+    vacinaId?: string;
+    statusComprovante?: number;
+}
+
+export interface AplicacaoVacinaPendentesParams {
+    page?: number;
+    animalId?: string;
+    vacinaId?: string;
+    statusComprovante?: number;
+}
+
+export interface AplicacaoVacinaProximasParams {
+    page?: number;
+    dataLimite?: string;
+    animalId?: string;
+    vacinaId?: string;
 }
 
 export const aplicacaoVacinaService = {
@@ -49,7 +72,9 @@ export const aplicacaoVacinaService = {
                     AnimalId: params?.AnimalId,
                     DataAplicacaoFrom: params?.DataAplicacaoFrom,
                     DataAplicacaoTo: params?.DataAplicacaoTo,
-                },
+                    somenteAtrasadas: params?.somenteAtrasadas,
+                    SomenteAtrasadas: params?.somenteAtrasadas,
+                } as any,
             },
         });
         if (error) {
@@ -66,6 +91,78 @@ export const aplicacaoVacinaService = {
         });
         if (error || !data) {
             throw new Error(extractErrorMessage(error, 'Aplicação de vacina não encontrada'));
+        }
+        return data;
+    },
+
+    async getAtrasadas(params?: AplicacaoVacinaAtrasadasParams): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/atrasadas', {
+            params: {
+                query: {
+                    page: params?.page,
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                    statusComprovante: params?.statusComprovante as any,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar vacinas atrasadas'));
+        }
+        return data ?? [];
+    },
+
+    async getPendentesAssinatura(params?: AplicacaoVacinaPendentesParams): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/pendentes-assinatura', {
+            params: {
+                query: {
+                    page: params?.page,
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                    statusComprovante: params?.statusComprovante as any,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar vacinas pendentes de assinatura'));
+        }
+        return data ?? [];
+    },
+
+    async getProximas(params?: AplicacaoVacinaProximasParams): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/proximas', {
+            params: {
+                query: {
+                    page: params?.page,
+                    dataLimite: params?.dataLimite,
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao listar próximas doses'));
+        }
+        return data ?? [];
+    },
+
+    async vacinarLote(dto: AplicacaoVacinaLoteCreateDto): Promise<AplicacaoVacinaReadResponseDto[]> {
+        const payload: AplicacaoVacinaLoteCreateDto = {
+            ...dto,
+            vacinaId: dto.vacinaId,
+            numeroLote: dto.numeroLote.trim(),
+            doseMl: dto.doseMl !== undefined && dto.doseMl !== null && String(dto.doseMl).trim() !== '' ? String(dto.doseMl).trim() : undefined,
+            dataAplicacao: dto.dataAplicacao || hoje(),
+            dataProximaDose: dto.dataProximaDose?.trim() ? dto.dataProximaDose.trim() : undefined,
+            observacoes: dto.observacoes?.trim() || undefined,
+            animais: dto.animais,
+        };
+
+        const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina/lote', {
+            body: payload,
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao registrar vacinação em lote'));
         }
         return data;
     },

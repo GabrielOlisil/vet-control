@@ -16,6 +16,9 @@ public static class AplicacaoVacinaMapper
             : new VacinaShortResponseDto { Id = aplicacao.VacinaId, Name = string.Empty },
         DataAplicacao = aplicacao.DataAplicacao,
         DataProximaDose = aplicacao.DataProximaDose,
+        CicloFinalizado = aplicacao.CicloFinalizado,
+        StatusComprovante = aplicacao.StatusComprovante,
+        ComprovanteDocumentoPath = aplicacao.ComprovanteDocumentoPath,
         NumeroLote = aplicacao.NumeroLote,
         DoseMl = aplicacao.DoseMl,
     };
@@ -38,11 +41,12 @@ public static class AplicacaoVacinaMapper
         Vacina = aplicacao.Vacina != null ? VacinaMapper.MapToRead(aplicacao.Vacina) : null,
         DataAplicacao = aplicacao.DataAplicacao,
         DataProximaDose = aplicacao.DataProximaDose,
+        CicloFinalizado = aplicacao.CicloFinalizado,
         NumeroLote = aplicacao.NumeroLote,
         DoseMl = aplicacao.DoseMl,
         Observacoes = aplicacao.Observacoes,
-        StatusComprovante = Api.Models.Enums.StatusComprovanteVacina.NaoEmitido,
-        TemComprovanteAnexo = false,
+        StatusComprovante = aplicacao.StatusComprovante,
+        ComprovanteDocumentoPath = aplicacao.ComprovanteDocumentoPath,
         CreationDateTime = aplicacao.CreationDateTime,
         LastModificationDateTime = aplicacao.LastModificationDateTime
     };

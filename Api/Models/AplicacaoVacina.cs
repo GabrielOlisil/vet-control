@@ -1,3 +1,5 @@
+using Api.Models.Enums;
+
 namespace Api.Models;
 
 public class AplicacaoVacina : IAuditedEntity
@@ -9,7 +11,13 @@ public class AplicacaoVacina : IAuditedEntity
     public Guid AnimalId { get; set; }
 
     public DateOnly DataAplicacao { get; set; }
-    public DateOnly DataProximaDose { get; set; }
+    public DateOnly? DataProximaDose { get; set; }
+
+    public bool CicloFinalizado { get; set; } = true;
+
+    public StatusComprovanteVacina StatusComprovante { get; set; } = StatusComprovanteVacina.NaoEmitido;
+
+    public string? ComprovanteDocumentoPath { get; set; }
 
     public required string NumeroLote { get; set; }
 

@@ -1,5 +1,6 @@
 using Api.DTOs;
 using Api.Mappers;
+using Api.Models.Enums;
 using Api.Services.AplicacoesVacina;
 using Microsoft.AspNetCore.Mvc;
 
@@ -30,9 +31,61 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> Count([FromQuery] AplicacaoVacinaSearchDto? search = null, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<int>> Count(
+        [FromQuery] AplicacaoVacinaSearchDto? search = null,
+        [FromQuery] bool? somenteAtrasadas = null,
+        CancellationToken cancellationToken = default)
     {
-        return Ok(await aplicacaoVacinaService.Count(search, cancellationToken));
+        return Ok(await aplicacaoVacinaService.Count(search, somenteAtrasadas, cancellationToken));
+    }
+
+    [HttpGet("atrasadas")]
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetAtrasadas(
+        [FromQuery] int? page,
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        [FromQuery] StatusComprovanteVacina? statusComprovante,
+        CancellationToken cancellationToken)
+    {
+        var aplicacoes = await aplicacaoVacinaService.GetAtrasadasAsync(page, animalId, vacinaId, statusComprovante, cancellationToken);
+        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
+        return Ok(responses);
+    }
+
+    [HttpGet("pendentes-assinatura")]
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetPendentesAssinatura(
+        [FromQuery] int? page,
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        [FromQuery] StatusComprovanteVacina? statusComprovante,
+        CancellationToken cancellationToken)
+    {
+        var aplicacoes = await aplicacaoVacinaService.GetPendentesAssinaturaAsync(page, animalId, vacinaId, statusComprovante, cancellationToken);
+        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
+        return Ok(responses);
+    }
+
+    [HttpGet("proximas")]
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetProximas(
+        [FromQuery] int? page,
+        [FromQuery] DateOnly? dataLimite,
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        CancellationToken cancellationToken)
+    {
+        var aplicacoes = await aplicacaoVacinaService.GetProximasAsync(page, dataLimite, animalId, vacinaId, cancellationToken);
+        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
+        return Ok(responses);
+    }
+
+    [HttpPost("lote")]
+    public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> VacinarLote(
+        [FromBody] AplicacaoVacinaLoteCreateDto dto,
+        CancellationToken cancellationToken)
+    {
+        var aplicacoes = await aplicacaoVacinaService.VacinarLoteAsync(dto, cancellationToken);
+        var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
+        return Ok(responses);
     }
 
     [HttpPost]

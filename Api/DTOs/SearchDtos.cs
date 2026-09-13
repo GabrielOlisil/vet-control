@@ -19,6 +19,7 @@ public sealed record AplicacaoVacinaSearchDto
     public Guid? AnimalId { get; init; }
     public DateOnly? DataAplicacaoFrom { get; init; }
     public DateOnly? DataAplicacaoTo { get; init; }
+    public bool? SomenteAtrasadas { get; init; }
 }
 
 public sealed record RacaSearchDto

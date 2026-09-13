@@ -1,30 +1,20 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import FormModal from "$lib/components/FormModal.svelte";
-    import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
+    import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
+    import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { animalService } from "$lib/api/animais";
     import { vacinaService } from "$lib/api/vacinas";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
-    import { racaService } from "$lib/api/racas";
     import {
         getAnimalName,
-        calcularIdade,
         hoje,
-        TipoIdentificadorLabels,
-        SexoAnimalLabels,
-        OrigemAnimalLabels,
         type AnimalReadResponseDto,
-        type AnimalShortResponseDto,
-        type AnimalCreateDto,
-        type AnimalDetailResponseDto,
-        type VacinaCreateDto,
         type VacinaReadResponseDto,
-        type RacaReadResponseDto,
+        type AplicacaoVacinaReadResponseDto,
         type AplicacaoVacinaCreateDto,
-        type IdentificadorCreateDto,
     } from "$lib/types";
 
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
@@ -33,119 +23,154 @@
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
 
-    // ── Stats ─────────────────────────────────────────────────────────────────
-    let statsAnimais = $state(0);
-    let statsDoses = $state(0);
-    let statsVacinas = $state(0);
-    let isLoadingStats = $state(true);
+    // ── Aba Ativa ─────────────────────────────────────────────────────────────
+    type ActiveTab = "atrasadas" | "pendentes" | "proximas";
+    let activeTab = $state<ActiveTab>("atrasadas");
 
-    // ── Listagem ──────────────────────────────────────────────────────────────
+    // ── Contadores e KPIs ─────────────────────────────────────────────────────
+    let countAtrasadas = $state(0);
+    let countTotalDoses = $state(0);
+    let countTotalAnimais = $state(0);
+    let isLoadingKpis = $state(true);
+
+    // ── Catálogos para Filtros e Modais ───────────────────────────────────────
     let animais = $state<AnimalReadResponseDto[]>([]);
+    let vacinas = $state<VacinaReadResponseDto[]>([]);
 
-    let racas = $state<RacaReadResponseDto[]>([]);
-    let vacinasCatalogo = $state<VacinaReadResponseDto[]>([]);
-    let isLoadingAnimais = $state(true);
+    // ── Aba 1: Vacinas Atrasadas ──────────────────────────────────────────────
+    let atrasadas = $state<AplicacaoVacinaReadResponseDto[]>([]);
+    let pageAtrasadas = $state(1);
+    let filterAnimalAtrasadas = $state("");
+    let filterVacinaAtrasadas = $state("");
+    let filterStatusAtrasadas = $state("");
+    let isLoadingAtrasadas = $state(false);
 
-    // ── Busca com debounce ────────────────────────────────────────────────────
-    let searchTerm = $state("");
-    let searchResults = $state<AnimalShortResponseDto[]>([]);
-    let isSearching = $state(false);
-    let searchDebounce: ReturnType<typeof setTimeout>;
-
-    $effect(() => {
-        const term = searchTerm;
-        clearTimeout(searchDebounce);
-        if (term.trim().length < 2) {
-            searchResults = [];
-            return;
-        }
-        isSearching = true;
-        searchDebounce = setTimeout(async () => {
-            try {
-                searchResults = await animalService.search(term);
-            } catch {
-                searchResults = [];
-            } finally {
-                isSearching = false;
-            }
-        }, 350);
-    });
-
-    const displayAnimais = $derived(
-        searchTerm.trim().length >= 2 ? [] : animais,
-    );
-
-    // ── Modal: Novo Animal ────────────────────────────────────────────────────
-    let showAnimalModal = $state(false);
-    let isSubmittingAnimal = $state(false);
-    let animalFormError = $state("");
-    let animalForm = $state<AnimalCreateDto>({
-        name: "",
-        dataNascimento: hoje(),
-        dataNascimentoAproximada: false,
-        racaId: "",
-        sexo: 0,
-        origem: 0,
-        loteOuPasto: "",
-        identificadores: [{ tipo: 0, valor: "", ehPrincipal: true }],
-    });
-
-    function addIdentificador() {
-        animalForm.identificadores = [
-            ...animalForm.identificadores,
-            { tipo: 0, valor: "", ehPrincipal: false },
-        ];
-    }
-
-    function removeIdentificador(idx: number) {
-        animalForm.identificadores = animalForm.identificadores.filter(
-            (_, i) => i !== idx,
-        );
-    }
-
-    async function submitAnimal() {
-        animalFormError = "";
-        if (!animalForm.identificadores[0]?.valor?.trim()) {
-            animalFormError = "Informe o identificador principal do animal.";
-            return;
-        }
-        isSubmittingAnimal = true;
+    async function loadAtrasadas() {
+        isLoadingAtrasadas = true;
         try {
-            const dto: AnimalCreateDto = {
-                ...animalForm,
-                name: animalForm.name?.trim() || undefined,
-                racaId: animalForm.racaId || undefined,
-                loteOuPasto: animalForm.loteOuPasto?.trim() || undefined,
-            };
-            await animalService.create(dto);
-            showAnimalModal = false;
-            resetAnimalForm();
-            await loadAll();
-        } catch (e: unknown) {
-            animalFormError =
-                e instanceof Error ? e.message : "Erro ao salvar animal.";
+            atrasadas = await aplicacaoVacinaService.getAtrasadas({
+                page: pageAtrasadas,
+                animalId: filterAnimalAtrasadas || undefined,
+                vacinaId: filterVacinaAtrasadas || undefined,
+                statusComprovante:
+                    filterStatusAtrasadas !== ""
+                        ? Number(filterStatusAtrasadas)
+                        : undefined,
+            });
+        } catch (err) {
+            console.error(err);
         } finally {
-            isSubmittingAnimal = false;
+            isLoadingAtrasadas = false;
         }
     }
 
-    function resetAnimalForm() {
-        animalForm = {
-            name: "",
-            dataNascimento: hoje(),
-            dataNascimentoAproximada: false,
-            racaId: "",
-            sexo: 0,
-            origem: 0,
-            loteOuPasto: "",
-            identificadores: [{ tipo: 0, valor: "", ehPrincipal: true }],
-        };
-        animalFormError = "";
+    // ── Aba 2: Pendentes de Assinatura ────────────────────────────────────────
+    let pendentes = $state<AplicacaoVacinaReadResponseDto[]>([]);
+    let pagePendentes = $state(1);
+    let filterAnimalPendentes = $state("");
+    let filterVacinaPendentes = $state("");
+    let filterStatusPendentes = $state("");
+    let isLoadingPendentes = $state(false);
+
+    async function loadPendentes() {
+        isLoadingPendentes = true;
+        try {
+            pendentes = await aplicacaoVacinaService.getPendentesAssinatura({
+                page: pagePendentes,
+                animalId: filterAnimalPendentes || undefined,
+                vacinaId: filterVacinaPendentes || undefined,
+                statusComprovante:
+                    filterStatusPendentes !== ""
+                        ? Number(filterStatusPendentes)
+                        : undefined,
+            });
+        } catch (err) {
+            console.error(err);
+        } finally {
+            isLoadingPendentes = false;
+        }
     }
 
-    // ── Modal: Vacinar Animal ─────────────────────────────────────────────────
+    // ── Aba 3: Próximas Doses ─────────────────────────────────────────────────
+    let proximas = $state<AplicacaoVacinaReadResponseDto[]>([]);
+    let pageProximas = $state(1);
+    let filterAnimalProximas = $state("");
+    let filterVacinaProximas = $state("");
+    let diasLimiteOption = $state("30");
+    let customDataLimite = $state("");
+    let isLoadingProximas = $state(false);
+
+    function getDataLimiteCalculada(): string | undefined {
+        if (diasLimiteOption === "custom") {
+            return customDataLimite || undefined;
+        }
+        const dias = Number(diasLimiteOption) || 30;
+        const d = new Date();
+        d.setDate(d.getDate() + dias);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dia = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${dia}`;
+    }
+
+    async function loadProximas() {
+        isLoadingProximas = true;
+        try {
+            const dataLimite = getDataLimiteCalculada();
+            proximas = await aplicacaoVacinaService.getProximas({
+                page: pageProximas,
+                animalId: filterAnimalProximas || undefined,
+                vacinaId: filterVacinaProximas || undefined,
+                dataLimite,
+            });
+        } catch (err) {
+            console.error(err);
+        } finally {
+            isLoadingProximas = false;
+        }
+    }
+
+    // ── Upload de Comprovante Modal ───────────────────────────────────────────
+    let showUploadModal = $state(false);
+    let uploadAplicacaoId = $state("");
+    let uploadFile = $state<File | null>(null);
+    let isUploading = $state(false);
+    let uploadError = $state("");
+
+    function openUploadModal(aplicacaoId: string) {
+        uploadAplicacaoId = aplicacaoId;
+        uploadFile = null;
+        uploadError = "";
+        showUploadModal = true;
+    }
+
+    async function handleUploadComprovante() {
+        if (!uploadFile) {
+            uploadError = "Selecione um arquivo PDF para anexar.";
+            return;
+        }
+        isUploading = true;
+        uploadError = "";
+        try {
+            await aplicacaoVacinaService.uploadComprovante(
+                uploadAplicacaoId,
+                uploadFile,
+            );
+            showUploadModal = false;
+            await loadPendentes();
+            if (activeTab === "atrasadas") await loadAtrasadas();
+        } catch (err) {
+            uploadError =
+                err instanceof Error
+                    ? err.message
+                    : "Erro no upload do comprovante";
+        } finally {
+            isUploading = false;
+        }
+    }
+
+    // ── Modal de Aplicação Rápida Individual ──────────────────────────────────
     let showAplicacaoModal = $state(false);
-    let aplicacaoPreAnimal = $state<AnimalReadResponseDto | null>(null);
     let isSubmittingAplicacao = $state(false);
     let aplicacaoFormError = $state("");
     let aplicacaoForm = $state<AplicacaoVacinaCreateDto>({
@@ -155,32 +180,24 @@
         dataProximaDose: "",
         numeroLote: "",
         doseMl: "",
-        veterinarioResponsavel: "",
-        aplicador: "",
-        laboratorioFabricante: "",
         observacoes: "",
     });
 
-    function openAplicacaoModal(animal?: AnimalReadResponseDto) {
-        aplicacaoPreAnimal = animal ?? null;
+    function openNovaAplicacao(animalId = "", vacinaId = "") {
         aplicacaoForm = {
-            animalId: animal?.id ?? "",
-            vacinaId: "",
+            animalId,
+            vacinaId,
             dataAplicacao: hoje(),
             dataProximaDose: "",
             numeroLote: "",
             doseMl: "",
-            veterinarioResponsavel: "",
-            aplicador: "",
-            laboratorioFabricante: "",
             observacoes: "",
         };
         aplicacaoFormError = "";
         showAplicacaoModal = true;
     }
 
-    async function submitAplicacao() {
-        aplicacaoFormError = "";
+    async function submitNovaAplicacao() {
         if (!aplicacaoForm.animalId) {
             aplicacaoFormError = "Selecione o animal.";
             return;
@@ -190,105 +207,156 @@
             return;
         }
         if (!aplicacaoForm.numeroLote?.trim()) {
-            aplicacaoFormError = "Informe o número do lote.";
-            return;
-        }
-        if (!aplicacaoForm.veterinarioResponsavel?.trim()) {
-            aplicacaoFormError = "Informe o veterinário responsável.";
+            aplicacaoFormError = "Informe o lote.";
             return;
         }
         isSubmittingAplicacao = true;
         try {
             await aplicacaoVacinaService.create(aplicacaoForm);
             showAplicacaoModal = false;
-            await loadAll();
-        } catch (e: unknown) {
+            await refreshActiveTab();
+            await loadKpis();
+        } catch (err) {
             aplicacaoFormError =
-                e instanceof Error ? e.message : "Erro ao registrar vacinação.";
+                err instanceof Error ? err.message : "Erro ao registrar dose.";
         } finally {
             isSubmittingAplicacao = false;
         }
     }
 
-    // ── Carregar dados ────────────────────────────────────────────────────────
-    async function loadAll() {
+    // ── Atualização Geral e Reações ───────────────────────────────────────────
+    async function loadKpis() {
+        isLoadingKpis = true;
         try {
-            const [a, d, v, listA, listR, listV] = await Promise.all([
-                animalService.getCount(),
+            const [atrasadasC, totalD, totalA] = await Promise.all([
+                aplicacaoVacinaService.getCount({ somenteAtrasadas: true }),
                 aplicacaoVacinaService.getCount(),
-                vacinaService.getCount(),
-                animalService.getList(),
-                racaService.getList(),
-                vacinaService.getList(),
+                animalService.getCount(),
             ]);
-            statsAnimais = a;
-            statsDoses = d;
-            statsVacinas = v;
-            animais = listA;
-            racas = listR;
-            vacinasCatalogo = listV;
-        } catch (e) {
-            console.error(e);
+            countAtrasadas = atrasadasC;
+            countTotalDoses = totalD;
+            countTotalAnimais = totalA;
+        } catch (err) {
+            console.error(err);
+        } finally {
+            isLoadingKpis = false;
         }
     }
 
-    onMount(async () => {
-        isLoadingStats = true;
-        isLoadingAnimais = true;
-        await loadAll();
-        isLoadingStats = false;
-        isLoadingAnimais = false;
+    async function refreshActiveTab() {
+        if (activeTab === "atrasadas") await loadAtrasadas();
+        else if (activeTab === "pendentes") await loadPendentes();
+        else if (activeTab === "proximas") await loadProximas();
+    }
+
+    $effect(() => {
+        // Recarregar quando alternar aba
+        const tab = activeTab;
+        if (tab === "atrasadas") loadAtrasadas();
+        else if (tab === "pendentes") loadPendentes();
+        else if (tab === "proximas") loadProximas();
     });
 
-    const tipoIdOptions = Object.entries(TipoIdentificadorLabels).map(
-        ([v, l]) => ({
-            value: String(v),
-            label: l,
-        }),
-    );
-    const sexoOptions = Object.entries(SexoAnimalLabels).map(([v, l]) => ({
-        value: String(v),
-        label: l,
-    }));
-    const origemOptions = Object.entries(OrigemAnimalLabels).map(([v, l]) => ({
-        value: String(v),
-        label: l,
-    }));
+    onMount(async () => {
+        await Promise.all([
+            loadKpis(),
+            animalService.getList().then((res) => (animais = res)),
+            vacinaService.getList().then((res) => (vacinas = res)),
+            loadAtrasadas(),
+        ]);
+    });
+
+    // Formatador de data auxiliar
+    function formatarData(dataStr?: string | null): string {
+        if (!dataStr) return "—";
+        const clean = dataStr.slice(0, 10);
+        const p = clean.split("-");
+        if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+        return dataStr;
+    }
+
+    // Cálculo de dias de atraso
+    function calcularDiasAtraso(dataStr?: string | null): number {
+        if (!dataStr) return 0;
+        const clean = dataStr.slice(0, 10);
+        const parts = clean.split("-").map(Number);
+        if (parts.length < 3 || parts.some(isNaN)) return 0;
+        const y = parts[0] ?? 0;
+        const m = parts[1] ?? 1;
+        const d = parts[2] ?? 1;
+        const venc = new Date(y, m - 1, d);
+        const agora = new Date();
+        const hojeDate = new Date(
+            agora.getFullYear(),
+            agora.getMonth(),
+            agora.getDate(),
+        );
+        const diff = Math.floor(
+            (hojeDate.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        return Math.max(0, diff);
+    }
+
+    // Dias restantes até vencer
+    function calcularDiasRestantes(dataStr?: string | null): number {
+        if (!dataStr) return 0;
+        const clean = dataStr.slice(0, 10);
+        const parts = clean.split("-").map(Number);
+        if (parts.length < 3 || parts.some(isNaN)) return 0;
+        const y = parts[0] ?? 0;
+        const m = parts[1] ?? 1;
+        const d = parts[2] ?? 1;
+        const venc = new Date(y, m - 1, d);
+        const agora = new Date();
+        const hojeDate = new Date(
+            agora.getFullYear(),
+            agora.getMonth(),
+            agora.getDate(),
+        );
+        const diff = Math.ceil(
+            (venc.getTime() - hojeDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        return diff;
+    }
 </script>
 
 <div class="space-y-6">
-    <!-- ── Cabeçalho ──────────────────────────────────────────────────────── -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <!-- ── Cabeçalho Principal ─────────────────────────────────────────────── -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold">Painel Operacional</h1>
-            <p class="text-sm text-base-content/60">
-                Hospital Veterinário Universitário / Fazenda Escola
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="p-2 rounded-xl bg-primary text-primary-content">
+                    <IconVaccines width="22" height="22" />
+                </span>
+                Painel de Gestão e Pendências Vacinais
+            </h1>
+            <p class="text-sm text-base-content/60 mt-1">
+                Monitoramento clínico em tempo real: vacinas em atraso,
+                assinaturas e reforços programados.
             </p>
         </div>
-        <div class="flex flex-wrap gap-2">
-            <button
-                class="btn btn-primary btn-sm gap-1"
-                onclick={() => openAplicacaoModal()}
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a
+                href="/aplicacoes-vacina/lote"
+                class="btn btn-primary btn-sm gap-1.5 shadow-xs"
             >
                 <IconVaccines width="16" height="16" />
-                Vacinar Animal
-            </button>
+                <span>Vacinação em Lote</span>
+            </a>
             <button
-                class="btn btn-outline btn-sm gap-1"
-                onclick={() => {
-                    resetAnimalForm();
-                    showAnimalModal = true;
-                }}
+                class="btn btn-outline btn-sm gap-1.5"
+                onclick={() => openNovaAplicacao()}
             >
                 <IconAdd width="16" height="16" />
-                Novo Paciente
+                <span>Vacinar Individual</span>
             </button>
         </div>
     </div>
 
-    <!-- ── Stats ──────────────────────────────────────────────────────────── -->
-    {#if isLoadingStats}
-        <div class="grid grid-cols-3 gap-4">
+    <!-- ── KPI Cards ───────────────────────────────────────────────────────── -->
+    {#if isLoadingKpis}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {#each [0, 1, 2] as _}
                 <div
                     class="stat bg-base-100 rounded-2xl shadow-xs animate-pulse h-24"
@@ -296,451 +364,1053 @@
             {/each}
         </div>
     {:else}
-        <div
-            class="stats stats-horizontal shadow-xs w-full bg-base-100 rounded-2xl flex flex-wrap"
-        >
-            <div class="stat">
-                <div class="stat-figure text-primary">
-                    <IconPets width="28" height="28" />
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Vacinas Atrasadas -->
+            <button
+                class="stat bg-base-100 rounded-2xl shadow-xs text-left cursor-pointer border hover:border-error transition-all {activeTab ===
+                'atrasadas'
+                    ? 'ring-2 ring-error border-transparent'
+                    : 'border-base-200'}"
+                onclick={() => (activeTab = "atrasadas")}
+            >
+                <div class="stat-figure text-error">
+                    <IconVaccines width="32" height="32" />
                 </div>
-                <div class="stat-title">Animais Cadastrados</div>
-                <div class="stat-value text-primary">{statsAnimais}</div>
-                <div class="stat-desc">Total no sistema</div>
-            </div>
-            <div class="stat">
-                <div class="stat-figure text-secondary">
-                    <IconCalendar width="28" height="28" />
+                <div
+                    class="stat-title text-xs font-semibold uppercase tracking-wider text-error"
+                >
+                    Vacinas Atrasadas
                 </div>
-                <div class="stat-title">Doses Aplicadas</div>
-                <div class="stat-value text-secondary">{statsDoses}</div>
-                <div class="stat-desc">Registros de vacinação</div>
-            </div>
-            <div class="stat">
-                <div class="stat-figure text-accent">
-                    <IconVaccines width="28" height="28" />
+                <div class="stat-value text-error font-extrabold">
+                    {countAtrasadas}
                 </div>
-                <div class="stat-title">Vacinas no Catálogo</div>
-                <div class="stat-value text-accent">{statsVacinas}</div>
-                <div class="stat-desc">Imunobiológicos cadastrados</div>
-            </div>
+                <div class="stat-desc">
+                    Doses com prazo expirado sem reforço
+                </div>
+            </button>
+
+            <!-- Total de Aplicações -->
+            <button
+                class="stat bg-base-100 rounded-2xl shadow-xs text-left cursor-pointer border hover:border-warning transition-all {activeTab ===
+                'pendentes'
+                    ? 'ring-2 ring-warning border-transparent'
+                    : 'border-base-200'}"
+                onclick={() => (activeTab = "pendentes")}
+            >
+                <div class="stat-figure text-warning">
+                    <IconCalendar width="32" height="32" />
+                </div>
+                <div
+                    class="stat-title text-xs font-semibold uppercase tracking-wider text-warning"
+                >
+                    Pendentes de Assinatura
+                </div>
+                <div class="stat-value text-warning font-extrabold">
+                    {pendentes.length}
+                </div>
+                <div class="stat-desc">
+                    Sem comprovante ou aguardando emissão
+                </div>
+            </button>
+
+            <!-- Total de Animais -->
+            <button
+                class="stat bg-base-100 rounded-2xl shadow-xs text-left cursor-pointer border hover:border-info transition-all {activeTab ===
+                'proximas'
+                    ? 'ring-2 ring-info border-transparent'
+                    : 'border-base-200'}"
+                onclick={() => (activeTab = "proximas")}
+            >
+                <div class="stat-figure text-info">
+                    <IconPets width="32" height="32" />
+                </div>
+                <div
+                    class="stat-title text-xs font-semibold uppercase tracking-wider text-info"
+                >
+                    Próximas Doses
+                </div>
+                <div class="stat-value text-info font-extrabold">
+                    {proximas.length}
+                </div>
+                <div class="stat-desc">
+                    Doses a vencer no horizonte configurado
+                </div>
+            </button>
         </div>
     {/if}
 
-    <!-- ── Busca operacional ───────────────────────────────────────────────── -->
-    <div class="relative">
-        <label
-            class="input input-bordered flex items-center gap-2 w-full max-w-lg"
+    <!-- ── Painel de Abas ──────────────────────────────────────────────────── -->
+    <div
+        class="card bg-base-100 shadow-xs border border-base-200 rounded-2xl overflow-hidden"
+    >
+        <!-- Navegação de Abas -->
+        <div
+            class="tabs tabs-box bg-base-200/50 p-1.5 border-b border-base-200"
         >
-            <IconSearch width="16" height="16" class="text-base-content/40" />
-            <input
-                type="text"
-                placeholder="Buscar animal por nome ou identificador…"
-                class="grow"
-                bind:value={searchTerm}
-            />
-        </label>
-
-        {#if searchTerm.trim().length >= 2 && searchResults.length > 0}
-            <div
-                class="absolute z-30 mt-1 w-full max-w-lg bg-base-100 border border-base-300 rounded-xl shadow-lg"
+            <button
+                class="tab gap-2 font-medium text-sm transition-all {activeTab ===
+                'atrasadas'
+                    ? 'tab-active bg-base-100 shadow-xs font-bold text-error'
+                    : ''}"
+                onclick={() => {
+                    activeTab = "atrasadas";
+                    pageAtrasadas = 1;
+                }}
             >
-                {#each searchResults as result}
-                    <a
-                        href="/prontuario/{result.id}"
-                        class="flex items-center gap-3 px-4 py-2.5 hover:bg-base-200 transition-colors"
-                    >
-                        <IconPets width="14" height="14" class="text-primary" />
-                        <span class="font-medium">{getAnimalName(result)}</span>
-                        <span
-                            class="text-xs text-base-content/50 ml-auto font-mono"
-                            >{result.id?.slice(0, 8)}…</span
-                        >
-                    </a>
-                {/each}
-            </div>
-        {:else if searchTerm.trim().length >= 2 && !isSearching}
-            <div
-                class="absolute z-30 mt-1 w-full max-w-lg bg-base-100 border border-base-300 rounded-xl shadow-lg px-4 py-3 text-sm text-base-content/60"
-            >
-                Nenhum resultado encontrado.
-            </div>
-        {/if}
-    </div>
-
-    <!-- ── Tabela de Animais ───────────────────────────────────────────────── -->
-    <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
-        <div class="card-body p-0">
-            <div
-                class="px-5 py-4 border-b border-base-200 flex items-center justify-between"
-            >
-                <h2 class="font-semibold text-base">Animais Registrados</h2>
-                <a href="/animais" class="btn btn-ghost btn-xs">Ver todos →</a>
-            </div>
-
-            {#if isLoadingAnimais}
-                <div class="flex justify-center items-center py-16">
+                <IconVaccines width="18" height="18" />
+                <span>Vacinas Atrasadas</span>
+                {#if countAtrasadas > 0}
                     <span
-                        class="loading loading-spinner loading-md text-primary"
-                    ></span>
-                </div>
-            {:else if displayAnimais.length === 0 && searchTerm.trim().length < 2}
-                <div class="text-center py-16 text-base-content/50">
-                    <IconPets
-                        width="40"
-                        height="40"
-                        class="mx-auto mb-3 opacity-30"
-                    />
-                    <p>Nenhum animal cadastrado.</p>
-                    <button
-                        class="btn btn-primary btn-sm mt-4"
-                        onclick={() => {
-                            resetAnimalForm();
-                            showAnimalModal = true;
-                        }}
+                        class="badge badge-sm badge-error text-white font-bold ml-1"
                     >
-                        Cadastrar primeiro animal
-                    </button>
-                </div>
-            {:else}
-                <div class="overflow-x-auto">
-                    <table class="table table-zebra table-sm w-full">
-                        <thead>
-                            <tr class="text-xs uppercase text-base-content/50">
-                                <th>Espécie</th>
-                                <th>Identificador</th>
-                                <th>Nome</th>
-                                <th>Raça</th>
-                                <th>Nascimento / Idade</th>
-                                <th class="text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {#each displayAnimais as animal}
-                                <tr class="hover:bg-base-200/50">
-                                    <td>
-                                        <EspecieAvatar
-                                            iconeKey={animal.raca?.nome?.toLowerCase() ??
-                                                "outros"}
-                                            tamanho="sm"
-                                        />
-                                    </td>
-                                    <td>
-                                        <span
-                                            class="badge badge-outline badge-sm font-mono"
-                                        >
-                                            {animal.identificadorPrincipal
-                                                ?.valor ||
-                                                (animal.id?.slice(0, 8) ?? "—")}
-                                        </span>
-                                    </td>
-                                    <td class="font-medium">
-                                        {getAnimalName(animal)}
-                                    </td>
-                                    <td class="text-base-content/70 text-sm">
-                                        {animal.raca?.nome ?? "Não informada"}
-                                    </td>
-                                    <td class="text-sm">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-base-content/60 text-xs"
-                                            >
-                                                {animal.dataNascimento
-                                                    ? new Date(
-                                                          animal.dataNascimento,
-                                                      ).toLocaleDateString(
-                                                          "pt-BR",
-                                                      )
-                                                    : "—"}
-                                            </span>
-                                            <span class="font-medium"
-                                                >{calcularIdade(
-                                                    animal.dataNascimento,
-                                                )}</span
-                                            >
-                                        </div>
-                                    </td>
-                                    <td class="text-right">
-                                        <div class="flex justify-end gap-1">
-                                            <button
-                                                class="btn btn-xs btn-primary"
-                                                onclick={(e) => {
-                                                    e.stopPropagation();
-                                                    openAplicacaoModal(animal);
-                                                }}
-                                            >
-                                                Vacinar
-                                            </button>
-                                            <a
-                                                href="/prontuario/{animal.id}"
-                                                class="btn btn-xs btn-ghost"
-                                            >
-                                                Prontuário
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+                        {countAtrasadas}
+                    </span>
+                {/if}
+            </button>
+
+            <button
+                class="tab gap-2 font-medium text-sm transition-all {activeTab ===
+                'pendentes'
+                    ? 'tab-active bg-base-100 shadow-xs font-bold text-warning'
+                    : ''}"
+                onclick={() => {
+                    activeTab = "pendentes";
+                    pagePendentes = 1;
+                }}
+            >
+                <IconCalendar width="18" height="18" />
+                <span>Pendentes de Assinatura</span>
+            </button>
+
+            <button
+                class="tab gap-2 font-medium text-sm transition-all {activeTab ===
+                'proximas'
+                    ? 'tab-active bg-base-100 shadow-xs font-bold text-info'
+                    : ''}"
+                onclick={() => {
+                    activeTab = "proximas";
+                    pageProximas = 1;
+                }}
+            >
+                <IconCalendar width="18" height="18" />
+                <span>Próximas Doses</span>
+            </button>
+        </div>
+
+        <div class="card-body p-5">
+            <!-- ══════════════════════════════════════════════════════════════════
+                 ABA 1: VACINAS ATRASADAS
+                 ══════════════════════════════════════════════════════════════════ -->
+            {#if activeTab === "atrasadas"}
+                <!-- Filtros da Aba 1 -->
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
+                >
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroAnimalAtrasadas">Animal</label
+                        >
+                        <select
+                            id="filtroAnimalAtrasadas"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterAnimalAtrasadas}
+                            onchange={() => {
+                                pageAtrasadas = 1;
+                                loadAtrasadas();
+                            }}
+                        >
+                            <option value="">Todos os Animais</option>
+                            {#each animais as a}
+                                <option value={a.id}>
+                                    {getAnimalName(a)} ({a
+                                        .identificadorPrincipal?.valor ||
+                                        a.id?.slice(0, 6)})
+                                </option>
                             {/each}
-                        </tbody>
-                    </table>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroVacinaAtrasadas">Vacina</label
+                        >
+                        <select
+                            id="filtroVacinaAtrasadas"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterVacinaAtrasadas}
+                            onchange={() => {
+                                pageAtrasadas = 1;
+                                loadAtrasadas();
+                            }}
+                        >
+                            <option value="">Todas as Vacinas</option>
+                            {#each vacinas as v}
+                                <option value={v.id}>{v.name}</option>
+                            {/each}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroStatusAtrasadas"
+                            >Status do Comprovante</label
+                        >
+                        <select
+                            id="filtroStatusAtrasadas"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterStatusAtrasadas}
+                            onchange={() => {
+                                pageAtrasadas = 1;
+                                loadAtrasadas();
+                            }}
+                        >
+                            <option value="">Todos os Status</option>
+                            <option value="0">Não Emitido</option>
+                            <option value="1">Pendente Assinatura</option>
+                            <option value="2">Assinado</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button
+                            class="btn btn-outline btn-sm w-full"
+                            onclick={() => {
+                                filterAnimalAtrasadas = "";
+                                filterVacinaAtrasadas = "";
+                                filterStatusAtrasadas = "";
+                                pageAtrasadas = 1;
+                                loadAtrasadas();
+                            }}
+                        >
+                            Limpar Filtros
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Tabela de Atrasadas -->
+                {#if isLoadingAtrasadas}
+                    <div class="py-16 flex justify-center">
+                        <span
+                            class="loading loading-spinner loading-md text-error"
+                        ></span>
+                    </div>
+                {:else if atrasadas.length === 0}
+                    <div class="py-14 text-center text-base-content/50">
+                        <IconVaccines
+                            width="40"
+                            height="40"
+                            class="mx-auto mb-2 opacity-30 text-success"
+                        />
+                        <p class="font-semibold text-base text-base-content">
+                            Parabéns! Nenhuma vacina atrasada encontrada.
+                        </p>
+                        <p class="text-xs text-base-content/60 mt-1">
+                            Todos os animais estão em dia com seus ciclos
+                            vacinais.
+                        </p>
+                    </div>
+                {:else}
+                    <div
+                        class="overflow-x-auto rounded-xl border border-base-200"
+                    >
+                        <table class="table table-sm table-zebra w-full">
+                            <thead>
+                                <tr
+                                    class="text-xs uppercase bg-base-200/60 text-base-content/60"
+                                >
+                                    <th>Animal</th>
+                                    <th>Vacina</th>
+                                    <th>Data Prevista</th>
+                                    <th>Atraso</th>
+                                    <th>Comprovante</th>
+                                    <th>Lote</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {#each atrasadas as item (item.id)}
+                                    {@const diasAtraso = calcularDiasAtraso(
+                                        item.dataProximaDose,
+                                    )}
+                                    <tr class="hover:bg-base-200/40">
+                                        <td>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <EspecieAvatar
+                                                    iconeKey={item.animal
+                                                        ?.identificadorPrincipal ||
+                                                        "outros"}
+                                                    tamanho="sm"
+                                                />
+                                                <div>
+                                                    <a
+                                                        href="/prontuario/{item.animalId}"
+                                                        class="font-semibold text-sm hover:underline hover:text-primary"
+                                                    >
+                                                        {item.animal?.name ||
+                                                            item.animal
+                                                                ?.identificadorPrincipal ||
+                                                            "Sem identificador"}
+                                                    </a>
+                                                    <div
+                                                        class="text-[11px] font-mono text-base-content/50"
+                                                    >
+                                                        {item.animal
+                                                            ?.identificadorPrincipal ||
+                                                            item.animalId?.slice(
+                                                                0,
+                                                                8,
+                                                            )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="font-medium text-sm">
+                                                {item.vacina?.name || "—"}
+                                            </div>
+                                        </td>
+                                        <td class="font-mono text-xs">
+                                            {formatarData(item.dataProximaDose)}
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="badge badge-sm badge-error text-white font-bold gap-1"
+                                            >
+                                                {diasAtraso} dia(s)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <ComprovanteStatusBadge
+                                                status={item.statusComprovante}
+                                                temComprovanteAnexo={Boolean(
+                                                    item.comprovanteDocumentoPath,
+                                                )}
+                                                aplicacaoId={item.id || ""}
+                                            />
+                                        </td>
+                                        <td
+                                            class="font-mono text-xs text-base-content/70"
+                                        >
+                                            {item.numeroLote || "—"}
+                                        </td>
+                                        <td class="text-right">
+                                            <div
+                                                class="flex items-center justify-end gap-1"
+                                            >
+                                                <button
+                                                    class="btn btn-xs btn-primary gap-1"
+                                                    onclick={() =>
+                                                        openNovaAplicacao(
+                                                            item.animalId,
+                                                            item.vacinaId,
+                                                        )}
+                                                    title="Registrar dose de reforço imediatamente"
+                                                >
+                                                    <IconAdd
+                                                        width="14"
+                                                        height="14"
+                                                    />
+                                                    Aplicar Reforço
+                                                </button>
+                                                <a
+                                                    href="/prontuario/{item.animalId}"
+                                                    class="btn btn-xs btn-ghost"
+                                                >
+                                                    Prontuário
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação Atrasadas -->
+                    <div class="flex items-center justify-between mt-4">
+                        <span class="text-xs text-base-content/60">
+                            Página {pageAtrasadas} • {atrasadas.length} registro(s)
+                        </span>
+                        <div class="join">
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={pageAtrasadas <= 1}
+                                onclick={() => {
+                                    pageAtrasadas--;
+                                    loadAtrasadas();
+                                }}
+                            >
+                                « Anterior
+                            </button>
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={atrasadas.length < 10}
+                                onclick={() => {
+                                    pageAtrasadas++;
+                                    loadAtrasadas();
+                                }}
+                            >
+                                Próxima »
+                            </button>
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- ══════════════════════════════════════════════════════════════════
+                 ABA 2: PENDENTES DE ASSINATURA
+                 ══════════════════════════════════════════════════════════════════ -->
+            {:else if activeTab === "pendentes"}
+                <!-- Filtros Aba 2 -->
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
+                >
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroAnimalPendentes">Animal</label
+                        >
+                        <select
+                            id="filtroAnimalPendentes"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterAnimalPendentes}
+                            onchange={() => {
+                                pagePendentes = 1;
+                                loadPendentes();
+                            }}
+                        >
+                            <option value="">Todos os Animais</option>
+                            {#each animais as a}
+                                <option value={a.id}>
+                                    {getAnimalName(a)} ({a
+                                        .identificadorPrincipal?.valor ||
+                                        a.id?.slice(0, 6)})
+                                </option>
+                            {/each}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroVacinaPendentes">Vacina</label
+                        >
+                        <select
+                            id="filtroVacinaPendentes"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterVacinaPendentes}
+                            onchange={() => {
+                                pagePendentes = 1;
+                                loadPendentes();
+                            }}
+                        >
+                            <option value="">Todas as Vacinas</option>
+                            {#each vacinas as v}
+                                <option value={v.id}>{v.name}</option>
+                            {/each}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroStatusPendentes">Alternar Status</label
+                        >
+                        <select
+                            id="filtroStatusPendentes"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterStatusPendentes}
+                            onchange={() => {
+                                pagePendentes = 1;
+                                loadPendentes();
+                            }}
+                        >
+                            <option value=""
+                                >Todos (Não Emitido + Pendente)</option
+                            >
+                            <option value="0">Apenas Não Emitidos</option>
+                            <option value="1"
+                                >Apenas Pendentes de Assinatura</option
+                            >
+                        </select>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button
+                            class="btn btn-outline btn-sm w-full"
+                            onclick={() => {
+                                filterAnimalPendentes = "";
+                                filterVacinaPendentes = "";
+                                filterStatusPendentes = "";
+                                pagePendentes = 1;
+                                loadPendentes();
+                            }}
+                        >
+                            Limpar Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela Pendentes -->
+                {#if isLoadingPendentes}
+                    <div class="py-16 flex justify-center">
+                        <span
+                            class="loading loading-spinner loading-md text-warning"
+                        ></span>
+                    </div>
+                {:else if pendentes.length === 0}
+                    <div class="py-14 text-center text-base-content/50">
+                        <IconCalendar
+                            width="40"
+                            height="40"
+                            class="mx-auto mb-2 opacity-30 text-success"
+                        />
+                        <p class="font-semibold text-base text-base-content">
+                            Nenhuma pendência de assinatura encontrada.
+                        </p>
+                        <p class="text-xs text-base-content/60 mt-1">
+                            Todas as aplicações possuem seus comprovantes
+                            anexados.
+                        </p>
+                    </div>
+                {:else}
+                    <div
+                        class="overflow-x-auto rounded-xl border border-base-200"
+                    >
+                        <table class="table table-sm table-zebra w-full">
+                            <thead>
+                                <tr
+                                    class="text-xs uppercase bg-base-200/60 text-base-content/60"
+                                >
+                                    <th>Animal</th>
+                                    <th>Vacina</th>
+                                    <th>Data Aplicação</th>
+                                    <th>Número do Lote</th>
+                                    <th>Status Comprovante</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {#each pendentes as item (item.id)}
+                                    <tr class="hover:bg-base-200/40">
+                                        <td>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <EspecieAvatar
+                                                    iconeKey={item.animal
+                                                        ?.identificadorPrincipal ||
+                                                        "outros"}
+                                                    tamanho="sm"
+                                                />
+                                                <div>
+                                                    <a
+                                                        href="/prontuario/{item.animalId}"
+                                                        class="font-semibold text-sm hover:underline hover:text-primary"
+                                                    >
+                                                        {item.animal?.name ||
+                                                            item.animal
+                                                                ?.identificadorPrincipal ||
+                                                            "Sem identificador"}
+                                                    </a>
+                                                    <div
+                                                        class="text-[11px] font-mono text-base-content/50"
+                                                    >
+                                                        {item.animal
+                                                            ?.identificadorPrincipal ||
+                                                            item.animalId?.slice(
+                                                                0,
+                                                                8,
+                                                            )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="font-medium text-sm"
+                                            >{item.vacina?.name || "—"}</td
+                                        >
+                                        <td class="font-mono text-xs"
+                                            >{formatarData(
+                                                item.dataAplicacao,
+                                            )}</td
+                                        >
+                                        <td
+                                            class="font-mono text-xs text-base-content/70"
+                                            >{item.numeroLote}</td
+                                        >
+                                        <td>
+                                            <ComprovanteStatusBadge
+                                                status={item.statusComprovante}
+                                                temComprovanteAnexo={Boolean(
+                                                    item.comprovanteDocumentoPath,
+                                                )}
+                                                aplicacaoId={item.id || ""}
+                                            />
+                                        </td>
+                                        <td class="text-right">
+                                            <div
+                                                class="flex items-center justify-end gap-1"
+                                            >
+                                                <button
+                                                    class="btn btn-xs btn-outline btn-warning"
+                                                    onclick={() =>
+                                                        openUploadModal(
+                                                            item.id || "",
+                                                        )}
+                                                >
+                                                    Anexar PDF
+                                                </button>
+                                                <a
+                                                    href="/prontuario/{item.animalId}"
+                                                    class="btn btn-xs btn-ghost"
+                                                >
+                                                    Prontuário
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação Pendentes -->
+                    <div class="flex items-center justify-between mt-4">
+                        <span class="text-xs text-base-content/60">
+                            Página {pagePendentes} • {pendentes.length} registro(s)
+                        </span>
+                        <div class="join">
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={pagePendentes <= 1}
+                                onclick={() => {
+                                    pagePendentes--;
+                                    loadPendentes();
+                                }}
+                            >
+                                « Anterior
+                            </button>
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={pendentes.length < 10}
+                                onclick={() => {
+                                    pagePendentes++;
+                                    loadPendentes();
+                                }}
+                            >
+                                Próxima »
+                            </button>
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- ══════════════════════════════════════════════════════════════════
+                 ABA 3: PRÓXIMAS DOSES
+                 ══════════════════════════════════════════════════════════════════ -->
+            {:else if activeTab === "proximas"}
+                <!-- Filtros Aba 3 -->
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4"
+                >
+                    <!-- Seletor de Período / Data Limite -->
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroPeriodoProximas"
+                            >Período / Horizonte</label
+                        >
+                        <select
+                            id="filtroPeriodoProximas"
+                            class="select select-bordered select-sm w-full font-medium"
+                            bind:value={diasLimiteOption}
+                            onchange={() => {
+                                pageProximas = 1;
+                                loadProximas();
+                            }}
+                        >
+                            <option value="7">Próximos 7 dias</option>
+                            <option value="15">Próximos 15 dias</option>
+                            <option value="30">Próximos 30 dias (1 mês)</option>
+                            <option value="60"
+                                >Próximos 60 dias (2 meses)</option
+                            >
+                            <option value="custom">Data Específica...</option>
+                        </select>
+                    </div>
+
+                    {#if diasLimiteOption === "custom"}
+                        <div>
+                            <label
+                                class="label label-text text-xs"
+                                for="dataLimiteCustomInput">Até a data</label
+                            >
+                            <input
+                                id="dataLimiteCustomInput"
+                                type="date"
+                                class="input input-bordered input-sm w-full"
+                                bind:value={customDataLimite}
+                                onchange={() => {
+                                    pageProximas = 1;
+                                    loadProximas();
+                                }}
+                            />
+                        </div>
+                    {/if}
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroAnimalProximas">Animal</label
+                        >
+                        <select
+                            id="filtroAnimalProximas"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterAnimalProximas}
+                            onchange={() => {
+                                pageProximas = 1;
+                                loadProximas();
+                            }}
+                        >
+                            <option value="">Todos os Animais</option>
+                            {#each animais as a}
+                                <option value={a.id}>
+                                    {getAnimalName(a)} ({a
+                                        .identificadorPrincipal?.valor ||
+                                        a.id?.slice(0, 6)})
+                                </option>
+                            {/each}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="label label-text text-xs"
+                            for="filtroVacinaProximas">Vacina</label
+                        >
+                        <select
+                            id="filtroVacinaProximas"
+                            class="select select-bordered select-sm w-full"
+                            bind:value={filterVacinaProximas}
+                            onchange={() => {
+                                pageProximas = 1;
+                                loadProximas();
+                            }}
+                        >
+                            <option value="">Todas as Vacinas</option>
+                            {#each vacinas as v}
+                                <option value={v.id}>{v.name}</option>
+                            {/each}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabela Próximas Doses -->
+                {#if isLoadingProximas}
+                    <div class="py-16 flex justify-center">
+                        <span
+                            class="loading loading-spinner loading-md text-info"
+                        ></span>
+                    </div>
+                {:else if proximas.length === 0}
+                    <div class="py-14 text-center text-base-content/50">
+                        <IconCalendar
+                            width="40"
+                            height="40"
+                            class="mx-auto mb-2 opacity-30 text-info"
+                        />
+                        <p class="font-semibold text-base text-base-content">
+                            Nenhuma dose programada para vencer neste período.
+                        </p>
+                        <p class="text-xs text-base-content/60 mt-1">
+                            Aumente o horizonte para 60 dias ou selecione outra
+                            data.
+                        </p>
+                    </div>
+                {:else}
+                    <div
+                        class="overflow-x-auto rounded-xl border border-base-200"
+                    >
+                        <table class="table table-sm table-zebra w-full">
+                            <thead>
+                                <tr
+                                    class="text-xs uppercase bg-base-200/60 text-base-content/60"
+                                >
+                                    <th>Animal</th>
+                                    <th>Vacina</th>
+                                    <th>Vencimento da Dose</th>
+                                    <th>Prazo Restante</th>
+                                    <th>Lote Anterior</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {#each proximas as item (item.id)}
+                                    {@const diasRestantes =
+                                        calcularDiasRestantes(
+                                            item.dataProximaDose,
+                                        )}
+                                    <tr class="hover:bg-base-200/40">
+                                        <td>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <EspecieAvatar
+                                                    iconeKey={item.animal
+                                                        ?.identificadorPrincipal ||
+                                                        "outros"}
+                                                    tamanho="sm"
+                                                />
+                                                <div>
+                                                    <a
+                                                        href="/prontuario/{item.animalId}"
+                                                        class="font-semibold text-sm hover:underline hover:text-primary"
+                                                    >
+                                                        {item.animal?.name ||
+                                                            item.animal
+                                                                ?.identificadorPrincipal ||
+                                                            "Sem identificador"}
+                                                    </a>
+                                                    <div
+                                                        class="text-[11px] font-mono text-base-content/50"
+                                                    >
+                                                        {item.animal
+                                                            ?.identificadorPrincipal ||
+                                                            item.animalId?.slice(
+                                                                0,
+                                                                8,
+                                                            )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="font-medium text-sm"
+                                            >{item.vacina?.name || "—"}</td
+                                        >
+                                        <td
+                                            class="font-mono text-xs font-semibold"
+                                        >
+                                            {formatarData(item.dataProximaDose)}
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="badge badge-sm font-semibold {diasRestantes <=
+                                                7
+                                                    ? 'badge-warning'
+                                                    : 'badge-info'}"
+                                            >
+                                                {diasRestantes === 0
+                                                    ? "Vence hoje!"
+                                                    : `Vence em ${diasRestantes} dia(s)`}
+                                            </span>
+                                        </td>
+                                        <td
+                                            class="font-mono text-xs text-base-content/70"
+                                            >{item.numeroLote}</td
+                                        >
+                                        <td class="text-right">
+                                            <div
+                                                class="flex items-center justify-end gap-1"
+                                            >
+                                                <button
+                                                    class="btn btn-xs btn-primary gap-1"
+                                                    onclick={() =>
+                                                        openNovaAplicacao(
+                                                            item.animalId,
+                                                            item.vacinaId,
+                                                        )}
+                                                >
+                                                    <IconAdd
+                                                        width="14"
+                                                        height="14"
+                                                    />
+                                                    Aplicar Dose
+                                                </button>
+                                                <a
+                                                    href="/prontuario/{item.animalId}"
+                                                    class="btn btn-xs btn-ghost"
+                                                >
+                                                    Prontuário
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação Próximas -->
+                    <div class="flex items-center justify-between mt-4">
+                        <span class="text-xs text-base-content/60">
+                            Página {pageProximas} • {proximas.length} registro(s)
+                        </span>
+                        <div class="join">
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={pageProximas <= 1}
+                                onclick={() => {
+                                    pageProximas--;
+                                    loadProximas();
+                                }}
+                            >
+                                « Anterior
+                            </button>
+                            <button
+                                class="join-item btn btn-xs btn-outline"
+                                disabled={proximas.length < 10}
+                                onclick={() => {
+                                    pageProximas++;
+                                    loadProximas();
+                                }}
+                            >
+                                Próxima »
+                            </button>
+                        </div>
+                    </div>
+                {/if}
             {/if}
         </div>
     </div>
 </div>
 
-<!-- ── Modal: Novo Animal ────────────────────────────────────────────────── -->
+<!-- ── Modal: Anexar Comprovante PDF ─────────────────────────────────────── -->
 <FormModal
-    isOpen={showAnimalModal}
-    title="Cadastrar Novo Animal / Paciente"
-    isLoading={isSubmittingAnimal}
-    submitText="Cadastrar Animal"
-    onClose={() => {
-        showAnimalModal = false;
-        resetAnimalForm();
-    }}
-    onSubmit={submitAnimal}
+    isOpen={showUploadModal}
+    title="Anexar Comprovante Assinado (PDF)"
+    isLoading={isUploading}
+    submitText="Salvar Comprovante"
+    onClose={() => (showUploadModal = false)}
+    onSubmit={handleUploadComprovante}
 >
-    {#if animalFormError}
-        <div class="alert alert-error text-sm py-2">{animalFormError}</div>
+    {#if uploadError}
+        <div class="alert alert-error text-sm py-2 mb-3">{uploadError}</div>
     {/if}
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div class="sm:col-span-2">
-            <Input
-                label="Nome (opcional)"
-                placeholder="Ex: Mimosa, Farouk…"
-                bind:value={animalForm.name}
-            />
-        </div>
+    <div class="space-y-4">
+        <p class="text-xs text-base-content/70">
+            Selecione o arquivo PDF contendo o comprovante de vacinação assinado
+            pelo médico veterinário.
+        </p>
 
         <div>
-            <label class="label label-text text-xs font-medium">Raça</label>
-            <select
-                class="select select-bordered w-full"
-                bind:value={animalForm.racaId}
+            <label
+                class="label label-text text-xs font-semibold"
+                for="pdfFileInput">Arquivo PDF *</label
             >
-                <option value="">— Selecione —</option>
-                {#each racas as r}
-                    <option value={r.id}
-                        >{r.nome} ({r.especie?.fullName ?? ""})</option
-                    >
-                {/each}
-            </select>
-        </div>
-
-        <div>
-            <Input
-                label="Data de Nascimento"
-                type="date"
-                bind:value={animalForm.dataNascimento}
-                required
-            />
-        </div>
-
-        <div class="flex items-center gap-2 pt-5">
             <input
-                type="checkbox"
-                class="checkbox checkbox-sm"
-                id="dataNascAprox"
-                bind:checked={animalForm.dataNascimentoAproximada}
-            />
-            <label class="label-text text-sm" for="dataNascAprox"
-                >Data aproximada</label
-            >
-        </div>
-
-        <div>
-            <label class="label label-text text-xs font-medium">Sexo</label>
-            <select
-                class="select select-bordered w-full"
-                bind:value={animalForm.sexo}
-            >
-                {#each sexoOptions as opt}
-                    <option value={Number(opt.value)}>{opt.label}</option>
-                {/each}
-            </select>
-        </div>
-
-        <div>
-            <label class="label label-text text-xs font-medium">Origem</label>
-            <select
-                class="select select-bordered w-full"
-                bind:value={animalForm.origem}
-            >
-                {#each origemOptions as opt}
-                    <option value={Number(opt.value)}>{opt.label}</option>
-                {/each}
-            </select>
-        </div>
-
-        <div class="sm:col-span-2">
-            <Input
-                label="Lote / Pasto / Baia (opcional)"
-                placeholder="Ex: Pasto 02, Baia 4…"
-                bind:value={animalForm.loteOuPasto}
+                id="pdfFileInput"
+                type="file"
+                accept="application/pdf"
+                class="file-input file-input-bordered file-input-sm w-full"
+                onchange={(e) => {
+                    const files = (e.currentTarget as HTMLInputElement).files;
+                    uploadFile = files && files[0] ? files[0] : null;
+                }}
             />
         </div>
     </div>
-
-    <!-- Identificadores -->
-    <div class="divider text-xs">Identificadores</div>
-    {#each animalForm.identificadores as ident, idx}
-        <div class="flex gap-2 items-end">
-            <div class="flex-1">
-                <label class="label label-text text-xs">Tipo</label>
-                <select
-                    class="select select-bordered select-sm w-full"
-                    bind:value={ident.tipo}
-                >
-                    {#each tipoIdOptions as opt}
-                        <option value={Number(opt.value)}>{opt.label}</option>
-                    {/each}
-                </select>
-            </div>
-            <div class="flex-[2]">
-                <Input
-                    label="Valor"
-                    placeholder="Ex: 402, 941..."
-                    bind:value={ident.valor}
-                />
-            </div>
-            {#if idx > 0}
-                <button
-                    type="button"
-                    class="btn btn-ghost btn-sm btn-square"
-                    onclick={() => removeIdentificador(idx)}>✕</button
-                >
-            {:else}
-                <div class="w-9 shrink-0 flex items-center justify-center pb-1">
-                    <span class="badge badge-sm badge-primary">P</span>
-                </div>
-            {/if}
-        </div>
-    {/each}
-    <button
-        type="button"
-        class="btn btn-ghost btn-xs mt-1"
-        onclick={addIdentificador}
-    >
-        + Adicionar identificador
-    </button>
 </FormModal>
 
-<!-- ── Modal: Vacinar Animal ─────────────────────────────────────────────── -->
+<!-- ── Modal: Vacinar Animal Individual ─────────────────────────────────── -->
 <FormModal
     isOpen={showAplicacaoModal}
-    title="Registrar Vacinação"
+    title="Registrar Vacinação Individual"
     isLoading={isSubmittingAplicacao}
-    submitText="Registrar Vacinação"
-    onClose={() => {
-        showAplicacaoModal = false;
-        aplicacaoFormError = "";
-    }}
-    onSubmit={submitAplicacao}
+    submitText="Registrar Aplicação"
+    onClose={() => (showAplicacaoModal = false)}
+    onSubmit={submitNovaAplicacao}
 >
     {#if aplicacaoFormError}
         <div class="alert alert-error text-sm py-2">{aplicacaoFormError}</div>
     {/if}
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {#if !aplicacaoPreAnimal}
-            <div class="sm:col-span-2">
-                <label class="label label-text text-xs font-medium"
-                    >Animal</label
-                >
-                <select
-                    class="select select-bordered w-full"
-                    bind:value={aplicacaoForm.animalId}
-                >
-                    <option value="">— Selecione o animal —</option>
-                    {#each animais as a}
-                        <option value={a.id}
-                            >{a.name != undefined
-                                ? a.name
-                                : a.identificadorPrincipal?.valor}
-                            ({a.raca?.nome ?? "Sem raça"})</option
-                        >
-                    {/each}
-                </select>
-            </div>
-        {:else}
-            <div class="sm:col-span-2 alert alert-info py-2 text-sm">
-                Animal selecionado: <strong
-                    >{getAnimalName(aplicacaoPreAnimal)}</strong
-                >
-            </div>
-        {/if}
+        <!-- Animal -->
+        <div class="sm:col-span-2">
+            <label
+                class="label label-text text-xs font-medium"
+                for="modalAnimalSelect">Animal *</label
+            >
+            <select
+                id="modalAnimalSelect"
+                class="select select-bordered w-full"
+                bind:value={aplicacaoForm.animalId}
+            >
+                <option value="">— Selecione o animal —</option>
+                {#each animais as a}
+                    <option value={a.id}>
+                        {getAnimalName(a)} ({a.identificadorPrincipal?.valor ||
+                            a.id?.slice(0, 6)})
+                    </option>
+                {/each}
+            </select>
+        </div>
+
+        <!-- Vacina -->
+        <div class="sm:col-span-2">
+            <label
+                class="label label-text text-xs font-medium"
+                for="modalVacinaSelect">Vacina *</label
+            >
+            <select
+                id="modalVacinaSelect"
+                class="select select-bordered w-full"
+                bind:value={aplicacaoForm.vacinaId}
+            >
+                <option value="">— Selecione a vacina —</option>
+                {#each vacinas as v}
+                    <option value={v.id}>{v.name}</option>
+                {/each}
+            </select>
+        </div>
 
         <div>
             <Input
-                label="Data de Aplicação"
+                label="Data da Aplicação *"
                 type="date"
                 bind:value={aplicacaoForm.dataAplicacao}
                 required
             />
         </div>
+
         <div>
             <Input
-                label="Próxima Dose (opcional)"
+                label="Data Próxima Dose (opcional)"
                 type="date"
                 bind:value={aplicacaoForm.dataProximaDose}
             />
-            <p class="text-xs text-base-content/50 mt-1">
-                Deixe vazio para cálculo automático.
-            </p>
         </div>
 
         <div>
             <Input
-                label="Número do Lote "
-                placeholder="Ex: LOT-2024-001"
+                label="Número do Lote *"
+                placeholder="Ex: LOTE-2026-001"
                 bind:value={aplicacaoForm.numeroLote}
                 required
             />
         </div>
+
         <div>
-            <label class="label label-text text-xs font-medium">Dose (mL)</label
-            >
-            <input
-                type="number"
-                step="0.1"
-                min="0"
-                class="input input-bordered w-full"
+            <Input
+                label="Dose (mL)"
                 placeholder="Ex: 2.0"
                 bind:value={aplicacaoForm.doseMl}
             />
         </div>
 
         <div class="sm:col-span-2">
-            <Input
-                label="Veterinário Responsável (Nome + CRMV) "
-                placeholder="Ex: Dr. João Silva – CRMV-SP 12345"
-                bind:value={aplicacaoForm.veterinarioResponsavel}
-                required
-            />
-        </div>
-        <div>
-            <Input
-                label="Aplicador (opcional)"
-                placeholder="Residente, técnico…"
-                bind:value={aplicacaoForm.aplicador}
-            />
-        </div>
-        <div>
-            <Input
-                label="Laboratório Fabricante"
-                placeholder="Ex: MSD Saúde Animal"
-                bind:value={aplicacaoForm.laboratorioFabricante}
-            />
-        </div>
-        <div class="sm:col-span-2">
-            <label class="label label-text text-xs font-medium"
+            <label class="label label-text text-xs font-medium" for="modalObs"
                 >Observações</label
             >
             <textarea
+                id="modalObs"
                 class="textarea textarea-bordered w-full"
                 rows="2"
-                placeholder="Reações, notas clínicas…"
+                placeholder="Notas clínicas..."
                 bind:value={aplicacaoForm.observacoes}
             ></textarea>
         </div>

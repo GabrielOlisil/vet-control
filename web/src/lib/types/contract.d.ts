@@ -303,6 +303,7 @@ export interface paths {
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
+                    SomenteAtrasadas?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -459,6 +460,8 @@ export interface paths {
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
+                    SomenteAtrasadas?: boolean;
+                    somenteAtrasadas?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -481,6 +484,175 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/atrasadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number | string;
+                    animalId?: string;
+                    vacinaId?: string;
+                    statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "application/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "text/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/pendentes-assinatura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number | string;
+                    animalId?: string;
+                    vacinaId?: string;
+                    statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "application/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "text/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/proximas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number | string;
+                    dataLimite?: string;
+                    animalId?: string;
+                    vacinaId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "application/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "text/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AplicacaoVacinaLoteCreateDto"];
+                    "text/json": components["schemas"]["AplicacaoVacinaLoteCreateDto"];
+                    "application/*+json": components["schemas"]["AplicacaoVacinaLoteCreateDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "application/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                        "text/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1355,6 +1527,7 @@ export interface components {
             dataAplicacao?: string;
             /** Format: date */
             dataProximaDose?: null | string;
+            cicloFinalizado?: null | boolean;
             numeroLote: string;
             doseMl?: unknown;
             observacoes?: null | string;
@@ -1374,7 +1547,8 @@ export interface components {
             /** Format: date */
             dataAplicacao?: string;
             /** Format: date */
-            dataProximaDose?: string;
+            dataProximaDose?: null | string;
+            cicloFinalizado?: boolean;
             numeroLote: string;
             doseMl?: unknown;
             observacoes?: null | string;
@@ -1382,6 +1556,7 @@ export interface components {
             aplicador?: null | string;
             laboratorioFabricante?: null | string;
             statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+            comprovanteDocumentoPath?: null | string;
             temComprovanteAnexo?: boolean;
             /** Format: date-time */
             creationDateTime?: string;
@@ -1392,6 +1567,18 @@ export interface components {
             /** Format: date-time */
             atualizadoEm?: null | string;
         };
+        AplicacaoVacinaLoteCreateDto: {
+            /** Format: uuid */
+            vacinaId: string;
+            numeroLote: string;
+            doseMl?: unknown;
+            /** Format: date */
+            dataAplicacao?: string;
+            /** Format: date */
+            dataProximaDose?: null | string;
+            observacoes?: null | string;
+            animais: components["schemas"]["ItemAnimalLoteDto"][];
+        };
         AplicacaoVacinaPatchDto: {
             /** Format: uuid */
             animalId?: null | string;
@@ -1401,6 +1588,9 @@ export interface components {
             dataAplicacao?: null | string;
             /** Format: date */
             dataProximaDose?: null | string;
+            cicloFinalizado?: null | boolean;
+            statusComprovante?: null | components["schemas"]["StatusComprovanteVacina"];
+            comprovanteDocumentoPath?: null | string;
             numeroLote?: null | string;
             doseMl?: unknown;
             observacoes?: null | string;
@@ -1420,7 +1610,10 @@ export interface components {
             /** Format: date */
             dataAplicacao?: string;
             /** Format: date */
-            dataProximaDose?: string;
+            dataProximaDose?: null | string;
+            cicloFinalizado?: boolean;
+            statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+            comprovanteDocumentoPath?: null | string;
             numeroLote?: string;
             doseMl?: unknown;
         };
@@ -1484,6 +1677,11 @@ export interface components {
         };
         /** Format: binary */
         IFormFile: string;
+        ItemAnimalLoteDto: {
+            /** Format: uuid */
+            animalId: string;
+            cicloFinalizado?: boolean;
+        };
         OrigemAnimal: number;
         PorteAnimal: number;
         RacaCreateDto: {

@@ -24,6 +24,8 @@ export type AplicacaoVacinaCreateDto = Schemas['AplicacaoVacinaCreateDto'];
 export type AplicacaoVacinaDetailResponseDto = Schemas['AplicacaoVacinaDetailResponseDto'];
 export type AplicacaoVacinaPatchDto = Schemas['AplicacaoVacinaPatchDto'];
 export type AplicacaoVacinaReadResponseDto = Schemas['AplicacaoVacinaReadResponseDto'];
+export type AplicacaoVacinaLoteCreateDto = Schemas['AplicacaoVacinaLoteCreateDto'];
+export type ItemAnimalLoteDto = Schemas['ItemAnimalLoteDto'];
 
 // ── Especie ──────────────────────────────────────────────────────────────────
 export type EspecieCreateDto = Schemas['EspecieCreateDto'];
@@ -47,11 +49,12 @@ export type VacinaReadResponseDto = Schemas['VacinaReadResponseDto'];
 export type VacinaShortResponseDto = Schemas['VacinaShortResponseDto'];
 
 // ── Helpers de nome ──────────────────────────────────────────────────────────
-export function getAnimalName(animal?: { identificadorPrincipal?: any }): string | null {
-    if (!animal || !animal.identificadorPrincipal) return 'Sem nome';
-
-
-    return animal.identificadorPrincipal.valor ?? 'Sem nome';
+export function getAnimalName(animal?: { identificadorPrincipal?: any; name?: string | null } | null): string {
+    if (!animal) return 'Sem nome';
+    if (animal.name) return animal.name;
+    if (typeof animal.identificadorPrincipal === 'string') return animal.identificadorPrincipal;
+    if (animal.identificadorPrincipal?.valor) return animal.identificadorPrincipal.valor;
+    return 'Sem nome';
 }
 
 export function getVacinaName(vacina?: { name?: string } | null): string {

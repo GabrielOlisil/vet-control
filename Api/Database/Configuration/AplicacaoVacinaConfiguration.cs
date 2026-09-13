@@ -19,5 +19,8 @@ public class AplicacaoVacinaConfiguration : IEntityTypeConfiguration<AplicacaoVa
             .WithMany(e => e.Aplicacoes)
             .HasForeignKey(e => e.VacinaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(a => a.DataAplicacao);
+        builder.HasIndex(a => a.DataProximaDose);
     }
 }
