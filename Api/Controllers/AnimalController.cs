@@ -21,15 +21,20 @@ public class AnimalController(IAnimalService service) : ControllerBase
 
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<AnimalShortResponseDto>>> GetAllByName(CancellationToken cancellationToken, [FromQuery] int page = 1,
-     [FromQuery] string name = "")
+    public async Task<ActionResult<List<AnimalShortResponseDto>>> GetAllByName(
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] string? name = null,
+        [FromQuery] string? search = null,
+        [FromQuery] AnimalSearchDto? searchDto = null)
     {
         if (page < 1)
         {
             return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
         }
 
-        return (await service.GetAllByNameAsync(page, name, cancellationToken)).Select(AnimalMapper.MapToShort).ToList();
+        var searchTerm = search ?? name ?? "";
+        return (await service.GetAllByNameAsync(page, searchTerm, searchDto, cancellationToken)).Select(AnimalMapper.MapToShort).ToList();
     }
 
     [HttpGet("count")]

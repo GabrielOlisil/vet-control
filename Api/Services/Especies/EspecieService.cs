@@ -13,8 +13,7 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
             .Include(e => e.Racas)
             .AsNoTracking();
 
-        if (search?.PortePadrao is not null)
-            query = query.Where(e => e.PortePadrao == search.PortePadrao);
+        query = ApplyFilters(query, search);
 
         query = query.OrderBy(e => e.Nome);
 
@@ -106,25 +105,40 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
 
     public Task<int> Count(EspecieSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        var query = context.Especies
-          .AsNoTracking();
-
-        if (search?.PortePadrao is not null)
-            query = query.Where(e => e.PortePadrao == search.PortePadrao);
-
+        var query = context.Especies.AsNoTracking();
+        query = ApplyFilters(query, search);
         return query.CountAsync(cancellationToken);
     }
 
-    public Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, CancellationToken cancellationToken = default)
+    public Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, EspecieSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        var query = context.Especies.AsNoTracking()
-        .Where(e => searchNomeCientificoToo ? EF.Functions.ILike(e.Nome, $"{name}%") || EF.Functions.ILike(e.NomeCientifico ?? "", $"{name}%") : EF.Functions.ILike(e.Nome, $"{name}%"))
+        var query = context.Especies.AsNoTracking();
 
-        .OrderBy(e => e.Nome)
-        .ThenBy(e => e.NomeCientifico)
-           .Skip((page - 1) * 10)
-           .Take(10);
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(e => searchNomeCientificoToo
+                ? EF.Functions.ILike(e.Nome, $"{name}%") || EF.Functions.ILike(e.NomeCientifico ?? "", $"{name}%")
+                : EF.Functions.ILike(e.Nome, $"{name}%"));
+        }
 
-        return query.ToListAsync(cancellationToken);
+        query = ApplyFilters(query, search);
+
+        return query
+            .OrderBy(e => e.Nome)
+            .ThenBy(e => e.NomeCientifico)
+            .Skip((page - 1) * 10)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+    }
+
+    private static IQueryable<Especie> ApplyFilters(IQueryable<Especie> query, EspecieSearchDto? search)
+    {
+        if (search is null)
+            return query;
+
+        if (search.PortePadrao.HasValue)
+            query = query.Where(e => e.PortePadrao == search.PortePadrao.Value);
+
+        return query;
     }
 }

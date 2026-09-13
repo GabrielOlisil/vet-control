@@ -36,10 +36,16 @@ export const racaService = {
         return data ?? [];
     },
 
-    async search(search: string, page = 1): Promise<RacaShortResponseDto[]> {
+    async search(search: string, page = 1, filters?: RacaListParams | string): Promise<RacaShortResponseDto[]> {
+        const especieId = typeof filters === 'string' ? filters : filters?.EspecieId;
         const { data, error } = await apiClient.GET('/api/v1/racas/search', {
             params: {
-                query: { search, page },
+                query: {
+                    search,
+                    name: search,
+                    page,
+                    EspecieId: especieId,
+                },
             },
         });
         if (error) {

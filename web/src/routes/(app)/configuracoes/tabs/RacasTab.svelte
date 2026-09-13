@@ -2,6 +2,7 @@
     import Input from "$lib/components/Input.svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import ConfirmDeleteModal from "$lib/components/ConfirmDeleteModal.svelte";
+    import EspecieSelect from "$lib/components/EspecieSelect.svelte";
     import { racaService } from "$lib/api/racas";
     import { especieService } from "$lib/api/especies";
     import type {
@@ -17,6 +18,7 @@
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
     import IconFilter from "@iconify-svelte/material-symbols/filter-list-rounded";
     import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
+    import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
 
     let { isActive = false }: { isActive: boolean } = $props();
 
@@ -41,31 +43,63 @@
     let deletingItem = $state<RacaReadResponseDto | null>(null);
     let isDeleting = $state(false);
 
+    let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+
     // ── Carregar Sob Demanda ──────────────────────────────────────────────────
     async function loadData() {
         try {
             isLoading = true;
-            const countParams = selectedEspecieId
-                ? { EspecieId: selectedEspecieId }
-                : undefined;
-            const params = {
-                page: currentPage,
-                EspecieId: selectedEspecieId || undefined,
-            };
-            const [esps, rcs, count] = await Promise.all([
-                especieService.getList(),
-                racaService.getList(params),
-                racaService.getCount(countParams),
-            ]);
-            especies = esps;
-            racas = rcs;
-            totalRacas = count;
+            if (searchName.trim()) {
+                const [esps, rcs] = await Promise.all([
+                    especies.length ? especies : especieService.getList(),
+                    racaService.search(
+                        searchName.trim(),
+                        currentPage,
+                        selectedEspecieId || undefined,
+                    ),
+                ]);
+                especies = esps;
+                racas = rcs as any;
+                totalRacas = rcs.length;
+            } else {
+                const countParams = selectedEspecieId
+                    ? { EspecieId: selectedEspecieId }
+                    : undefined;
+                const params = {
+                    page: currentPage,
+                    EspecieId: selectedEspecieId || undefined,
+                };
+                const [esps, rcs, count] = await Promise.all([
+                    especies.length ? especies : especieService.getList(),
+                    racaService.getList(params),
+                    racaService.getCount(countParams),
+                ]);
+                especies = esps;
+                racas = rcs;
+                totalRacas = count;
+            }
             hasLoaded = true;
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
         } finally {
             isLoading = false;
         }
+    }
+
+    function handleSearchInput(e: Event) {
+        searchName = (e.target as HTMLInputElement).value;
+        currentPage = 1;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            loadData();
+        }, 300);
+    }
+
+    function clearFilters() {
+        searchName = "";
+        selectedEspecieId = "";
+        currentPage = 1;
+        loadData();
     }
 
     $effect(() => {
@@ -78,12 +112,6 @@
         currentPage = 1;
         await loadData();
     }
-
-    const filteredRacas = $derived(
-        racas.filter((r) =>
-            (r.nome || "").toLowerCase().includes(searchName.toLowerCase()),
-        ),
-    );
 
     function openFormModal(raca?: RacaReadResponseDto) {
         if (raca) {
@@ -214,15 +242,18 @@
         <div
             class="p-4 border-b border-base-200 bg-base-100 flex flex-col sm:flex-row gap-3 items-center justify-between"
         >
-            <div class="w-full sm:w-auto flex-1 max-w-sm">
+            <div class="w-full sm:w-auto flex-1 max-w-sm relative">
                 <input
                     type="text"
-                    placeholder="Pesquisar por nome da raça..."
+                    placeholder="Pesquisar por nome da raça (usa /search)..."
                     value={searchName}
-                    oninput={(e) => {
-                        searchName = (e.target as HTMLInputElement).value;
-                    }}
-                    class="input input-bordered w-full input-sm focus:input-primary"
+                    oninput={handleSearchInput}
+                    class="input input-bordered w-full input-sm focus:input-primary pl-9"
+                />
+                <IconSearch
+                    width="16"
+                    height="16"
+                    class="absolute left-3 top-2.5 text-base-content/40"
                 />
             </div>
 
@@ -246,6 +277,14 @@
                         <option value={esp.id}>{esp.nome}</option>
                     {/each}
                 </select>
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline"
+                    onclick={clearFilters}
+                >
+                    Limpar
+                </button>
             </div>
         </div>
 
@@ -263,7 +302,7 @@
                         Clique em "Atualizar" para carregar as raças.
                     </p>
                 </div>
-            {:else if filteredRacas.length === 0}
+            {:else if racas.length === 0}
                 <div class="p-12 text-center text-base-content/60 space-y-2">
                     <div class="flex justify-center opacity-40 text-primary">
                         <IconLabel width="48" height="48" />
@@ -287,7 +326,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each filteredRacas as raca (raca.id)}
+                        {#each racas as raca (raca.id)}
                             <tr class="hover:bg-base-200/50">
                                 <td
                                     class="font-bold text-base text-base-content"
@@ -389,26 +428,7 @@
     />
 
     {#if !editingId}
-        <div class="w-full mb-3">
-            <label for="especieSelectTab" class="label py-1 block">
-                <span
-                    class="label-text font-medium text-sm flex items-center gap-1"
-                >
-                    Espécie *
-                </span>
-            </label>
-            <select
-                id="especieSelectTab"
-                class="select select-bordered w-full"
-                bind:value={formEspecieId}
-                required
-            >
-                <option value="">— Selecione uma espécie —</option>
-                {#each especies as esp}
-                    <option value={esp.id}>{esp.nome}</option>
-                {/each}
-            </select>
-        </div>
+        <EspecieSelect label="Espécie *" bind:value={formEspecieId} required />
     {/if}
 </FormModal>
 

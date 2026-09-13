@@ -21,6 +21,9 @@ public static class AplicacaoVacinaMapper
         ComprovanteDocumentoPath = aplicacao.ComprovanteDocumentoPath,
         NumeroLote = aplicacao.NumeroLote,
         DoseMl = aplicacao.DoseMl,
+        VeterinarioResponsavel = aplicacao.VeterinarioResponsavel,
+        Aplicador = aplicacao.Aplicador,
+        LaboratorioFabricante = aplicacao.LaboratorioFabricante,
     };
 
     public static AplicacaoVacinaShortResponseDto MapToShort(AplicacaoVacina aplicacao) => new()
@@ -45,6 +48,9 @@ public static class AplicacaoVacinaMapper
         NumeroLote = aplicacao.NumeroLote,
         DoseMl = aplicacao.DoseMl,
         Observacoes = aplicacao.Observacoes,
+        VeterinarioResponsavel = aplicacao.VeterinarioResponsavel,
+        Aplicador = aplicacao.Aplicador,
+        LaboratorioFabricante = aplicacao.LaboratorioFabricante,
         StatusComprovante = aplicacao.StatusComprovante,
         ComprovanteDocumentoPath = aplicacao.ComprovanteDocumentoPath,
         CreationDateTime = aplicacao.CreationDateTime,

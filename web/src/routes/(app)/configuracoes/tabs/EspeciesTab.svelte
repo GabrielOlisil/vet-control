@@ -62,22 +62,35 @@
 
     const porteOption: PorteAnimal[] = ["Pequeno", "Medio", "Grande"];
 
+    let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+
     // ── Carregar Sob Demanda ──────────────────────────────────────────────────
     async function loadData() {
         try {
             isLoading = true;
-            const countParams =
-                filterPorte !== null ? { PortePadrao: filterPorte } : undefined;
-            const params = {
-                page: currentPage,
-                PortePadrao: filterPorte !== null ? filterPorte : undefined,
-            };
-            const [list, count] = await Promise.all([
-                especieService.getList(params),
-                especieService.getCount(countParams),
-            ]);
-            especies = list;
-            totalEspecies = count;
+            const porte = filterPorte ? filterPorte : undefined;
+            if (searchName.trim()) {
+                const list = await especieService.search(
+                    searchName.trim(),
+                    true,
+                    currentPage,
+                    { PortePadrao: porte },
+                );
+                especies = list as any;
+                totalEspecies = list.length;
+            } else {
+                const [list, count] = await Promise.all([
+                    especieService.getList({
+                        page: currentPage,
+                        PortePadrao: porte,
+                    }),
+                    especieService.getCount(
+                        porte ? { PortePadrao: porte } : undefined,
+                    ),
+                ]);
+                especies = list;
+                totalEspecies = count;
+            }
             hasLoaded = true;
         } catch (error) {
             console.error("Erro ao carregar espécies:", error);
@@ -86,30 +99,26 @@
         }
     }
 
+    function handleSearchInput() {
+        currentPage = 1;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            loadData();
+        }, 300);
+    }
+
+    function clearFilters() {
+        searchName = "";
+        filterPorte = undefined;
+        currentPage = 1;
+        loadData();
+    }
+
     $effect(() => {
         if (isActive && !hasLoaded) {
             loadData();
         }
     });
-
-    const filteredEspecies = $derived(
-        especies.filter((e) => {
-            if (filterPorte !== undefined && filterPorte !== null) {
-                if (e.portePadrao !== filterPorte) return false;
-            }
-
-            const termo = searchName?.trim().toLowerCase();
-            if (termo && termo.length > 0) {
-                const bateNome = e.nome?.toLowerCase().includes(termo) ?? false;
-                const bateCientifico =
-                    e.nomeCientifico?.toLowerCase().includes(termo) ?? false;
-
-                if (!bateNome && !bateCientifico) return false;
-            }
-
-            return true;
-        }),
-    );
 
     function openFormModal(especie?: EspecieReadResponseDto) {
         if (especie) {
@@ -249,8 +258,9 @@
             <div class="w-full sm:w-auto flex-1 max-w-sm relative">
                 <input
                     type="text"
-                    placeholder="Pesquisar por nome vulgar ou científico..."
+                    placeholder="Pesquisar por nome vulgar ou científico (usa /search)..."
                     bind:value={searchName}
+                    oninput={handleSearchInput}
                     class="input input-bordered w-full input-sm focus:input-primary pl-9"
                 />
                 <IconSearch
@@ -266,7 +276,7 @@
                 >
                 <button
                     type="button"
-                    class="btn btn-xs {filterPorte === null
+                    class="btn btn-xs {filterPorte === undefined
                         ? 'btn-primary'
                         : 'btn-ghost'}"
                     onclick={() => {
@@ -292,6 +302,14 @@
                         {opt}
                     </button>
                 {/each}
+
+                <button
+                    type="button"
+                    class="btn btn-xs btn-outline ml-2"
+                    onclick={clearFilters}
+                >
+                    Limpar
+                </button>
             </div>
         </div>
 
@@ -309,14 +327,14 @@
                         Clique em "Atualizar" para carregar as espécies.
                     </p>
                 </div>
-            {:else if filteredEspecies.length === 0}
+            {:else if especies.length === 0}
                 <div class="p-12 text-center text-base-content/60 space-y-2">
                     <div class="flex justify-center opacity-40 text-primary">
                         <IconBiotech width="48" height="48" />
                     </div>
                     <p class="font-bold">Nenhuma espécie encontrada</p>
                     <p class="text-xs text-base-content/50">
-                        {searchName || filterPorte !== null
+                        {searchName || filterPorte !== undefined
                             ? "Tente alterar os filtros de busca."
                             : "Cadastre novas espécies para começar o mapeamento taxonômico."}
                     </p>
@@ -335,7 +353,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each filteredEspecies as especie (especie.id)}
+                        {#each especies as especie (especie.id)}
                             <tr class="hover:bg-base-200/50">
                                 <td>
                                     <EspecieAvatar

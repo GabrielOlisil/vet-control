@@ -10,18 +10,10 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
     public Task<List<Vacina>> GetAllAsync(int? page, VacinaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = context.Vacinas
-            .Include(v => v.Especie)
+        var query = context.Vacinas.Include(e => e.Especie)
             .AsNoTracking();
 
-        if (search?.EspecieId is not null)
-            query = query.Where(vacina => vacina.EspecieId == search.EspecieId);
-        if (search?.ObrigatorioOrgaoSanitario is not null)
-            query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario);
-        if (search?.ReaplicarEmXDiasMin is not null)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin);
-        if (search?.ReaplicarEmXDiasMax is not null)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax);
+        query = ApplyFilters(query, search);
 
         query = query.OrderBy(vacina => vacina.Name);
 
@@ -117,27 +109,47 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
     public Task<int> Count(VacinaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
         var query = context.Vacinas.AsNoTracking();
-
-        if (search?.EspecieId is not null)
-            query = query.Where(vacina => vacina.EspecieId == search.EspecieId);
-        if (search?.ObrigatorioOrgaoSanitario is not null)
-            query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario);
-        if (search?.ReaplicarEmXDiasMin is not null)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin);
-        if (search?.ReaplicarEmXDiasMax is not null)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax);
-
+        query = ApplyFilters(query, search);
         return query.CountAsync(cancellationToken);
     }
 
-    public Task<List<Vacina>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    public Task<List<Vacina>> GetAllByNameAsync(int page, string name, VacinaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        var query = context.Vacinas.AsNoTracking()
-             .Where(e => EF.Functions.ILike(e.Name, $"{name}%"))
-             .OrderBy(e => e.Name)
-                .Skip((page - 1) * 10)
-                .Take(10);
+        var query = context.Vacinas
+             .Include(e => e.Especie)
+             .AsNoTracking();
 
-        return query.ToListAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(e => EF.Functions.ILike(e.Name, $"{name}%"));
+        }
+
+        query = ApplyFilters(query, search);
+
+        return query
+             .OrderBy(e => e.Name)
+             .Skip((page - 1) * 10)
+             .Take(10)
+             .ToListAsync(cancellationToken);
+    }
+
+    private static IQueryable<Vacina> ApplyFilters(IQueryable<Vacina> query, VacinaSearchDto? search)
+    {
+        if (search is null)
+            return query;
+
+        if (search.EspecieId.HasValue)
+            query = query.Where(vacina => vacina.EspecieId == search.EspecieId.Value);
+
+        if (search.ObrigatorioOrgaoSanitario.HasValue)
+            query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario.Value);
+
+        if (search.ReaplicarEmXDiasMin.HasValue)
+            query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin.Value);
+
+        if (search.ReaplicarEmXDiasMax.HasValue)
+            query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax.Value);
+
+        return query;
     }
 }

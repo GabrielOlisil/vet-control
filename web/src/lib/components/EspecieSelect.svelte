@@ -1,24 +1,30 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { vacinaService } from "$lib/api/vacinas";
+    import { especieService } from "$lib/api/especies";
+    import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
     import IconClose from "@iconify-svelte/material-symbols/close-rounded";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import type {
+        EspecieReadResponseDto,
+        EspecieShortResponseDto,
+    } from "$lib/types";
 
-    export interface VacinaOption {
+    export type EspecieOption = {
         id?: string;
-        name: string;
-        descricao?: string | null;
-        reaplicarEmXDias?: number | string;
-    }
+        nome?: string;
+        name?: string;
+        nomeCientifico?: string | null;
+        iconeKey?: string | null;
+        portePadrao?: any;
+    };
 
     let {
-        label = "Vacina",
-        id = "vacina-select",
+        label = "Espécie",
+        id = "especie-select",
         value = $bindable(""),
         required = false,
         disabled = false,
-        placeholder = "Buscar vacina...",
+        placeholder = "Buscar espécie...",
         error = "",
         onSelect = null,
     }: {
@@ -29,14 +35,14 @@
         disabled?: boolean;
         placeholder?: string;
         error?: string | null;
-        onSelect?: ((vacina: VacinaOption | null) => void) | null;
+        onSelect?: ((especie: EspecieOption | null) => void) | null;
     } = $props();
 
     let searchTerm = $state("");
     let isOpen = $state(false);
     let isLoading = $state(false);
-    let options = $state<VacinaOption[]>([]);
-    let selectedVacina = $state<VacinaOption | null>(null);
+    let options = $state<EspecieOption[]>([]);
+    let selectedItem = $state<EspecieOption | null>(null);
     let containerRef = $state<HTMLDivElement | null>(null);
     let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 
@@ -49,19 +55,20 @@
         currentPage = page;
         try {
             if (isSearching && searchTerm.trim()) {
-                const results = await vacinaService.search(
+                const results = await especieService.search(
                     searchTerm.trim(),
+                    true,
                     page,
                 );
-                options = results;
+                options = results as EspecieOption[];
                 hasMore = results.length >= 10;
             } else {
-                const list = await vacinaService.getList({ page });
-                options = list;
+                const list = await especieService.getList({ page });
+                options = list as EspecieOption[];
                 hasMore = list.length >= 10;
             }
         } catch (e) {
-            console.error("Erro ao carregar lista de vacinas:", e);
+            console.error("Erro ao carregar espécies:", e);
             options = [];
         } finally {
             isLoading = false;
@@ -70,24 +77,24 @@
 
     async function resolveSelectedName(val: string) {
         if (!val) {
-            selectedVacina = null;
+            selectedItem = null;
             searchTerm = "";
             return;
         }
         const match = options.find((o) => o.id === val);
         if (match) {
-            selectedVacina = match;
-            searchTerm = match.name;
+            selectedItem = match;
+            searchTerm = match.nome || match.name || "";
             return;
         }
         try {
-            const detail = await vacinaService.getById(val);
+            const detail = await especieService.getById(val);
             if (detail) {
-                selectedVacina = detail;
-                searchTerm = detail.name;
+                selectedItem = detail as EspecieOption;
+                searchTerm = detail.nome || (detail as any).name || "";
             }
         } catch {
-            // Silencioso se não encontrar
+            // silencioso
         }
     }
 
@@ -99,8 +106,8 @@
         function handleClickOutside(event: MouseEvent) {
             if (containerRef && !containerRef.contains(event.target as Node)) {
                 isOpen = false;
-                if (selectedVacina) {
-                    searchTerm = selectedVacina.name;
+                if (selectedItem) {
+                    searchTerm = selectedItem.name || "";
                 } else if (!value) {
                     searchTerm = "";
                 }
@@ -115,17 +122,16 @@
     });
 
     $effect(() => {
-        if (value && (!selectedVacina || selectedVacina.id !== value)) {
+        if (value && (!selectedItem || selectedItem.id !== value)) {
             resolveSelectedName(value);
-        } else if (!value && selectedVacina) {
-            selectedVacina = null;
+        } else if (!value && selectedItem) {
+            selectedItem = null;
             searchTerm = "";
         }
     });
 
     function handleInput(e: Event) {
-        const target = e.target as HTMLInputElement;
-        const text = target.value;
+        const text = (e.target as HTMLInputElement).value;
         searchTerm = text;
         isOpen = true;
         currentPage = 1;
@@ -145,10 +151,10 @@
         }, 300);
     }
 
-    function selectOption(opt: VacinaOption) {
+    function selectOption(opt: EspecieOption) {
         value = opt.id ?? "";
-        selectedVacina = opt;
-        searchTerm = opt.name;
+        selectedItem = opt;
+        searchTerm = opt.name || "";
         isOpen = false;
         if (onSelect) {
             onSelect(opt);
@@ -158,7 +164,7 @@
     function clearSelection(e?: Event) {
         e?.stopPropagation();
         value = "";
-        selectedVacina = null;
+        selectedItem = null;
         searchTerm = "";
         isSearching = false;
         loadPage(1);
@@ -260,11 +266,11 @@
                         <span
                             class="loading loading-spinner loading-xs text-primary"
                         ></span>
-                        <span>Carregando vacinas...</span>
+                        <span>Carregando espécies...</span>
                     </div>
                 {:else if options.length === 0}
                     <div class="p-4 text-center text-xs text-base-content/50">
-                        Nenhuma vacina encontrada {searchTerm.trim()
+                        Nenhuma espécie encontrada {searchTerm.trim()
                             ? `para "${searchTerm}"`
                             : ""}
                     </div>
@@ -275,7 +281,7 @@
                         >
                             {isSearching
                                 ? `Resultados da busca (Página ${currentPage})`
-                                : `Vacinas (Página ${currentPage})`}
+                                : `Espécies (Página ${currentPage})`}
                         </li>
                         {#each options as opt}
                             <li>
@@ -288,33 +294,25 @@
                                     onclick={() => selectOption(opt)}
                                 >
                                     <div
-                                        class="flex items-center gap-2 text-left"
+                                        class="flex items-center gap-2.5 text-left"
                                     >
-                                        <IconVaccines
-                                            width="16"
-                                            height="16"
-                                            class="shrink-0 text-primary"
+                                        <EspecieAvatar
+                                            iconeKey={opt.iconeKey || "outros"}
+                                            tamanho="sm"
                                         />
                                         <div>
-                                            <div class="font-medium">
-                                                {opt.name}
+                                            <div class="font-medium text-sm">
+                                                {opt.nome || opt.name}
                                             </div>
-                                            {#if opt.descricao}
+                                            {#if opt.nomeCientifico}
                                                 <div
-                                                    class="text-xs opacity-60 truncate max-w-xs"
+                                                    class="text-xs opacity-60 italic"
                                                 >
-                                                    {opt.descricao}
+                                                    {opt.nomeCientifico}
                                                 </div>
                                             {/if}
                                         </div>
                                     </div>
-                                    {#if opt.reaplicarEmXDias}
-                                        <span
-                                            class="badge badge-sm badge-ghost shrink-0 ml-2"
-                                        >
-                                            a cada {opt.reaplicarEmXDias} dias
-                                        </span>
-                                    {/if}
                                 </button>
                             </li>
                         {/each}

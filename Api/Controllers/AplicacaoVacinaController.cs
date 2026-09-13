@@ -52,6 +52,16 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return Ok(responses);
     }
 
+    [HttpGet("atrasadas/count")]
+    public async Task<ActionResult<int>> CountAtrasadas(
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        [FromQuery] StatusComprovanteVacina? statusComprovante,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await aplicacaoVacinaService.CountAtrasadasAsync(animalId, vacinaId, statusComprovante, cancellationToken));
+    }
+
     [HttpGet("pendentes-assinatura")]
     public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetPendentesAssinatura(
         [FromQuery] int? page,
@@ -65,6 +75,16 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return Ok(responses);
     }
 
+    [HttpGet("pendentes-assinatura/count")]
+    public async Task<ActionResult<int>> CountPendentesAssinatura(
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        [FromQuery] StatusComprovanteVacina? statusComprovante,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await aplicacaoVacinaService.CountPendentesAssinaturaAsync(animalId, vacinaId, statusComprovante, cancellationToken));
+    }
+
     [HttpGet("proximas")]
     public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> GetProximas(
         [FromQuery] int? page,
@@ -76,6 +96,16 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         var aplicacoes = await aplicacaoVacinaService.GetProximasAsync(page, dataLimite, animalId, vacinaId, cancellationToken);
         var responses = aplicacoes.Select(AplicacaoVacinaMapper.MapToHead).ToList();
         return Ok(responses);
+    }
+
+    [HttpGet("proximas/count")]
+    public async Task<ActionResult<int>> CountProximas(
+        [FromQuery] DateOnly? dataLimite,
+        [FromQuery] Guid? animalId,
+        [FromQuery] Guid? vacinaId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await aplicacaoVacinaService.CountProximasAsync(dataLimite, animalId, vacinaId, cancellationToken));
     }
 
     [HttpPost("lote")]

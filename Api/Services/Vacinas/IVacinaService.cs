@@ -13,6 +13,5 @@ public interface IVacinaService
     Task<Vacina?> PatchAsync(Guid id, VacinaPatchDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> Count(VacinaSearchDto? search = null, CancellationToken cancellationToken = default);
-    Task<List<Vacina>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default);
-
+    Task<List<Vacina>> GetAllByNameAsync(int page, string name, VacinaSearchDto? search = null, CancellationToken cancellationToken = default);
 }

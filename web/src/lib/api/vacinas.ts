@@ -42,10 +42,18 @@ export const vacinaService = {
     },
 
 
-    async search(search: string, page = 1): Promise<VacinaShortResponseDto[]> {
+    async search(search: string, page = 1, filters?: Omit<VacinaListParams, 'page'>): Promise<VacinaShortResponseDto[]> {
         const { data, error } = await apiClient.GET('/api/v1/vacinas/search', {
             params: {
-                query: { search, page },
+                query: {
+                    search,
+                    name: search,
+                    page,
+                    EspecieId: filters?.EspecieId,
+                    ObrigatorioOrgaoSanitario: filters?.ObrigatorioOrgaoSanitario,
+                    ReaplicarEmXDiasMin: filters?.ReaplicarEmXDiasMin,
+                    ReaplicarEmXDiasMax: filters?.ReaplicarEmXDiasMax,
+                },
             },
         });
         if (error) {

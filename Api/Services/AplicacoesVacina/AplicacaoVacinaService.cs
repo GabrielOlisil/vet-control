@@ -36,7 +36,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             StatusComprovante = StatusComprovanteVacina.NaoEmitido,
             NumeroLote = dto.NumeroLote,
             DoseMl = dto.DoseMl,
-            Observacoes = dto.Observacoes
+            Observacoes = dto.Observacoes,
+            VeterinarioResponsavel = dto.VeterinarioResponsavel,
+            Aplicador = dto.Aplicador,
+            LaboratorioFabricante = dto.LaboratorioFabricante
         };
 
         context.AplicacoesVacina.Add(aplicacao);
@@ -105,6 +108,21 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             aplicacao.Observacoes = dto.Observacoes;
         }
 
+        if (dto.VeterinarioResponsavel is not null)
+        {
+            aplicacao.VeterinarioResponsavel = dto.VeterinarioResponsavel;
+        }
+
+        if (dto.Aplicador is not null)
+        {
+            aplicacao.Aplicador = dto.Aplicador;
+        }
+
+        if (dto.LaboratorioFabricante is not null)
+        {
+            aplicacao.LaboratorioFabricante = dto.LaboratorioFabricante;
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         return aplicacao;
@@ -146,14 +164,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
                 .ThenInclude(a => a!.Identificadores)
             .AsNoTracking();
 
-        if (search?.VacinaId is not null)
-            query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId);
-        if (search?.AnimalId is not null)
-            query = query.Where(aplicacao => aplicacao.AnimalId == search.AnimalId);
-        if (search?.DataAplicacaoFrom is not null)
-            query = query.Where(aplicacao => aplicacao.DataAplicacao >= search.DataAplicacaoFrom);
-        if (search?.DataAplicacaoTo is not null)
-            query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo);
+        query = ApplyFilters(query, search, null);
 
         var currentPage = page ?? 1;
         query = query.OrderByDescending(aplicacao => aplicacao.DataAplicacao)
@@ -165,9 +176,13 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
     public Task<int> Count(AplicacaoVacinaSearchDto? search = null, bool? somenteAtrasadas = null,
         CancellationToken cancellationToken = default)
     {
-        var query = context.AplicacoesVacina
-                   .AsNoTracking();
+        var query = context.AplicacoesVacina.AsNoTracking();
+        query = ApplyFilters(query, search, somenteAtrasadas);
+        return query.CountAsync(cancellationToken);
+    }
 
+    private IQueryable<AplicacaoVacina> ApplyFilters(IQueryable<AplicacaoVacina> query, AplicacaoVacinaSearchDto? search, bool? somenteAtrasadas)
+    {
         if (somenteAtrasadas == true || search?.SomenteAtrasadas == true)
         {
             var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -178,16 +193,50 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
                 posterior.DataAplicacao > a.DataAplicacao));
         }
 
-        if (search?.VacinaId is not null)
-            query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId);
-        if (search?.AnimalId is not null)
-            query = query.Where(aplicacao => aplicacao.AnimalId == search.AnimalId);
-        if (search?.DataAplicacaoFrom is not null)
-            query = query.Where(aplicacao => aplicacao.DataAplicacao >= search.DataAplicacaoFrom);
-        if (search?.DataAplicacaoTo is not null)
-            query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo);
+        if (search is null)
+            return query;
 
-        return query.CountAsync(cancellationToken);
+        if (search.VacinaId.HasValue)
+            query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId.Value);
+
+        if (search.AnimalId.HasValue)
+            query = query.Where(aplicacao => aplicacao.AnimalId == search.AnimalId.Value);
+
+        if (search.DataAplicacaoFrom.HasValue)
+            query = query.Where(aplicacao => aplicacao.DataAplicacao >= search.DataAplicacaoFrom.Value);
+
+        if (search.DataAplicacaoTo.HasValue)
+            query = query.Where(aplicacao => aplicacao.DataAplicacao <= search.DataAplicacaoTo.Value);
+
+        if (search.DataProximaDoseFrom.HasValue)
+            query = query.Where(aplicacao => aplicacao.DataProximaDose >= search.DataProximaDoseFrom.Value);
+
+        if (search.DataProximaDoseTo.HasValue)
+            query = query.Where(aplicacao => aplicacao.DataProximaDose <= search.DataProximaDoseTo.Value);
+
+        if (search.DataLimite.HasValue)
+            query = query.Where(aplicacao => aplicacao.DataProximaDose != null && aplicacao.DataProximaDose <= search.DataLimite.Value);
+
+        if (search.CicloFinalizado.HasValue)
+            query = query.Where(aplicacao => aplicacao.CicloFinalizado == search.CicloFinalizado.Value);
+
+        if (search.StatusComprovante.HasValue)
+            query = query.Where(aplicacao => aplicacao.StatusComprovante == search.StatusComprovante.Value);
+
+        if (search.PendenteAssinatura == true)
+        {
+            query = query.Where(a => a.StatusComprovante == StatusComprovanteVacina.NaoEmitido ||
+                                     a.StatusComprovante == StatusComprovanteVacina.PendenteAssinatura);
+        }
+
+        if (search.Proximas == true)
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+            var limite = search.DataLimite ?? hoje.AddDays(30);
+            query = query.Where(a => a.DataProximaDose != null && a.DataProximaDose >= hoje && a.DataProximaDose <= limite);
+        }
+
+        return query;
     }
 
     public Task<List<AplicacaoVacina>> GetAtrasadasAsync(int? page, Guid? animalId, Guid? vacinaId,
@@ -223,6 +272,31 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
         return query.ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountAtrasadasAsync(Guid? animalId = null, Guid? vacinaId = null,
+        StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default)
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var query = context.AplicacoesVacina
+            .AsNoTracking()
+            .Where(a => !a.CicloFinalizado && a.DataProximaDose != null && a.DataProximaDose < hoje);
+
+        query = query.Where(a => !context.AplicacoesVacina.Any(posterior =>
+            posterior.AnimalId == a.AnimalId &&
+            posterior.VacinaId == a.VacinaId &&
+            posterior.DataAplicacao > a.DataAplicacao));
+
+        if (animalId.HasValue)
+            query = query.Where(a => a.AnimalId == animalId.Value);
+
+        if (vacinaId.HasValue)
+            query = query.Where(a => a.VacinaId == vacinaId.Value);
+
+        if (statusComprovante.HasValue)
+            query = query.Where(a => a.StatusComprovante == statusComprovante.Value);
+
+        return query.CountAsync(cancellationToken);
+    }
+
     public Task<List<AplicacaoVacina>> GetPendentesAssinaturaAsync(int? page, Guid? animalId, Guid? vacinaId,
         StatusComprovanteVacina? statusComprovante, CancellationToken cancellationToken = default)
     {
@@ -256,6 +330,31 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
         return query.ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountPendentesAssinaturaAsync(Guid? animalId = null, Guid? vacinaId = null,
+        StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.AplicacoesVacina
+            .AsNoTracking();
+
+        if (statusComprovante.HasValue)
+        {
+            query = query.Where(a => a.StatusComprovante == statusComprovante.Value);
+        }
+        else
+        {
+            query = query.Where(a => a.StatusComprovante == StatusComprovanteVacina.NaoEmitido ||
+                                     a.StatusComprovante == StatusComprovanteVacina.PendenteAssinatura);
+        }
+
+        if (animalId.HasValue)
+            query = query.Where(a => a.AnimalId == animalId.Value);
+
+        if (vacinaId.HasValue)
+            query = query.Where(a => a.VacinaId == vacinaId.Value);
+
+        return query.CountAsync(cancellationToken);
+    }
+
     public Task<List<AplicacaoVacina>> GetProximasAsync(int? page, DateOnly? dataLimite, Guid? animalId,
         Guid? vacinaId, CancellationToken cancellationToken = default)
     {
@@ -281,6 +380,25 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             .Take(10);
 
         return query.ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountProximasAsync(DateOnly? dataLimite = null, Guid? animalId = null,
+        Guid? vacinaId = null, CancellationToken cancellationToken = default)
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var limite = dataLimite ?? hoje.AddDays(30);
+
+        var query = context.AplicacoesVacina
+            .AsNoTracking()
+            .Where(a => a.DataProximaDose != null && a.DataProximaDose >= hoje && a.DataProximaDose <= limite);
+
+        if (animalId.HasValue)
+            query = query.Where(a => a.AnimalId == animalId.Value);
+
+        if (vacinaId.HasValue)
+            query = query.Where(a => a.VacinaId == vacinaId.Value);
+
+        return query.CountAsync(cancellationToken);
     }
 
     public async Task<List<AplicacaoVacina>> VacinarLoteAsync(AplicacaoVacinaLoteCreateDto dto,
@@ -320,7 +438,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
                     StatusComprovante = StatusComprovanteVacina.NaoEmitido,
                     NumeroLote = dto.NumeroLote,
                     DoseMl = dto.DoseMl,
-                    Observacoes = dto.Observacoes
+                    Observacoes = dto.Observacoes,
+                    VeterinarioResponsavel = dto.VeterinarioResponsavel,
+                    Aplicador = dto.Aplicador,
+                    LaboratorioFabricante = dto.LaboratorioFabricante
                 };
 
                 context.AplicacoesVacina.Add(aplicacao);

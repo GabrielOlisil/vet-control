@@ -24,11 +24,20 @@ public interface IAplicacaoVacinaService
     Task<List<AplicacaoVacina>> GetAtrasadasAsync(int? page, Guid? animalId, Guid? vacinaId,
         StatusComprovanteVacina? statusComprovante, CancellationToken cancellationToken = default);
 
+    Task<int> CountAtrasadasAsync(Guid? animalId = null, Guid? vacinaId = null,
+        StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default);
+
     Task<List<AplicacaoVacina>> GetPendentesAssinaturaAsync(int? page, Guid? animalId, Guid? vacinaId,
         StatusComprovanteVacina? statusComprovante, CancellationToken cancellationToken = default);
 
+    Task<int> CountPendentesAssinaturaAsync(Guid? animalId = null, Guid? vacinaId = null,
+        StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default);
+
     Task<List<AplicacaoVacina>> GetProximasAsync(int? page, DateOnly? dataLimite, Guid? animalId,
         Guid? vacinaId, CancellationToken cancellationToken = default);
+
+    Task<int> CountProximasAsync(DateOnly? dataLimite = null, Guid? animalId = null,
+        Guid? vacinaId = null, CancellationToken cancellationToken = default);
 
     Task<List<AplicacaoVacina>> VacinarLoteAsync(AplicacaoVacinaLoteCreateDto dto,
         CancellationToken cancellationToken = default);

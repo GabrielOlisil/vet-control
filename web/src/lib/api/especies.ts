@@ -37,10 +37,16 @@ export const especieService = {
         return data ?? [];
     },
 
-    async search(search: string, nomeCientificoToo = false, page = 1): Promise<EspecieShortResponseDto[]> {
+    async search(search: string, nomeCientificoToo = false, page = 1, filters?: EspecieListParams): Promise<EspecieShortResponseDto[]> {
         const { data, error } = await apiClient.GET('/api/v1/especies/search', {
             params: {
-                query: { search, nomeCientificoToo, page },
+                query: {
+                    search,
+                    name: search,
+                    nomeCientificoToo,
+                    page,
+                    PortePadrao: filters?.PortePadrao,
+                },
             },
         });
         if (error) {

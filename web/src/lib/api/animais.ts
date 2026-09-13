@@ -8,44 +8,64 @@ import type {
     AnimalShortResponseDto,
     SexoAnimal,
     OrigemAnimal,
+    TipoIdentificador,
 } from '../types';
 
 export interface AnimalListParams {
-    page?: number;
+    page?: number | string;
     RacaId?: string;
+    EspecieId?: string;
     Sexo?: SexoAnimal;
     Origem?: OrigemAnimal;
+    OrigemAnimal?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
+    DataNascimento?: string;
     DataNascimentoFrom?: string;
     DataNascimentoTo?: string;
+    Identificador?: string;
+    TipoIdentificador?: TipoIdentificador;
+    CreationDateTimeFrom?: string;
+    CreationDateTimeTo?: string;
 }
 
 export interface AnimalCountParams {
     RacaId?: string;
+    EspecieId?: string;
     Sexo?: SexoAnimal;
     Origem?: OrigemAnimal;
+    OrigemAnimal?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
+    DataNascimento?: string;
     DataNascimentoFrom?: string;
     DataNascimentoTo?: string;
+    Identificador?: string;
+    TipoIdentificador?: TipoIdentificador;
+    CreationDateTimeFrom?: string;
+    CreationDateTimeTo?: string;
 }
 
 export const animalService = {
     async getList(params?: AnimalListParams): Promise<AnimalReadResponseDto[]> {
-
-        apiClient.GET
         const { data, error } = await apiClient.GET('/api/v1/animais', {
             params: {
                 query: {
                     page: params?.page,
                     RacaId: params?.RacaId,
+                    EspecieId: params?.EspecieId,
                     Sexo: params?.Sexo,
-                    Origem: params?.Origem,
+                    Origem: params?.Origem ?? params?.OrigemAnimal,
+                    OrigemAnimal: params?.OrigemAnimal ?? params?.Origem,
                     Ativo: params?.Ativo,
                     LoteOuPasto: params?.LoteOuPasto,
+                    DataNascimento: params?.DataNascimento,
                     DataNascimentoFrom: params?.DataNascimentoFrom,
                     DataNascimentoTo: params?.DataNascimentoTo,
+                    Identificador: params?.Identificador,
+                    TipoIdentificador: params?.TipoIdentificador,
+                    CreationDateTimeFrom: params?.CreationDateTimeFrom,
+                    CreationDateTimeTo: params?.CreationDateTimeTo,
                 },
             },
         });
@@ -55,11 +75,28 @@ export const animalService = {
         return data ?? [];
     },
 
-
-    async search(name: string, page = 1): Promise<AnimalShortResponseDto[]> {
+    async search(name: string, page = 1, filters?: Omit<AnimalListParams, 'page'>): Promise<AnimalShortResponseDto[]> {
         const { data, error } = await apiClient.GET('/api/v1/animais/search', {
             params: {
-                query: { name, page },
+                query: {
+                    name,
+                    search: name,
+                    page,
+                    RacaId: filters?.RacaId,
+                    EspecieId: filters?.EspecieId,
+                    Sexo: filters?.Sexo,
+                    Origem: filters?.Origem ?? filters?.OrigemAnimal,
+                    OrigemAnimal: filters?.OrigemAnimal ?? filters?.Origem,
+                    Ativo: filters?.Ativo,
+                    LoteOuPasto: filters?.LoteOuPasto,
+                    DataNascimento: filters?.DataNascimento,
+                    DataNascimentoFrom: filters?.DataNascimentoFrom,
+                    DataNascimentoTo: filters?.DataNascimentoTo,
+                    Identificador: filters?.Identificador,
+                    TipoIdentificador: filters?.TipoIdentificador,
+                    CreationDateTimeFrom: filters?.CreationDateTimeFrom,
+                    CreationDateTimeTo: filters?.CreationDateTimeTo,
+                },
             },
         });
         if (error) {
@@ -73,12 +110,19 @@ export const animalService = {
             params: {
                 query: {
                     RacaId: params?.RacaId,
+                    EspecieId: params?.EspecieId,
                     Sexo: params?.Sexo,
-                    Origem: params?.Origem,
+                    Origem: params?.Origem ?? params?.OrigemAnimal,
+                    OrigemAnimal: params?.OrigemAnimal ?? params?.Origem,
                     Ativo: params?.Ativo,
                     LoteOuPasto: params?.LoteOuPasto,
+                    DataNascimento: params?.DataNascimento,
                     DataNascimentoFrom: params?.DataNascimentoFrom,
                     DataNascimentoTo: params?.DataNascimentoTo,
+                    Identificador: params?.Identificador,
+                    TipoIdentificador: params?.TipoIdentificador,
+                    CreationDateTimeFrom: params?.CreationDateTimeFrom,
+                    CreationDateTimeTo: params?.CreationDateTimeTo,
                 },
             },
         });

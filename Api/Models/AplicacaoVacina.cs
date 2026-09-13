@@ -25,7 +25,9 @@ public class AplicacaoVacina : IAuditedEntity
 
     public string? Observacoes { get; set; }
 
-
+    public string? VeterinarioResponsavel { get; set; }
+    public string? Aplicador { get; set; }
+    public string? LaboratorioFabricante { get; set; }
 
     public Vacina? Vacina { get; set; }
     public Animal? Animal { get; set; }

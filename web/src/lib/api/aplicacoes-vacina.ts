@@ -9,11 +9,20 @@ import {
 } from '../types';
 
 export interface AplicacaoVacinaListParams {
-    page?: number;
+    page?: number | string;
     VacinaId?: string;
     AnimalId?: string;
     DataAplicacaoFrom?: string;
     DataAplicacaoTo?: string;
+    DataProximaDoseFrom?: string;
+    DataProximaDoseTo?: string;
+    DataLimite?: string;
+    SomenteAtrasadas?: boolean;
+    somenteAtrasadas?: boolean;
+    PendenteAssinatura?: boolean;
+    Proximas?: boolean;
+    CicloFinalizado?: boolean;
+    StatusComprovante?: number;
 }
 
 export interface AplicacaoVacinaCountParams {
@@ -21,25 +30,33 @@ export interface AplicacaoVacinaCountParams {
     AnimalId?: string;
     DataAplicacaoFrom?: string;
     DataAplicacaoTo?: string;
+    DataProximaDoseFrom?: string;
+    DataProximaDoseTo?: string;
+    DataLimite?: string;
+    SomenteAtrasadas?: boolean;
+    PendenteAssinatura?: boolean;
+    Proximas?: boolean;
+    CicloFinalizado?: boolean;
+    StatusComprovante?: number;
     somenteAtrasadas?: boolean;
 }
 
 export interface AplicacaoVacinaAtrasadasParams {
-    page?: number;
+    page?: number | string;
     animalId?: string;
     vacinaId?: string;
     statusComprovante?: number;
 }
 
 export interface AplicacaoVacinaPendentesParams {
-    page?: number;
+    page?: number | string;
     animalId?: string;
     vacinaId?: string;
     statusComprovante?: number;
 }
 
 export interface AplicacaoVacinaProximasParams {
-    page?: number;
+    page?: number | string;
     dataLimite?: string;
     animalId?: string;
     vacinaId?: string;
@@ -55,6 +72,14 @@ export const aplicacaoVacinaService = {
                     AnimalId: params?.AnimalId,
                     DataAplicacaoFrom: params?.DataAplicacaoFrom,
                     DataAplicacaoTo: params?.DataAplicacaoTo,
+                    DataProximaDoseFrom: params?.DataProximaDoseFrom,
+                    DataProximaDoseTo: params?.DataProximaDoseTo,
+                    DataLimite: params?.DataLimite,
+                    SomenteAtrasadas: params?.SomenteAtrasadas ?? params?.somenteAtrasadas,
+                    PendenteAssinatura: params?.PendenteAssinatura,
+                    Proximas: params?.Proximas,
+                    CicloFinalizado: params?.CicloFinalizado,
+                    StatusComprovante: params?.StatusComprovante as any,
                 },
             },
         });
@@ -72,13 +97,67 @@ export const aplicacaoVacinaService = {
                     AnimalId: params?.AnimalId,
                     DataAplicacaoFrom: params?.DataAplicacaoFrom,
                     DataAplicacaoTo: params?.DataAplicacaoTo,
-                    somenteAtrasadas: params?.somenteAtrasadas,
-                    SomenteAtrasadas: params?.somenteAtrasadas,
+                    DataProximaDoseFrom: params?.DataProximaDoseFrom,
+                    DataProximaDoseTo: params?.DataProximaDoseTo,
+                    DataLimite: params?.DataLimite,
+                    SomenteAtrasadas: params?.SomenteAtrasadas ?? params?.somenteAtrasadas,
+                    PendenteAssinatura: params?.PendenteAssinatura,
+                    Proximas: params?.Proximas,
+                    CicloFinalizado: params?.CicloFinalizado,
+                    StatusComprovante: params?.StatusComprovante as any,
                 } as any,
             },
         });
         if (error) {
             throw new Error(extractErrorMessage(error, 'Erro ao contar aplicações'));
+        }
+        return Number(data ?? 0);
+    },
+
+    async getAtrasadasCount(params?: AplicacaoVacinaAtrasadasParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/atrasadas/count', {
+            params: {
+                query: {
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                    statusComprovante: params?.statusComprovante as any,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar vacinas atrasadas'));
+        }
+        return Number(data ?? 0);
+    },
+
+    async getPendentesAssinaturaCount(params?: AplicacaoVacinaPendentesParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/pendentes-assinatura/count', {
+            params: {
+                query: {
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                    statusComprovante: params?.statusComprovante as any,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar vacinas pendentes de assinatura'));
+        }
+        return Number(data ?? 0);
+    },
+
+    async getProximasCount(params?: AplicacaoVacinaProximasParams): Promise<number> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/proximas/count', {
+            params: {
+                query: {
+                    dataLimite: params?.dataLimite,
+                    animalId: params?.animalId,
+                    vacinaId: params?.vacinaId,
+                },
+            },
+        });
+        if (error) {
+            throw new Error(extractErrorMessage(error, 'Erro ao contar próximas doses'));
         }
         return Number(data ?? 0);
     },

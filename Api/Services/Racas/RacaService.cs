@@ -66,10 +66,7 @@ public sealed class RacaService(ApiContext context) : IRacaService
     public Task<int> Count(RacaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
         var query = context.Racas.AsNoTracking();
-
-        if (search?.EspecieId is not null)
-            query = query.Where(raca => raca.EspecieId == search.EspecieId);
-
+        query = ApplyFilters(query, search);
         return query.CountAsync(cancellationToken);
     }
 
@@ -89,8 +86,7 @@ public sealed class RacaService(ApiContext context) : IRacaService
         var query = context.Racas.Include(e => e.Especie)
             .AsNoTracking();
 
-        if (search?.EspecieId is not null)
-            query = query.Where(raca => raca.EspecieId == search.EspecieId);
+        query = ApplyFilters(query, search);
 
         query = query.OrderBy(r => r.Nome);
 
@@ -102,16 +98,34 @@ public sealed class RacaService(ApiContext context) : IRacaService
         return query.ToListAsync(cancellationToken);
     }
 
-    public Task<List<Raca>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    public Task<List<Raca>> GetAllByNameAsync(int page, string name, RacaSearchDto? search = null, CancellationToken cancellationToken = default)
     {
-        var query = context.Racas.AsNoTracking()
-             .Where(e => EF.Functions.ILike(e.Nome, $"{name}%"))
-             .OrderBy(e => e.Nome)
-                .Skip((page - 1) * 10)
-                .Take(10);
+        var query = context.Racas
+             .Include(e => e.Especie)
+             .AsNoTracking();
 
-        return query.ToListAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(e => EF.Functions.ILike(e.Nome, $"{name}%"));
+        }
+
+        query = ApplyFilters(query, search);
+
+        return query
+             .OrderBy(e => e.Nome)
+             .Skip((page - 1) * 10)
+             .Take(10)
+             .ToListAsync(cancellationToken);
     }
 
+    private static IQueryable<Raca> ApplyFilters(IQueryable<Raca> query, RacaSearchDto? search)
+    {
+        if (search is null)
+            return query;
 
+        if (search.EspecieId.HasValue)
+            query = query.Where(raca => raca.EspecieId == search.EspecieId.Value);
+
+        return query;
+    }
 }

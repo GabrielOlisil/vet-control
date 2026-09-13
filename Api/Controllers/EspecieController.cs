@@ -22,14 +22,21 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
 
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<EspecieShortResponseDto>>> GetAllByName([FromQuery] bool nomeCientificoToo, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] string search = "")
+    public async Task<ActionResult<List<EspecieShortResponseDto>>> GetAllByName(
+        [FromQuery] bool nomeCientificoToo,
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] string? search = null,
+        [FromQuery] string? name = null,
+        [FromQuery] EspecieSearchDto? searchDto = null)
     {
         if (page < 1)
         {
             return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
         }
 
-        var especies = await especieService.GetAllByNameAsync(page, nomeCientificoToo, search, cancellationToken);
+        var searchTerm = search ?? name ?? "";
+        var especies = await especieService.GetAllByNameAsync(page, nomeCientificoToo, searchTerm, searchDto, cancellationToken);
 
         return especies.Select(EspecieMapper.MapToShort).ToList();
     }

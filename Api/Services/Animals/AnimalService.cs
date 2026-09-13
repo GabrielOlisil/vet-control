@@ -28,20 +28,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             .Include(a => a.Identificadores)
             .AsNoTracking();
 
-        if (search?.RacaId is not null)
-            query = query.Where(animal => animal.RacaId == search.RacaId);
-        if (search?.Sexo is not null)
-            query = query.Where(animal => animal.Sexo == search.Sexo);
-        if (search?.Origem is not null)
-            query = query.Where(animal => animal.OrigemAnimal == search.Origem);
-        if (search?.Ativo is not null)
-            query = query.Where(animal => animal.Ativo == search.Ativo);
-        if (!string.IsNullOrWhiteSpace(search?.LoteOuPasto))
-            query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
-        if (search?.DataNascimentoFrom is not null)
-            query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom);
-        if (search?.DataNascimentoTo is not null)
-            query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo);
+        query = ApplyFilters(query, search);
 
         query = query.OrderBy(animal => animal.Name).ThenBy(animal => animal.CreationDateTime)
                     .ThenBy(animal => animal.Id);
@@ -177,33 +164,76 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
     public Task<int> Count(AnimalSearchDto? search = null, CancellationToken cancellationToken = default)
     {
         var query = context.Animals.AsNoTracking();
-
-        if (search?.RacaId is not null)
-            query = query.Where(animal => animal.RacaId == search.RacaId);
-        if (search?.Sexo is not null)
-            query = query.Where(animal => animal.Sexo == search.Sexo);
-        if (search?.Origem is not null)
-            query = query.Where(animal => animal.OrigemAnimal == search.Origem);
-        if (search?.Ativo is not null)
-            query = query.Where(animal => animal.Ativo == search.Ativo);
-        if (!string.IsNullOrWhiteSpace(search?.LoteOuPasto))
-            query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
-        if (search?.DataNascimentoFrom is not null)
-            query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom);
-        if (search?.DataNascimentoTo is not null)
-            query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo);
-
+        query = ApplyFilters(query, search);
         return query.CountAsync(cancellationToken);
     }
 
-
-    public Task<List<Animal>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default)
+    private static IQueryable<Animal> ApplyFilters(IQueryable<Animal> query, AnimalSearchDto? search)
     {
-        return context.Animals
-            .AsNoTracking()
+        if (search is null)
+            return query;
+
+        if (search.RacaId.HasValue)
+            query = query.Where(animal => animal.RacaId == search.RacaId.Value);
+
+        if (search.EspecieId.HasValue)
+            query = query.Where(animal => animal.Raca != null && animal.Raca.EspecieId == search.EspecieId.Value);
+
+        if (search.Sexo.HasValue)
+            query = query.Where(animal => animal.Sexo == search.Sexo.Value);
+
+        var origem = search.Origem ?? search.OrigemAnimal;
+        if (origem.HasValue)
+            query = query.Where(animal => animal.OrigemAnimal == origem.Value);
+
+        if (search.Ativo.HasValue)
+            query = query.Where(animal => animal.Ativo == search.Ativo.Value);
+
+        if (!string.IsNullOrWhiteSpace(search.LoteOuPasto))
+            query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
+
+        if (search.DataNascimento.HasValue)
+            query = query.Where(animal => animal.DataNascimento == search.DataNascimento.Value);
+
+        if (search.DataNascimentoFrom.HasValue)
+            query = query.Where(animal => animal.DataNascimento >= search.DataNascimentoFrom.Value);
+
+        if (search.DataNascimentoTo.HasValue)
+            query = query.Where(animal => animal.DataNascimento <= search.DataNascimentoTo.Value);
+
+        if (!string.IsNullOrWhiteSpace(search.Identificador))
+            query = query.Where(animal => animal.Identificadores.Any(i => EF.Functions.ILike(i.Valor, $"%{search.Identificador}%")));
+
+        if (search.TipoIdentificador.HasValue)
+            query = query.Where(animal => animal.Identificadores.Any(i => i.Tipo == search.TipoIdentificador.Value));
+
+        if (search.CreationDateTimeFrom.HasValue)
+            query = query.Where(animal => animal.CreationDateTime >= search.CreationDateTimeFrom.Value);
+
+        if (search.CreationDateTimeTo.HasValue)
+            query = query.Where(animal => animal.CreationDateTime <= search.CreationDateTimeTo.Value);
+
+        return query;
+    }
+
+
+    public Task<List<Animal>> GetAllByNameAsync(int page, string name, AnimalSearchDto? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Animals
+            .Include(a => a.Raca)
+                .ThenInclude(r => r!.Especie)
             .Include(a => a.Identificadores)
-            .Where(e => EF.Functions.ILike(e.Name ?? string.Empty, $"{name}%")
-                || e.Identificadores.Any(i => EF.Functions.ILike(i.Valor, $"%{name}%")))
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(e => EF.Functions.ILike(e.Name ?? string.Empty, $"%{name}%")
+                || e.Identificadores.Any(i => EF.Functions.ILike(i.Valor, $"%{name}%")));
+        }
+
+        query = ApplyFilters(query, search);
+
+        return query
             .OrderBy(e => e.Name)
             .Skip((page - 1) * 10)
             .Take(10)

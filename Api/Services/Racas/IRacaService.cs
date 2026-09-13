@@ -13,6 +13,5 @@ public interface IRacaService
     Task<Raca?> PatchAsync(Guid id, RacaPatchDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> Count(RacaSearchDto? search = null, CancellationToken cancellationToken = default);
-    Task<List<Raca>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default);
-
+    Task<List<Raca>> GetAllByNameAsync(int page, string name, RacaSearchDto? search = null, CancellationToken cancellationToken = default);
 }

@@ -11,6 +11,5 @@ public interface IEspecieService
     Task<Especie?> PatchAsync(Guid id, EspeciePatchDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> Count(EspecieSearchDto? search = null, CancellationToken cancellationToken = default);
-    Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, CancellationToken cancellationToken = default);
-
+    Task<List<Especie>> GetAllByNameAsync(int page, bool searchNomeCientificoToo, string name, EspecieSearchDto? search = null, CancellationToken cancellationToken = default);
 }

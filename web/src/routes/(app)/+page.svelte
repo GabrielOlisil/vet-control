@@ -3,6 +3,7 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import Input from "$lib/components/Input.svelte";
     import VacinaSelect from "$lib/components/VacinaSelect.svelte";
+    import AnimalSelect from "$lib/components/AnimalSelect.svelte";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
@@ -31,6 +32,8 @@
 
     // ── Contadores e KPIs ─────────────────────────────────────────────────────
     let countAtrasadas = $state(0);
+    let countPendentes = $state(0);
+    let countProximas = $state(0);
     let countTotalDoses = $state(0);
     let countTotalAnimais = $state(0);
     let isLoadingKpis = $state(true);
@@ -264,16 +267,22 @@
     async function loadKpis() {
         isLoadingKpis = true;
         try {
-            const [atrasadasC, totalD, totalA] = await Promise.all([
-                aplicacaoVacinaService.getCount({ somenteAtrasadas: true }),
-                aplicacaoVacinaService.getCount(),
-                animalService.getCount(),
-            ]);
+            const dataLimite = getDataLimiteCalculada();
+            const [atrasadasC, pendentesC, proximasC, totalD, totalA] =
+                await Promise.all([
+                    aplicacaoVacinaService.getAtrasadasCount(),
+                    aplicacaoVacinaService.getPendentesAssinaturaCount(),
+                    aplicacaoVacinaService.getProximasCount({ dataLimite }),
+                    aplicacaoVacinaService.getCount(),
+                    animalService.getCount(),
+                ]);
             countAtrasadas = atrasadasC;
+            countPendentes = pendentesC;
+            countProximas = proximasC;
             countTotalDoses = totalD;
             countTotalAnimais = totalA;
         } catch (err) {
-            console.error(err);
+            console.error("Erro ao carregar KPIs:", err);
         } finally {
             isLoadingKpis = false;
         }
@@ -283,27 +292,8 @@
         if (activeTab === "atrasadas") await loadAtrasadas();
         else if (activeTab === "pendentes") await loadPendentes();
         else if (activeTab === "proximas") await loadProximas();
+        await loadKpis();
     }
-
-    $effect(() => {
-        // Carrega sob demanda apenas na primeira vez que a aba for acessada
-        const tab = activeTab;
-        if (tab === "atrasadas" && !hasLoadedAtrasadas && !isLoadingAtrasadas) {
-            loadAtrasadas();
-        } else if (
-            tab === "pendentes" &&
-            !hasLoadedPendentes &&
-            !isLoadingPendentes
-        ) {
-            loadPendentes();
-        } else if (
-            tab === "proximas" &&
-            !hasLoadedProximas &&
-            !isLoadingProximas
-        ) {
-            loadProximas();
-        }
-    });
 
     onMount(async () => {
         await Promise.all([
@@ -311,6 +301,8 @@
             animalService.getList().then((res) => (animais = res)),
             vacinaService.getList().then((res) => (vacinas = res)),
             loadAtrasadas(),
+            loadPendentes(),
+            loadProximas(),
         ]);
     });
 
@@ -450,7 +442,7 @@
                     Pendentes de Assinatura
                 </div>
                 <div class="stat-value text-warning font-extrabold">
-                    {pendentes.length}
+                    {countPendentes}
                 </div>
                 <div class="stat-desc text-wrap">
                     Sem comprovante ou aguardando emissão
@@ -470,7 +462,7 @@
                 </div>
                 <div class="stat-title text-wrap text-info">Próximas Doses</div>
                 <div class="stat-value text-info font-extrabold">
-                    {proximas.length}
+                    {countProximas}
                 </div>
                 <div class="stat-desc text-wrap">
                     Doses a vencer no horizonte configurado
@@ -518,6 +510,13 @@
             >
                 <IconCalendar width="18" height="18" />
                 <span>Pendentes de Assinatura</span>
+                {#if countPendentes > 0}
+                    <span
+                        class="badge badge-sm badge-warning text-base-content font-bold ml-1"
+                    >
+                        {countPendentes}
+                    </span>
+                {/if}
             </button>
 
             <button
@@ -531,6 +530,13 @@
             >
                 <IconCalendar width="18" height="18" />
                 <span>Próximas Doses</span>
+                {#if countProximas > 0}
+                    <span
+                        class="badge badge-sm badge-info text-white font-bold ml-1"
+                    >
+                        {countProximas}
+                    </span>
+                {/if}
             </button>
         </div>
 
@@ -1521,23 +1527,11 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <!-- Animal -->
         <div class="sm:col-span-2">
-            <label
-                class="label label-text text-xs font-medium"
-                for="modalAnimalSelect">Animal *</label
-            >
-            <select
-                id="modalAnimalSelect"
-                class="select select-bordered w-full"
+            <AnimalSelect
+                label="Animal *"
                 bind:value={aplicacaoForm.animalId}
-            >
-                <option value="">— Selecione o animal —</option>
-                {#each animais as a}
-                    <option value={a.id}>
-                        {getAnimalName(a)} ({a.identificadorPrincipal?.valor ||
-                            a.id?.slice(0, 6)})
-                    </option>
-                {/each}
-            </select>
+                required
+            />
         </div>
 
         <!-- Vacina -->

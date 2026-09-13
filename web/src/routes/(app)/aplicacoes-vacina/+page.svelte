@@ -4,6 +4,7 @@
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
     import VacinaSelect from "$lib/components/VacinaSelect.svelte";
+    import AnimalSelect from "$lib/components/AnimalSelect.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
@@ -23,6 +24,7 @@
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
 
     // ── Estado ────────────────────────────────────────────────────────────────
     let aplicacoes = $state<AplicacaoVacinaReadResponseDto[]>([]);
@@ -38,6 +40,14 @@
     let filterAnimalId = $state("");
     let filterDataFrom = $state("");
     let filterDataTo = $state("");
+    let filterProxFrom = $state("");
+    let filterProxTo = $state("");
+    let filterDataLimite = $state("");
+    let filterSomenteAtrasadas = $state("");
+    let filterPendenteAssinatura = $state("");
+    let filterProximas = $state("");
+    let filterCicloFinalizado = $state("");
+    let filterStatusComprovante = $state("");
 
     // ── Modal: Registrar Vacinação ────────────────────────────────────────────
     let showModal = $state(false);
@@ -123,17 +133,42 @@
         }
     }
 
+    function getFilterPayload() {
+        return {
+            page: currentPage,
+            VacinaId: filterVacinaId || undefined,
+            AnimalId: filterAnimalId || undefined,
+            DataAplicacaoFrom: filterDataFrom || undefined,
+            DataAplicacaoTo: filterDataTo || undefined,
+            DataProximaDoseFrom: filterProxFrom || undefined,
+            DataProximaDoseTo: filterProxTo || undefined,
+            DataLimite: filterDataLimite || undefined,
+            SomenteAtrasadas:
+                filterSomenteAtrasadas !== ""
+                    ? filterSomenteAtrasadas === "true"
+                    : undefined,
+            PendenteAssinatura:
+                filterPendenteAssinatura !== ""
+                    ? filterPendenteAssinatura === "true"
+                    : undefined,
+            Proximas:
+                filterProximas !== "" ? filterProximas === "true" : undefined,
+            CicloFinalizado:
+                filterCicloFinalizado !== ""
+                    ? filterCicloFinalizado === "true"
+                    : undefined,
+            StatusComprovante:
+                filterStatusComprovante !== ""
+                    ? Number(filterStatusComprovante)
+                    : undefined,
+        };
+    }
+
     // ── Carregar ──────────────────────────────────────────────────────────────
     async function load() {
         isLoading = true;
         try {
-            const params = {
-                page: currentPage,
-                VacinaId: filterVacinaId || undefined,
-                AnimalId: filterAnimalId || undefined,
-                DataAplicacaoFrom: filterDataFrom || undefined,
-                DataAplicacaoTo: filterDataTo || undefined,
-            };
+            const params = getFilterPayload();
             const [list, count] = await Promise.all([
                 aplicacaoVacinaService.getList(params),
                 aplicacaoVacinaService.getCount(params),
@@ -145,6 +180,23 @@
         } finally {
             isLoading = false;
         }
+    }
+
+    function clearFilters() {
+        filterVacinaId = "";
+        filterAnimalId = "";
+        filterDataFrom = "";
+        filterDataTo = "";
+        filterProxFrom = "";
+        filterProxTo = "";
+        filterDataLimite = "";
+        filterSomenteAtrasadas = "";
+        filterPendenteAssinatura = "";
+        filterProximas = "";
+        filterCicloFinalizado = "";
+        filterStatusComprovante = "";
+        currentPage = 1;
+        load();
     }
 
     onMount(async () => {
@@ -186,8 +238,23 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card bg-base-100 shadow-xs rounded-2xl p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="card bg-base-100 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-base-content/70 uppercase"
+                >Filtros de Aplicações</span
+            >
+            <button
+                type="button"
+                class="btn btn-xs btn-outline"
+                onclick={clearFilters}
+            >
+                Limpar Filtros
+            </button>
+        </div>
+
+        <div
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
+        >
             <div>
                 <label class="label label-text text-xs">Vacina</label>
                 <select
@@ -204,6 +271,7 @@
                     {/each}
                 </select>
             </div>
+
             <div>
                 <label class="label label-text text-xs">Animal</label>
                 <select
@@ -220,6 +288,43 @@
                     {/each}
                 </select>
             </div>
+
+            <div>
+                <label class="label label-text text-xs"
+                    >Status do Comprovante</label
+                >
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterStatusComprovante}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todos os status</option>
+                    <option value="0">Não Emitido</option>
+                    <option value="1">Pendente Assinatura</option>
+                    <option value="2">Assinado</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="label label-text text-xs"
+                    >Filtro Rápido de Estado</label
+                >
+                <select
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterSomenteAtrasadas}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todas as aplicações</option>
+                    <option value="true">Somente Atrasadas</option>
+                </select>
+            </div>
+
             <div>
                 <label class="label label-text text-xs">Aplicação de</label>
                 <input
@@ -232,12 +337,39 @@
                     }}
                 />
             </div>
+
             <div>
                 <label class="label label-text text-xs">Aplicação até</label>
                 <input
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterDataTo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
+            <div>
+                <label class="label label-text text-xs">Próxima Dose de</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterProxFrom}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
+            <div>
+                <label class="label label-text text-xs">Próxima Dose até</label>
+                <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterProxTo}
                     onchange={() => {
                         currentPage = 1;
                         load();
@@ -384,19 +516,11 @@
     {/if}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs">Animal *</label>
-            <select
-                class="select select-bordered w-full"
+            <AnimalSelect
+                label="Animal *"
                 bind:value={form.animalId}
-            >
-                <option value="">— Selecione o animal —</option>
-                {#each animais as a}
-                    <option value={a.id}
-                        >{getAnimalName(a)} ({a.raca?.nome ??
-                            "Sem raça"})</option
-                    >
-                {/each}
-            </select>
+                required
+            />
         </div>
         <div class="sm:col-span-2">
             <VacinaSelect

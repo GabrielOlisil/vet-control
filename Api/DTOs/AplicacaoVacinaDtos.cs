@@ -136,6 +136,12 @@ public sealed record AplicacaoVacinaReadResponseDto
 
     [JsonConverter(typeof(StringOrNumberConverter))]
     public string? DoseMl { get; init; }
+
+    public string? VeterinarioResponsavel { get; init; }
+
+    public string? Aplicador { get; init; }
+
+    public string? LaboratorioFabricante { get; init; }
 }
 
 public sealed record AplicacaoVacinaDetailResponseDto
@@ -213,6 +219,12 @@ public sealed record AplicacaoVacinaLoteCreateDto
     public DateOnly? DataProximaDose { get; init; }
 
     public string? Observacoes { get; init; }
+
+    public string? VeterinarioResponsavel { get; init; }
+
+    public string? Aplicador { get; init; }
+
+    public string? LaboratorioFabricante { get; init; }
 
     [Required]
     [MinLength(1, ErrorMessage = "A lista de animais deve conter pelo menos um animal.")]

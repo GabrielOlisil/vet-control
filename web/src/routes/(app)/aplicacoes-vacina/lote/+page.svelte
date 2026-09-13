@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { vacinaService } from "$lib/api/vacinas";
-    import { animalService } from "$lib/api/animais";
+    import { animalService, type AnimalListParams } from "$lib/api/animais";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
     import { especieService } from "$lib/api/especies";
     import { racaService } from "$lib/api/racas";
@@ -13,11 +13,18 @@
     import {
         getAnimalName,
         hoje,
+        SexoAnimalLabels,
+        OrigemAnimalLabels,
+        TipoIdentificadorLabels,
         type VacinaReadResponseDto,
         type AnimalReadResponseDto,
+        type AnimalShortResponseDto,
         type EspecieReadResponseDto,
         type RacaReadResponseDto,
         type AplicacaoVacinaLoteCreateDto,
+        type SexoAnimal,
+        type OrigemAnimal,
+        type TipoIdentificador,
     } from "$lib/types";
 
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
@@ -26,9 +33,10 @@
     import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
+    import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
 
     interface BucketItem {
-        animal: AnimalReadResponseDto;
+        animal: AnimalReadResponseDto | AnimalShortResponseDto;
         cicloFinalizado: boolean;
     }
 
@@ -42,7 +50,9 @@
 
     // ── Catálogos e Listas ────────────────────────────────────────────────────
     let selectedVacina = $state<VacinaOption | null>(null);
-    let animais = $state<AnimalReadResponseDto[]>([]);
+    let animais = $state<(AnimalReadResponseDto | AnimalShortResponseDto)[]>(
+        [],
+    );
     let especies = $state<EspecieReadResponseDto[]>([]);
     let racas = $state<RacaReadResponseDto[]>([]);
 
@@ -51,38 +61,121 @@
     let errorMsg = $state("");
     let successMsg = $state("");
 
-    // ── Filtros da Listagem de Animais ────────────────────────────────────────
+    // ── Filtros da Listagem de Animais (AnimalSearchDto) ─────────────────────
     let searchAnimal = $state("");
     let filterEspecieId = $state("");
     let filterRacaId = $state("");
+    let filterSexo = $state("");
+    let filterOrigem = $state("");
+    let filterAtivo = $state("");
     let filterLotePasto = $state("");
-    let sortBy = $state<"nome" | "identificador" | "recentes">("nome");
+    let filterIdentificador = $state("");
+    let filterTipoIdentificador = $state("");
+    let filterDataFrom = $state("");
+    let filterDataTo = $state("");
+    let filterCreatedFrom = $state("");
+    let filterCreatedTo = $state("");
+    let showMoreFilters = $state(false);
+
+    // ── Paginação ─────────────────────────────────────────────────────────────
+    let currentPage = $state(1);
+    const pageSize = 10;
+    let totalAnimais = $state(0);
+    let searchDebounce: ReturnType<typeof setTimeout>;
 
     // ── Carrinho / Bucket Sticky ──────────────────────────────────────────────
     let bucket = $state<BucketItem[]>([]);
 
-    // Carregamento inicial
-    onMount(async () => {
+    function getFilterPayload(): Omit<AnimalListParams, "page"> {
+        return {
+            EspecieId: filterEspecieId || undefined,
+            RacaId: filterRacaId || undefined,
+            Sexo: (filterSexo as SexoAnimal) || undefined,
+            Origem: (filterOrigem as OrigemAnimal) || undefined,
+            Ativo: filterAtivo === "" ? undefined : filterAtivo === "true",
+            LoteOuPasto: filterLotePasto.trim() || undefined,
+            Identificador: filterIdentificador.trim() || undefined,
+            TipoIdentificador:
+                (filterTipoIdentificador as TipoIdentificador) || undefined,
+            DataNascimentoFrom: filterDataFrom || undefined,
+            DataNascimentoTo: filterDataTo || undefined,
+            CreationDateTimeFrom: filterCreatedFrom || undefined,
+            CreationDateTimeTo: filterCreatedTo || undefined,
+        };
+    }
+
+    async function loadAnimais() {
         isLoading = true;
         try {
-            const [aList, eList, rList] = await Promise.all([
-                animalService.getList(),
-                especieService.getList(),
-                racaService.getList(),
-            ]);
-            animais = aList;
-            especies = eList;
-            racas = rList;
+            const filters = getFilterPayload();
+
+            if (searchAnimal.trim()) {
+                const [list, count] = await Promise.all([
+                    animalService.search(
+                        searchAnimal.trim(),
+                        currentPage,
+                        filters,
+                    ),
+                    animalService.getCount(filters).catch(() => 0),
+                ]);
+                animais = list;
+                totalAnimais = count || list.length;
+            } else {
+                const [list, count] = await Promise.all([
+                    animalService.getList({ page: currentPage, ...filters }),
+                    animalService.getCount(filters),
+                ]);
+                animais = list;
+                totalAnimais = count;
+            }
         } catch (err) {
             console.error(err);
-            errorMsg =
-                "Erro ao carregar dados iniciais para vacinação em lote.";
+            errorMsg = "Erro ao carregar animais.";
         } finally {
             isLoading = false;
         }
+    }
+
+    onMount(async () => {
+        try {
+            const [eList, rList] = await Promise.all([
+                especieService.getList(),
+                racaService.getList(),
+            ]);
+            especies = eList;
+            racas = rList;
+        } catch (err) {
+            console.error("Erro ao carregar espécies e raças:", err);
+        }
+        await loadAnimais();
     });
 
-    // Animais filtrados e ordenados
+    function handleSearchInput() {
+        currentPage = 1;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            loadAnimais();
+        }, 300);
+    }
+
+    function clearFilters() {
+        searchAnimal = "";
+        filterEspecieId = "";
+        filterRacaId = "";
+        filterSexo = "";
+        filterOrigem = "";
+        filterAtivo = "";
+        filterLotePasto = "";
+        filterIdentificador = "";
+        filterTipoIdentificador = "";
+        filterDataFrom = "";
+        filterDataTo = "";
+        filterCreatedFrom = "";
+        filterCreatedTo = "";
+        currentPage = 1;
+        loadAnimais();
+    }
+
     const racasFiltradas = $derived(
         filterEspecieId
             ? racas.filter((r) => r.especieId === filterEspecieId)
@@ -91,72 +184,14 @@
 
     const racaMap = $derived(new Map(racas.map((r) => [r.id, r])));
 
-    const filteredAnimais = $derived.by(() => {
-        let list = [...animais];
-
-        // Filtro por espécie
-        if (filterEspecieId) {
-            list = list.filter((a) => {
-                const r = a.raca?.id ? racaMap.get(a.raca.id) : null;
-                return r?.especieId === filterEspecieId;
-            });
-        }
-
-        // Filtro por raça
-        if (filterRacaId) {
-            list = list.filter((a) => a.raca?.id === filterRacaId);
-        }
-
-        // Filtro por pasto/lote
-        if (filterLotePasto.trim()) {
-            const lp = filterLotePasto.toLowerCase();
-            list = list.filter((a) =>
-                a.loteOuPasto?.toLowerCase().includes(lp),
-            );
-        }
-
-        // Busca por texto
-        if (searchAnimal.trim()) {
-            const term = searchAnimal.toLowerCase();
-            list = list.filter((a) => {
-                const name = (a.name || "").toLowerCase();
-                const ident = (
-                    a.identificadorPrincipal?.valor || ""
-                ).toLowerCase();
-                const racaNome = (a.raca?.nome || "").toLowerCase();
-                return (
-                    name.includes(term) ||
-                    ident.includes(term) ||
-                    racaNome.includes(term)
-                );
-            });
-        }
-
-        // Ordenação
-        list.sort((a, b) => {
-            if (sortBy === "nome") {
-                return (getAnimalName(a) || "").localeCompare(
-                    getAnimalName(b) || "",
-                );
-            }
-            if (sortBy === "identificador") {
-                const idA = a.identificadorPrincipal?.valor || "";
-                const idB = b.identificadorPrincipal?.valor || "";
-                return idA.localeCompare(idB);
-            }
-            // recentes
-            return (b.id || "").localeCompare(a.id || "");
-        });
-
-        return list;
-    });
-
     // Bucket helpers
     function isAnimalInBucket(animalId: string): boolean {
         return bucket.some((item) => item.animal.id === animalId);
     }
 
-    function toggleAnimalInBucket(animal: AnimalReadResponseDto) {
+    function toggleAnimalInBucket(
+        animal: AnimalReadResponseDto | AnimalShortResponseDto,
+    ) {
         const idx = bucket.findIndex((b) => b.animal.id === animal.id);
         if (idx >= 0) {
             bucket = bucket.filter((_, i) => i !== idx);
@@ -406,79 +441,271 @@
                                 2. Selecionar Animais para Aplicação
                             </h2>
                             <p class="text-xs text-base-content/60">
-                                Clique em um animal para adicionar ou remover do
-                                lote.
+                                Filtre e selecione os animais para incluir no
+                                lote (mantidos na lista mesmo mudando de
+                                página).
                             </p>
                         </div>
-                        <div class="text-xs font-medium text-base-content/70">
-                            Exibindo <span class="font-bold text-primary"
-                                >{filteredAnimais.length}</span
-                            > animais
+                        <div class="flex items-center gap-2 text-xs">
+                            <button
+                                class="btn btn-ghost btn-xs gap-1"
+                                onclick={loadAnimais}
+                                title="Recarregar lista"
+                            >
+                                <IconRefresh width="14" height="14" />
+                                Atualizar
+                            </button>
+                            <span class="font-medium text-base-content/70">
+                                Total: <span class="font-bold text-primary"
+                                    >{totalAnimais}</span
+                                >
+                            </span>
                         </div>
                     </div>
 
-                    <!-- Filtros Rápidos -->
-                    <div
-                        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 mb-4"
-                    >
-                        <!-- Busca Textual -->
-                        <div class="relative">
-                            <label
-                                class="input input-sm input-bordered flex items-center gap-1.5 w-full"
-                            >
-                                <IconSearch
-                                    width="14"
-                                    height="14"
-                                    class="opacity-50"
-                                />
-                                <input
-                                    type="text"
-                                    class="grow text-xs"
-                                    placeholder="Buscar animal..."
-                                    bind:value={searchAnimal}
-                                />
-                            </label>
-                        </div>
-
-                        <!-- Filtro Espécie -->
-                        <div>
-                            <select
-                                class="select select-bordered select-sm w-full text-xs"
-                                bind:value={filterEspecieId}
-                            >
-                                <option value="">Todas Espécies</option>
-                                {#each especies as esp}
-                                    <option value={esp.id}>{esp.nome}</option>
-                                {/each}
-                            </select>
-                        </div>
-
-                        <!-- Filtro Raça -->
-                        <div>
-                            <select
-                                class="select select-bordered select-sm w-full text-xs"
-                                bind:value={filterRacaId}
-                            >
-                                <option value="">Todas Raças</option>
-                                {#each racasFiltradas as r}
-                                    <option value={r.id}>{r.nome}</option>
-                                {/each}
-                            </select>
-                        </div>
-
-                        <!-- Ordenação -->
-                        <div>
-                            <select
-                                class="select select-bordered select-sm w-full text-xs"
-                                bind:value={sortBy}
-                            >
-                                <option value="nome">Nome (A-Z)</option>
-                                <option value="identificador"
-                                    >Identificador</option
+                    <!-- Filtros de Busca -->
+                    <div class="space-y-3 mb-4">
+                        <!-- Linha Principal de Filtros -->
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5"
+                        >
+                            <!-- Busca Textual -->
+                            <div class="relative">
+                                <label
+                                    class="input input-sm input-bordered flex items-center gap-1.5 w-full"
                                 >
-                                <option value="recentes">Mais recentes</option>
-                            </select>
+                                    <IconSearch
+                                        width="14"
+                                        height="14"
+                                        class="opacity-50"
+                                    />
+                                    <input
+                                        type="text"
+                                        class="grow text-xs"
+                                        placeholder="Buscar por nome..."
+                                        bind:value={searchAnimal}
+                                        oninput={handleSearchInput}
+                                    />
+                                </label>
+                            </div>
+
+                            <!-- Filtro Espécie -->
+                            <div>
+                                <select
+                                    class="select select-bordered select-sm w-full text-xs"
+                                    bind:value={filterEspecieId}
+                                    onchange={() => {
+                                        currentPage = 1;
+                                        filterRacaId = "";
+                                        loadAnimais();
+                                    }}
+                                >
+                                    <option value="">Todas Espécies</option>
+                                    {#each especies as esp}
+                                        <option value={esp.id}
+                                            >{esp.nome}</option
+                                        >
+                                    {/each}
+                                </select>
+                            </div>
+
+                            <!-- Filtro Raça -->
+                            <div>
+                                <select
+                                    class="select select-bordered select-sm w-full text-xs"
+                                    bind:value={filterRacaId}
+                                    onchange={() => {
+                                        currentPage = 1;
+                                        loadAnimais();
+                                    }}
+                                >
+                                    <option value="">Todas Raças</option>
+                                    {#each racasFiltradas as r}
+                                        <option value={r.id}>{r.nome}</option>
+                                    {/each}
+                                </select>
+                            </div>
+
+                            <!-- Botões de Ação de Filtro -->
+                            <div class="flex items-center gap-1">
+                                <button
+                                    class="btn btn-outline btn-sm grow text-xs"
+                                    onclick={() => {
+                                        showMoreFilters = !showMoreFilters;
+                                    }}
+                                >
+                                    {showMoreFilters
+                                        ? "Menos Filtros"
+                                        : "Mais Filtros"}
+                                </button>
+                                <button
+                                    class="btn btn-ghost btn-sm text-xs text-base-content/60"
+                                    onclick={clearFilters}
+                                    title="Limpar todos os filtros"
+                                >
+                                    Limpar
+                                </button>
+                            </div>
                         </div>
+
+                        <!-- Filtros Expandidos (AnimalSearchDto completo) -->
+                        {#if showMoreFilters}
+                            <div
+                                class="p-3 bg-base-200/50 rounded-xl border border-base-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs"
+                            >
+                                <!-- Sexo -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Sexo</label
+                                    >
+                                    <select
+                                        class="select select-bordered select-xs w-full"
+                                        bind:value={filterSexo}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    >
+                                        <option value="">Todos</option>
+                                        {#each Object.entries(SexoAnimalLabels) as [val, label]}
+                                            <option value={val}>{label}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+
+                                <!-- Origem -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Origem</label
+                                    >
+                                    <select
+                                        class="select select-bordered select-xs w-full"
+                                        bind:value={filterOrigem}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {#each Object.entries(OrigemAnimalLabels) as [val, label]}
+                                            <option value={val}>{label}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+
+                                <!-- Status Ativo -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Status</label
+                                    >
+                                    <select
+                                        class="select select-bordered select-xs w-full"
+                                        bind:value={filterAtivo}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="true">Ativos</option>
+                                        <option value="false">Inativos</option>
+                                    </select>
+                                </div>
+
+                                <!-- Pasto / Lote -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Pasto / Lote</label
+                                    >
+                                    <input
+                                        type="text"
+                                        class="input input-bordered input-xs w-full"
+                                        placeholder="Ex: Pasto 1, Baia 3"
+                                        bind:value={filterLotePasto}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    />
+                                </div>
+
+                                <!-- Identificador -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Identificador</label
+                                    >
+                                    <input
+                                        type="text"
+                                        class="input input-bordered input-xs w-full"
+                                        placeholder="Ex: 0012, SISBOV..."
+                                        bind:value={filterIdentificador}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    />
+                                </div>
+
+                                <!-- Tipo Identificador -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Tipo Identificador</label
+                                    >
+                                    <select
+                                        class="select select-bordered select-xs w-full"
+                                        bind:value={filterTipoIdentificador}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    >
+                                        <option value="">Todos</option>
+                                        {#each Object.entries(TipoIdentificadorLabels) as [val, label]}
+                                            <option value={val}>{label}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+
+                                <!-- Nascimento De / Até -->
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Nasc. de</label
+                                    >
+                                    <input
+                                        type="date"
+                                        class="input input-bordered input-xs w-full"
+                                        bind:value={filterDataFrom}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        class="label label-text text-[11px] p-0 mb-1"
+                                        >Nasc. até</label
+                                    >
+                                    <input
+                                        type="date"
+                                        class="input input-bordered input-xs w-full"
+                                        bind:value={filterDataTo}
+                                        onchange={() => {
+                                            currentPage = 1;
+                                            loadAnimais();
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        {/if}
                     </div>
 
                     <!-- Tabela de Animais -->
@@ -488,7 +715,7 @@
                                 class="loading loading-spinner loading-md text-primary"
                             ></span>
                         </div>
-                    {:else if filteredAnimais.length === 0}
+                    {:else if animais.length === 0}
                         <div
                             class="py-10 text-center text-base-content/50 text-sm"
                         >
@@ -512,12 +739,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {#each filteredAnimais as animal (animal.id)}
+                                    {#each animais as animal (animal.id)}
                                         {@const inBucket = isAnimalInBucket(
                                             animal.id || "",
                                         )}
-                                        {@const racaFull = animal.raca?.id
-                                            ? racaMap.get(animal.raca.id)
+                                        {@const animRead =
+                                            animal as AnimalReadResponseDto}
+                                        {@const racaFull = animRead.raca?.id
+                                            ? racaMap.get(animRead.raca.id)
                                             : null}
                                         <tr
                                             class="hover:bg-base-200/50 cursor-pointer transition-colors {inBucket
@@ -547,7 +776,7 @@
                                                         iconeKey={racaFull
                                                             ?.especie
                                                             ?.iconeKey ||
-                                                            animal.raca?.nome?.toLowerCase() ||
+                                                            animRead.raca?.nome?.toLowerCase() ||
                                                             "outros"}
                                                         tamanho="sm"
                                                     />
@@ -562,13 +791,16 @@
                                                         <div
                                                             class="text-[11px] font-mono text-base-content/60"
                                                         >
-                                                            ID: {animal
-                                                                .identificadorPrincipal
-                                                                ?.valor ||
-                                                                animal.id?.slice(
-                                                                    0,
-                                                                    8,
-                                                                )}
+                                                            ID: {typeof (animal.identificadorPrincipal as any) ===
+                                                            "object"
+                                                                ? (
+                                                                      animal.identificadorPrincipal as any
+                                                                  )?.valor
+                                                                : animal.identificadorPrincipal ||
+                                                                  animal.id?.slice(
+                                                                      0,
+                                                                      8,
+                                                                  )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -580,14 +812,14 @@
                                                 >
                                                 <span
                                                     class="text-base-content/50"
-                                                    >({animal.raca?.nome ||
+                                                    >({animRead.raca?.nome ||
                                                         "Sem raça"})</span
                                                 >
                                             </td>
                                             <td
                                                 class="text-xs text-base-content/70"
                                             >
-                                                {animal.loteOuPasto || "—"}
+                                                {animRead.loteOuPasto || "—"}
                                             </td>
                                             <td class="text-right">
                                                 {#if inBucket}
@@ -618,6 +850,53 @@
                                     {/each}
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Paginação da Lista de Animais -->
+                        <div
+                            class="flex items-center justify-between pt-3 text-xs text-base-content/70"
+                        >
+                            <div>
+                                Exibindo página <span class="font-bold"
+                                    >{currentPage}</span
+                                >
+                                {#if totalAnimais > 0}
+                                    de <span class="font-bold"
+                                        >{Math.max(
+                                            1,
+                                            Math.ceil(totalAnimais / pageSize),
+                                        )}</span
+                                    >
+                                {/if}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button
+                                    class="btn btn-xs btn-outline"
+                                    disabled={currentPage <= 1 || isLoading}
+                                    onclick={() => {
+                                        currentPage = Math.max(
+                                            1,
+                                            currentPage - 1,
+                                        );
+                                        loadAnimais();
+                                    }}
+                                >
+                                    « Anterior
+                                </button>
+                                <button
+                                    class="btn btn-xs btn-outline"
+                                    disabled={currentPage * pageSize >=
+                                        totalAnimais ||
+                                        animais.length === 0 ||
+                                        isLoading}
+                                    onclick={() => {
+                                        currentPage += 1;
+                                        loadAnimais();
+                                    }}
+                                >
+                                    Próxima »
+                                </button>
+                            </div>
                         </div>
                     {/if}
                 </div>
@@ -701,9 +980,16 @@
                                         <span
                                             class="badge badge-sm badge-outline font-mono"
                                         >
-                                            {item.animal.identificadorPrincipal
-                                                ?.valor ||
-                                                item.animal.id?.slice(0, 6)}
+                                            {typeof (item.animal
+                                                .identificadorPrincipal as any) ===
+                                            "object"
+                                                ? (
+                                                      item.animal
+                                                          .identificadorPrincipal as any
+                                                  )?.valor
+                                                : item.animal
+                                                      .identificadorPrincipal ||
+                                                  item.animal.id?.slice(0, 6)}
                                         </span>
                                         <span
                                             class="text-sm font-semibold truncate max-w-[140px]"

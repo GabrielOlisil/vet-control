@@ -15,7 +15,7 @@ public interface IAnimalService
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> Count(AnimalSearchDto? search = null, CancellationToken cancellationToken = default);
 
-    Task<List<Animal>> GetAllByNameAsync(int page, string name, CancellationToken cancellationToken = default);
+    Task<List<Animal>> GetAllByNameAsync(int page, string name, AnimalSearchDto? search = null, CancellationToken cancellationToken = default);
 
     Task<AnimalProntuarioResponseDto?> GetProntuarioAsync(Guid animalId, CancellationToken ct);
 }

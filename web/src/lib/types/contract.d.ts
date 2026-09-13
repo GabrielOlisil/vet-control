@@ -15,12 +15,19 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
+                    EspecieId?: string;
                     Sexo?: components["schemas"]["SexoAnimal"];
                     Origem?: components["schemas"]["OrigemAnimal"];
-                    Ativo?: boolean;
-                    LoteOuPasto?: string;
+                    OrigemAnimal?: components["schemas"]["OrigemAnimal"];
+                    DataNascimento?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
+                    LoteOuPasto?: string;
+                    Ativo?: boolean;
+                    Identificador?: string;
+                    TipoIdentificador?: components["schemas"]["TipoIdentificador"];
+                    CreationDateTimeFrom?: string;
+                    CreationDateTimeTo?: string;
                     page?: number | string;
                 };
                 header?: never;
@@ -89,6 +96,21 @@ export interface paths {
                 query?: {
                     page?: number | string;
                     name?: string;
+                    search?: string;
+                    RacaId?: string;
+                    EspecieId?: string;
+                    Sexo?: components["schemas"]["SexoAnimal"];
+                    Origem?: components["schemas"]["OrigemAnimal"];
+                    OrigemAnimal?: components["schemas"]["OrigemAnimal"];
+                    DataNascimento?: string;
+                    DataNascimentoFrom?: string;
+                    DataNascimentoTo?: string;
+                    LoteOuPasto?: string;
+                    Ativo?: boolean;
+                    Identificador?: string;
+                    TipoIdentificador?: components["schemas"]["TipoIdentificador"];
+                    CreationDateTimeFrom?: string;
+                    CreationDateTimeTo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -128,12 +150,19 @@ export interface paths {
             parameters: {
                 query?: {
                     RacaId?: string;
+                    EspecieId?: string;
                     Sexo?: components["schemas"]["SexoAnimal"];
                     Origem?: components["schemas"]["OrigemAnimal"];
-                    Ativo?: boolean;
-                    LoteOuPasto?: string;
+                    OrigemAnimal?: components["schemas"]["OrigemAnimal"];
+                    DataNascimento?: string;
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
+                    LoteOuPasto?: string;
+                    Ativo?: boolean;
+                    Identificador?: string;
+                    TipoIdentificador?: components["schemas"]["TipoIdentificador"];
+                    CreationDateTimeFrom?: string;
+                    CreationDateTimeTo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -303,7 +332,14 @@ export interface paths {
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
+                    DataProximaDoseFrom?: string;
+                    DataProximaDoseTo?: string;
+                    DataLimite?: string;
                     SomenteAtrasadas?: boolean;
+                    PendenteAssinatura?: boolean;
+                    Proximas?: boolean;
+                    CicloFinalizado?: boolean;
+                    StatusComprovante?: components["schemas"]["StatusComprovanteVacina"];
                 };
                 header?: never;
                 path?: never;
@@ -460,7 +496,14 @@ export interface paths {
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
                     DataAplicacaoTo?: string;
+                    DataProximaDoseFrom?: string;
+                    DataProximaDoseTo?: string;
+                    DataLimite?: string;
                     SomenteAtrasadas?: boolean;
+                    PendenteAssinatura?: boolean;
+                    Proximas?: boolean;
+                    CicloFinalizado?: boolean;
+                    StatusComprovante?: components["schemas"]["StatusComprovanteVacina"];
                     somenteAtrasadas?: boolean;
                 };
                 header?: never;
@@ -532,6 +575,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/aplicacoes-vacina/atrasadas/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    animalId?: string;
+                    vacinaId?: string;
+                    statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number | string;
+                        "application/json": number | string;
+                        "text/json": number | string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/aplicacoes-vacina/pendentes-assinatura": {
         parameters: {
             query?: never;
@@ -574,6 +658,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/aplicacoes-vacina/pendentes-assinatura/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    animalId?: string;
+                    vacinaId?: string;
+                    statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number | string;
+                        "application/json": number | string;
+                        "text/json": number | string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/aplicacoes-vacina/proximas": {
         parameters: {
             query?: never;
@@ -604,6 +729,47 @@ export interface paths {
                         "text/plain": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
                         "application/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
                         "text/json": components["schemas"]["AplicacaoVacinaReadResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/proximas/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    dataLimite?: string;
+                    animalId?: string;
+                    vacinaId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number | string;
+                        "application/json": number | string;
+                        "text/json": number | string;
                     };
                 };
             };
@@ -799,6 +965,8 @@ export interface paths {
                     nomeCientificoToo?: boolean;
                     page?: number | string;
                     search?: string;
+                    name?: string;
+                    PortePadrao?: components["schemas"]["PorteAnimal"];
                 };
                 header?: never;
                 path?: never;
@@ -1032,6 +1200,8 @@ export interface paths {
                 query?: {
                     page?: number | string;
                     search?: string;
+                    name?: string;
+                    EspecieId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1301,6 +1471,11 @@ export interface paths {
                 query?: {
                     page?: number | string;
                     search?: string;
+                    name?: string;
+                    EspecieId?: string;
+                    ObrigatorioOrgaoSanitario?: boolean;
+                    ReaplicarEmXDiasMin?: number | string;
+                    ReaplicarEmXDiasMax?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -1589,6 +1764,9 @@ export interface components {
             /** Format: date */
             dataProximaDose?: null | string;
             observacoes?: null | string;
+            veterinarioResponsavel?: null | string;
+            aplicador?: null | string;
+            laboratorioFabricante?: null | string;
             animais: components["schemas"]["ItemAnimalLoteDto"][];
         };
         AplicacaoVacinaPatchDto: {
@@ -1628,6 +1806,9 @@ export interface components {
             comprovanteDocumentoPath?: null | string;
             numeroLote?: string;
             doseMl?: unknown;
+            veterinarioResponsavel?: null | string;
+            aplicador?: null | string;
+            laboratorioFabricante?: null | string;
         };
         EspecieCreateDto: {
             nome: string;

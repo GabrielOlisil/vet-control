@@ -1,24 +1,40 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { vacinaService } from "$lib/api/vacinas";
+    import { animalService } from "$lib/api/animais";
+    import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
     import IconClose from "@iconify-svelte/material-symbols/close-rounded";
-    import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
+    import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
+    import { getAnimalName } from "$lib/types";
+    import type {
+        AnimalReadResponseDto,
+        AnimalShortResponseDto,
+    } from "$lib/types";
 
-    export interface VacinaOption {
+    export type AnimalOption = {
         id?: string;
-        name: string;
-        descricao?: string | null;
-        reaplicarEmXDias?: number | string;
-    }
+        name?: string | null;
+        identificadorPrincipal?: any;
+        raca?: {
+            id?: string;
+            nome?: string;
+            name?: string;
+            especie?: {
+                id?: string;
+                iconeKey?: string | null;
+                name?: string;
+                nome?: string;
+            } | null;
+        } | null;
+    };
 
     let {
-        label = "Vacina",
-        id = "vacina-select",
+        label = "Animal",
+        id = "animal-select",
         value = $bindable(""),
         required = false,
         disabled = false,
-        placeholder = "Buscar vacina...",
+        placeholder = "Buscar animal por nome ou identificador...",
         error = "",
         onSelect = null,
     }: {
@@ -29,14 +45,14 @@
         disabled?: boolean;
         placeholder?: string;
         error?: string | null;
-        onSelect?: ((vacina: VacinaOption | null) => void) | null;
+        onSelect?: ((animal: AnimalOption | null) => void) | null;
     } = $props();
 
     let searchTerm = $state("");
     let isOpen = $state(false);
     let isLoading = $state(false);
-    let options = $state<VacinaOption[]>([]);
-    let selectedVacina = $state<VacinaOption | null>(null);
+    let options = $state<AnimalOption[]>([]);
+    let selectedItem = $state<AnimalOption | null>(null);
     let containerRef = $state<HTMLDivElement | null>(null);
     let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 
@@ -49,19 +65,19 @@
         currentPage = page;
         try {
             if (isSearching && searchTerm.trim()) {
-                const results = await vacinaService.search(
+                const results = await animalService.search(
                     searchTerm.trim(),
                     page,
                 );
                 options = results;
                 hasMore = results.length >= 10;
             } else {
-                const list = await vacinaService.getList({ page });
+                const list = await animalService.getList({ page });
                 options = list;
                 hasMore = list.length >= 10;
             }
         } catch (e) {
-            console.error("Erro ao carregar lista de vacinas:", e);
+            console.error("Erro ao carregar animais:", e);
             options = [];
         } finally {
             isLoading = false;
@@ -70,25 +86,37 @@
 
     async function resolveSelectedName(val: string) {
         if (!val) {
-            selectedVacina = null;
+            selectedItem = null;
             searchTerm = "";
             return;
         }
         const match = options.find((o) => o.id === val);
         if (match) {
-            selectedVacina = match;
-            searchTerm = match.name;
+            selectedItem = match;
+            searchTerm = formatDisplayName(match);
             return;
         }
         try {
-            const detail = await vacinaService.getById(val);
+            const detail = await animalService.getById(val);
             if (detail) {
-                selectedVacina = detail;
-                searchTerm = detail.name;
+                selectedItem = detail;
+                searchTerm = formatDisplayName(detail);
             }
         } catch {
-            // Silencioso se não encontrar
+            // silencioso
         }
+    }
+
+    function formatDisplayName(animal: AnimalOption): string {
+        const name = getAnimalName(animal);
+        const ident =
+            typeof animal.identificadorPrincipal === "string"
+                ? animal.identificadorPrincipal
+                : animal.identificadorPrincipal?.valor;
+        if (ident && name !== ident) {
+            return `${name} (${ident})`;
+        }
+        return name;
     }
 
     onMount(() => {
@@ -99,8 +127,8 @@
         function handleClickOutside(event: MouseEvent) {
             if (containerRef && !containerRef.contains(event.target as Node)) {
                 isOpen = false;
-                if (selectedVacina) {
-                    searchTerm = selectedVacina.name;
+                if (selectedItem) {
+                    searchTerm = formatDisplayName(selectedItem);
                 } else if (!value) {
                     searchTerm = "";
                 }
@@ -115,17 +143,16 @@
     });
 
     $effect(() => {
-        if (value && (!selectedVacina || selectedVacina.id !== value)) {
+        if (value && (!selectedItem || selectedItem.id !== value)) {
             resolveSelectedName(value);
-        } else if (!value && selectedVacina) {
-            selectedVacina = null;
+        } else if (!value && selectedItem) {
+            selectedItem = null;
             searchTerm = "";
         }
     });
 
     function handleInput(e: Event) {
-        const target = e.target as HTMLInputElement;
-        const text = target.value;
+        const text = (e.target as HTMLInputElement).value;
         searchTerm = text;
         isOpen = true;
         currentPage = 1;
@@ -145,10 +172,10 @@
         }, 300);
     }
 
-    function selectOption(opt: VacinaOption) {
+    function selectOption(opt: AnimalOption) {
         value = opt.id ?? "";
-        selectedVacina = opt;
-        searchTerm = opt.name;
+        selectedItem = opt;
+        searchTerm = formatDisplayName(opt);
         isOpen = false;
         if (onSelect) {
             onSelect(opt);
@@ -158,7 +185,7 @@
     function clearSelection(e?: Event) {
         e?.stopPropagation();
         value = "";
-        selectedVacina = null;
+        selectedItem = null;
         searchTerm = "";
         isSearching = false;
         loadPage(1);
@@ -260,11 +287,11 @@
                         <span
                             class="loading loading-spinner loading-xs text-primary"
                         ></span>
-                        <span>Carregando vacinas...</span>
+                        <span>Carregando animais...</span>
                     </div>
                 {:else if options.length === 0}
                     <div class="p-4 text-center text-xs text-base-content/50">
-                        Nenhuma vacina encontrada {searchTerm.trim()
+                        Nenhum animal encontrado {searchTerm.trim()
                             ? `para "${searchTerm}"`
                             : ""}
                     </div>
@@ -275,9 +302,16 @@
                         >
                             {isSearching
                                 ? `Resultados da busca (Página ${currentPage})`
-                                : `Vacinas (Página ${currentPage})`}
+                                : `Animais (Página ${currentPage})`}
                         </li>
                         {#each options as opt}
+                            {@const animalNome = getAnimalName(opt)}
+                            {@const identVal =
+                                typeof opt.identificadorPrincipal === "string"
+                                    ? opt.identificadorPrincipal
+                                    : opt.identificadorPrincipal?.valor}
+                            {@const racaNome =
+                                opt.raca?.name || opt.raca?.nome || ""}
                             <li>
                                 <button
                                     type="button"
@@ -288,33 +322,31 @@
                                     onclick={() => selectOption(opt)}
                                 >
                                     <div
-                                        class="flex items-center gap-2 text-left"
+                                        class="flex items-center gap-2.5 text-left"
                                     >
-                                        <IconVaccines
-                                            width="16"
-                                            height="16"
-                                            class="shrink-0 text-primary"
+                                        <EspecieAvatar
+                                            iconeKey={opt.raca?.especie
+                                                ?.iconeKey || "outros"}
+                                            tamanho="sm"
                                         />
                                         <div>
-                                            <div class="font-medium">
-                                                {opt.name}
+                                            <div class="font-medium text-sm">
+                                                {animalNome}
                                             </div>
-                                            {#if opt.descricao}
-                                                <div
-                                                    class="text-xs opacity-60 truncate max-w-xs"
-                                                >
-                                                    {opt.descricao}
-                                                </div>
-                                            {/if}
+                                            <div
+                                                class="text-xs opacity-60 flex items-center gap-2"
+                                            >
+                                                {#if identVal}
+                                                    <span class="font-mono"
+                                                        >{identVal}</span
+                                                    >
+                                                {/if}
+                                                {#if racaNome}
+                                                    <span>• {racaNome}</span>
+                                                {/if}
+                                            </div>
                                         </div>
                                     </div>
-                                    {#if opt.reaplicarEmXDias}
-                                        <span
-                                            class="badge badge-sm badge-ghost shrink-0 ml-2"
-                                        >
-                                            a cada {opt.reaplicarEmXDias} dias
-                                        </span>
-                                    {/if}
                                 </button>
                             </li>
                         {/each}

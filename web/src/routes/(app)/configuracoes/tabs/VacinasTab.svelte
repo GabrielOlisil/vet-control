@@ -2,6 +2,7 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import EspecieSelect from "$lib/components/EspecieSelect.svelte";
     import { vacinaService } from "$lib/api/vacinas";
     import { especieService } from "$lib/api/especies";
     import {
@@ -27,43 +28,92 @@
     let currentPage = $state(1);
     let isLoading = $state(false);
     let hasLoaded = $state(false);
+
+    // Filtros
     let searchTerm = $state("");
+    let filterEspecieId = $state("");
+    let filterObrigatoria = $state("");
     let selectedPeriodo = $state<number | null>(null);
+    let filterDiasMin = $state("");
+    let filterDiasMax = $state("");
+
+    let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+
+    function getFilterPayload() {
+        return {
+            EspecieId: filterEspecieId || undefined,
+            ObrigatorioOrgaoSanitario:
+                filterObrigatoria !== ""
+                    ? filterObrigatoria === "true"
+                    : undefined,
+            ReaplicarEmXDiasMin:
+                selectedPeriodo !== null
+                    ? selectedPeriodo
+                    : filterDiasMin
+                      ? Number(filterDiasMin)
+                      : undefined,
+            ReaplicarEmXDiasMax:
+                selectedPeriodo !== null
+                    ? selectedPeriodo
+                    : filterDiasMax
+                      ? Number(filterDiasMax)
+                      : undefined,
+        };
+    }
 
     // ── Carregar Sob Demanda ──────────────────────────────────────────────────
     async function load() {
         isLoading = true;
         try {
-            const countParams =
-                selectedPeriodo !== null
-                    ? {
-                          ReaplicarEmXDiasMin: selectedPeriodo,
-                          ReaplicarEmXDiasMax: selectedPeriodo,
-                      }
-                    : undefined;
+            const filters = getFilterPayload();
 
-            const params = {
-                page: currentPage,
-                ReaplicarEmXDiasMin:
-                    selectedPeriodo !== null ? selectedPeriodo : undefined,
-                ReaplicarEmXDiasMax:
-                    selectedPeriodo !== null ? selectedPeriodo : undefined,
-            };
-
-            const [list, count, espList] = await Promise.all([
-                vacinaService.getList(params),
-                vacinaService.getCount(countParams),
-                especieService.getList(),
-            ]);
-            vacinas = list;
-            total = count;
-            especies = espList;
+            if (searchTerm.trim()) {
+                const [list, espList] = await Promise.all([
+                    vacinaService.search(
+                        searchTerm.trim(),
+                        currentPage,
+                        filters,
+                    ),
+                    especies.length ? especies : especieService.getList(),
+                ]);
+                vacinas = list as any;
+                total = list.length;
+                especies = espList;
+            } else {
+                const [list, count, espList] = await Promise.all([
+                    vacinaService.getList({ page: currentPage, ...filters }),
+                    vacinaService.getCount(filters),
+                    especies.length ? especies : especieService.getList(),
+                ]);
+                vacinas = list;
+                total = count;
+                especies = espList;
+            }
             hasLoaded = true;
         } catch (e) {
             console.error("Erro ao carregar vacinas:", e);
         } finally {
             isLoading = false;
         }
+    }
+
+    function handleSearchInput() {
+        currentPage = 1;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            load();
+        }, 300);
+    }
+
+    function clearFilters() {
+        searchTerm = "";
+        filterEspecieId = "";
+        filterObrigatoria = "";
+        selectedPeriodo = null;
+        filterDiasMin = "";
+        filterDiasMax = "";
+        currentPage = 1;
+        load();
     }
 
     $effect(() => {
@@ -186,13 +236,7 @@
         }
     }
 
-    const filteredVacinas = $derived(
-        vacinas.filter((v) =>
-            (v.name || "")
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase().trim()),
-        ),
-    );
+    // Fim do script
 </script>
 
 <div class="space-y-6">
@@ -245,26 +289,120 @@
     <div
         class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden"
     >
-        <div
-            class="p-4 border-b border-base-200 bg-base-100 flex flex-col sm:flex-row gap-3 items-center justify-between"
-        >
-            <div class="w-full sm:w-auto flex-1 max-w-sm relative">
-                <input
-                    type="text"
-                    placeholder="Pesquisar vacina pelo nome..."
-                    bind:value={searchTerm}
-                    class="input input-bordered w-full input-sm focus:input-primary pl-9"
-                />
-                <IconSearch
-                    width="16"
-                    height="16"
-                    class="absolute left-3 top-2.5 text-base-content/40"
-                />
+        <div class="p-4 border-b border-base-200 bg-base-100 space-y-3">
+            <!-- Linha 1: Busca rápida por nome e Limpar -->
+            <div class="flex flex-col sm:flex-row gap-3 items-center">
+                <div class="w-full relative flex-1">
+                    <input
+                        type="text"
+                        placeholder="Pesquisar vacina pelo nome (usa /search)..."
+                        bind:value={searchTerm}
+                        oninput={handleSearchInput}
+                        class="input input-bordered w-full input-sm focus:input-primary pl-9"
+                    />
+                    <IconSearch
+                        width="16"
+                        height="16"
+                        class="absolute left-3 top-2.5 text-base-content/40"
+                    />
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline self-stretch sm:self-auto"
+                    onclick={clearFilters}
+                >
+                    Limpar Filtros
+                </button>
             </div>
 
-            <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+            <!-- Linha 2: Filtros de Espécie e Obrigatória -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                    <label
+                        for="filtroVacinaEspecie"
+                        class="label label-text text-xs">Espécie</label
+                    >
+                    <select
+                        id="filtroVacinaEspecie"
+                        class="select select-bordered select-sm w-full"
+                        bind:value={filterEspecieId}
+                        onchange={() => {
+                            currentPage = 1;
+                            load();
+                        }}
+                    >
+                        <option value="">Todas as espécies</option>
+                        {#each especies as esp}
+                            <option value={esp.id}>{esp.nome}</option>
+                        {/each}
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        for="filtroVacinaObrig"
+                        class="label label-text text-xs"
+                        >Obrigatoriedade Sanitária</label
+                    >
+                    <select
+                        id="filtroVacinaObrig"
+                        class="select select-bordered select-sm w-full"
+                        bind:value={filterObrigatoria}
+                        onchange={() => {
+                            currentPage = 1;
+                            load();
+                        }}
+                    >
+                        <option value="">Todas</option>
+                        <option value="true"
+                            >Obrigatória por Órgão Sanitário</option
+                        >
+                        <option value="false">Opcional / Não Obrigatória</option
+                        >
+                    </select>
+                </div>
+
+                <div>
+                    <label for="filtroDiasMin" class="label label-text text-xs"
+                        >Dias Mínimos</label
+                    >
+                    <input
+                        id="filtroDiasMin"
+                        type="number"
+                        placeholder="Ex: 30"
+                        class="input input-bordered input-sm w-full"
+                        bind:value={filterDiasMin}
+                        onchange={() => {
+                            selectedPeriodo = null;
+                            currentPage = 1;
+                            load();
+                        }}
+                    />
+                </div>
+
+                <div>
+                    <label for="filtroDiasMax" class="label label-text text-xs"
+                        >Dias Máximos</label
+                    >
+                    <input
+                        id="filtroDiasMax"
+                        type="number"
+                        placeholder="Ex: 365"
+                        class="input input-bordered input-sm w-full"
+                        bind:value={filterDiasMax}
+                        onchange={() => {
+                            selectedPeriodo = null;
+                            currentPage = 1;
+                            load();
+                        }}
+                    />
+                </div>
+            </div>
+
+            <!-- Linha 3: Atalhos de Periodicidade -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-1">
                 <span class="text-xs font-semibold text-base-content/60 mr-1"
-                    >Periodicidade:</span
+                    >Atalhos de Periodicidade:</span
                 >
                 <button
                     type="button"
@@ -273,6 +411,8 @@
                         : 'btn-ghost'}"
                     onclick={() => {
                         selectedPeriodo = null;
+                        filterDiasMin = "";
+                        filterDiasMax = "";
                         currentPage = 1;
                         load();
                     }}
@@ -287,6 +427,8 @@
                             : 'btn-ghost'}"
                         onclick={() => {
                             selectedPeriodo = p.dias;
+                            filterDiasMin = "";
+                            filterDiasMax = "";
                             currentPage = 1;
                             load();
                         }}
@@ -310,7 +452,7 @@
                         Clique em "Atualizar" para carregar as vacinas.
                     </p>
                 </div>
-            {:else if filteredVacinas.length === 0}
+            {:else if vacinas.length === 0}
                 <div class="text-center py-16 text-base-content/50 space-y-2">
                     <IconVaccines
                         width="48"
@@ -337,7 +479,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each filteredVacinas as v (v.id)}
+                        {#each vacinas as v (v.id)}
                             <tr class="hover:bg-base-200/50">
                                 <td
                                     class="font-bold text-base text-base-content"
@@ -492,24 +634,10 @@
         required
     />
 
-    <div class="space-y-1">
-        <label
-            for="vacinaEspecieSelect"
-            class="label label-text text-xs font-medium block"
-        >
-            Espécie Aplicável (Opcional)
-        </label>
-        <select
-            id="vacinaEspecieSelect"
-            class="select select-bordered w-full"
-            bind:value={form.especieId}
-        >
-            <option value={undefined}>Todas as espécies (Geral)</option>
-            {#each especies as esp}
-                <option value={esp.id}>{esp.nome}</option>
-            {/each}
-        </select>
-    </div>
+    <EspecieSelect
+        label="Espécie Aplicável (Opcional)"
+        bind:value={form.especieId}
+    />
 
     <div class="space-y-2">
         <label

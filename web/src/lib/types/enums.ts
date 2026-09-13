@@ -5,24 +5,32 @@
 
 import type { StatusComprovanteVacina } from ".";
 
-export const SexoAnimalLabels: Record<number, string> = {
+export const SexoAnimalLabels: Record<string | number, string> = {
     0: 'Macho',
     1: 'Fêmea',
     2: 'Indefinido',
+    Macho: 'Macho',
+    Femea: 'Fêmea',
+    Indefinido: 'Indefinido',
 };
 
-export const OrigemAnimalLabels: Record<number, string> = {
+export const OrigemAnimalLabels: Record<string | number, string> = {
     0: 'Interno (Campus/Fazenda Escola)',
     1: 'Externo (Produtor/Comunidade)',
+    Interno: 'Interno (Campus/Fazenda Escola)',
+    Externo: 'Externo (Produtor/Comunidade)',
 };
 
-export const PorteAnimalLabels: Record<number, string> = {
+export const PorteAnimalLabels: Record<string | number, string> = {
     0: 'Pequeno',
     1: 'Médio',
     2: 'Grande',
+    Pequeno: 'Pequeno',
+    Medio: 'Médio',
+    Grande: 'Grande',
 };
 
-export const TipoIdentificadorLabels: Record<number, string> = {
+export const TipoIdentificadorLabels: Record<string | number, string> = {
     0: 'Brinco Visual',
     1: 'Brinco Eletrônico',
     2: 'SISBOV',
@@ -30,6 +38,13 @@ export const TipoIdentificadorLabels: Record<number, string> = {
     4: 'Microchip',
     5: 'Registro Genealógico',
     6: 'Outro',
+    BrincoVisual: 'Brinco Visual',
+    BrincoEletronico: 'Brinco Eletrônico',
+    Sisbov: 'SISBOV',
+    Microchip: 'Microchip',
+    RegistroAssociado: 'Registro Genealógico',
+    Tatuagem: 'Tatuagem',
+    NomeUnico: 'Nome Único / Outro',
 };
 
 export const StatusComprovanteLabels: Record<

@@ -24,14 +24,20 @@ public class RacaController(IRacaService racaService) : ControllerBase
 
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<RacaShortResponseDto>>> GetAllByName(CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] string search = "")
+    public async Task<ActionResult<List<RacaShortResponseDto>>> GetAllByName(
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] string? search = null,
+        [FromQuery] string? name = null,
+        [FromQuery] RacaSearchDto? searchDto = null)
     {
         if (page < 1)
         {
             return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
         }
 
-        var racas = await racaService.GetAllByNameAsync(page, search, cancellationToken);
+        var searchTerm = search ?? name ?? "";
+        var racas = await racaService.GetAllByNameAsync(page, searchTerm, searchDto, cancellationToken);
 
         return racas.Select(RacaMapper.MapToShort).ToList();
     }

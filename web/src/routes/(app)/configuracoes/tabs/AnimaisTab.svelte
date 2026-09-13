@@ -2,8 +2,10 @@
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import RacaSelect from "$lib/components/RacaSelect.svelte";
     import { animalService } from "$lib/api/animais";
     import { racaService } from "$lib/api/racas";
+    import { especieService } from "$lib/api/especies";
     import {
         getAnimalName,
         calcularIdade,
@@ -16,52 +18,127 @@
         type AnimalCreateDto,
         type AnimalPatchDto,
         type RacaReadResponseDto,
+        type EspecieReadResponseDto,
     } from "$lib/types";
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
     import IconEdit from "@iconify-svelte/material-symbols/edit-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
     import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
+    import IconSearch from "@iconify-svelte/material-symbols/search-rounded";
 
     let { isActive = false }: { isActive: boolean } = $props();
 
     // ── Estado ────────────────────────────────────────────────────────────────
     let animais = $state<AnimalReadResponseDto[]>([]);
     let racas = $state<RacaReadResponseDto[]>([]);
+    let especies = $state<EspecieReadResponseDto[]>([]);
     let totalAnimais = $state(0);
     let currentPage = $state(1);
     let isLoading = $state(false);
     let hasLoaded = $state(false);
 
     // Filtros
+    let searchName = $state("");
     let filterRacaId = $state("");
+    let filterEspecieId = $state("");
+    let filterSexo = $state("");
+    let filterOrigem = $state("");
+    let filterAtivo = $state("");
+    let filterLoteOuPasto = $state("");
+    let filterIdentificador = $state("");
+    let filterTipoIdentificador = $state("");
     let filterDataFrom = $state("");
     let filterDataTo = $state("");
+    let filterCreatedFrom = $state("");
+    let filterCreatedTo = $state("");
+
+    let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+
+    function getFilterPayload() {
+        return {
+            RacaId: filterRacaId || undefined,
+            EspecieId: filterEspecieId || undefined,
+            Sexo: filterSexo !== "" ? (filterSexo as any) : undefined,
+            Origem: filterOrigem !== "" ? (filterOrigem as any) : undefined,
+            Ativo: filterAtivo !== "" ? filterAtivo === "true" : undefined,
+            LoteOuPasto: filterLoteOuPasto.trim() || undefined,
+            Identificador: filterIdentificador.trim() || undefined,
+            TipoIdentificador:
+                filterTipoIdentificador !== ""
+                    ? (filterTipoIdentificador as any)
+                    : undefined,
+            DataNascimentoFrom: filterDataFrom || undefined,
+            DataNascimentoTo: filterDataTo || undefined,
+            CreationDateTimeFrom: filterCreatedFrom || undefined,
+            CreationDateTimeTo: filterCreatedTo || undefined,
+        };
+    }
 
     // ── Carregar Sob Demanda ──────────────────────────────────────────────────
     async function load() {
         isLoading = true;
         try {
-            const params = {
-                page: currentPage,
-                RacaId: filterRacaId || undefined,
-                DataNascimentoFrom: filterDataFrom || undefined,
-                DataNascimentoTo: filterDataTo || undefined,
-            };
-            const [list, count, r] = await Promise.all([
-                animalService.getList(params),
-                animalService.getCount(params),
-                racaService.getList(),
-            ]);
-            animais = list;
-            totalAnimais = count;
-            racas = r;
+            const filters = getFilterPayload();
+
+            if (searchName.trim()) {
+                const [list, r, e] = await Promise.all([
+                    animalService.search(
+                        searchName.trim(),
+                        currentPage,
+                        filters,
+                    ),
+                    racas.length ? racas : racaService.getList(),
+                    especies.length ? especies : especieService.getList(),
+                ]);
+                animais = list as any;
+                totalAnimais = list.length;
+                racas = r;
+                especies = e;
+            } else {
+                const [list, count, r, e] = await Promise.all([
+                    animalService.getList({ page: currentPage, ...filters }),
+                    animalService.getCount(filters),
+                    racas.length ? racas : racaService.getList(),
+                    especies.length ? especies : especieService.getList(),
+                ]);
+                animais = list;
+                totalAnimais = count;
+                racas = r;
+                especies = e;
+            }
             hasLoaded = true;
         } catch (e) {
             console.error("Erro ao carregar animais:", e);
         } finally {
             isLoading = false;
         }
+    }
+
+    function handleSearchInput() {
+        currentPage = 1;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            load();
+        }, 300);
+    }
+
+    function clearFilters() {
+        searchName = "";
+        filterRacaId = "";
+        filterEspecieId = "";
+        filterSexo = "";
+        filterOrigem = "";
+        filterAtivo = "";
+        filterLoteOuPasto = "";
+        filterIdentificador = "";
+        filterTipoIdentificador = "";
+        filterDataFrom = "";
+        filterDataTo = "";
+        filterCreatedFrom = "";
+        filterCreatedTo = "";
+        currentPage = 1;
+        load();
     }
 
     $effect(() => {
@@ -260,9 +337,58 @@
 
     <!-- Filtros -->
     <div
-        class="card bg-base-100 shadow-sm border border-base-300 rounded-2xl p-4"
+        class="card bg-base-100 shadow-sm border border-base-300 rounded-2xl p-4 space-y-3"
     >
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Linha 1: Busca Textual Rápida -->
+        <div class="flex flex-col sm:flex-row gap-3 items-center">
+            <div class="w-full relative flex-1">
+                <input
+                    type="text"
+                    placeholder="Buscar animal por nome ou identificador (usa /search)..."
+                    bind:value={searchName}
+                    oninput={handleSearchInput}
+                    class="input input-bordered w-full input-sm focus:input-primary pl-9"
+                />
+                <IconSearch
+                    width="16"
+                    height="16"
+                    class="absolute left-3 top-2.5 text-base-content/40"
+                />
+            </div>
+            <button
+                type="button"
+                class="btn btn-sm btn-outline self-stretch sm:self-auto"
+                onclick={clearFilters}
+            >
+                Limpar Filtros
+            </button>
+        </div>
+
+        <!-- Grade de Filtros Detalhados -->
+        <div
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
+        >
+            <div>
+                <label
+                    for="filterEspecieAnimais"
+                    class="label label-text text-xs">Espécie</label
+                >
+                <select
+                    id="filterEspecieAnimais"
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterEspecieId}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todas as espécies</option>
+                    {#each especies as esp}
+                        <option value={esp.id}>{esp.nome}</option>
+                    {/each}
+                </select>
+            </div>
+
             <div>
                 <label for="filterRacaAnimais" class="label label-text text-xs"
                     >Raça</label
@@ -282,6 +408,122 @@
                     {/each}
                 </select>
             </div>
+
+            <div>
+                <label for="filterSexoAnimais" class="label label-text text-xs"
+                    >Sexo</label
+                >
+                <select
+                    id="filterSexoAnimais"
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterSexo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todos os sexes</option>
+                    {#each Object.entries(SexoAnimalLabels) as [val, label]}
+                        <option value={val}>{label}</option>
+                    {/each}
+                </select>
+            </div>
+
+            <div>
+                <label
+                    for="filterOrigemAnimais"
+                    class="label label-text text-xs">Origem</label
+                >
+                <select
+                    id="filterOrigemAnimais"
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterOrigem}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todas as origens</option>
+                    {#each Object.entries(OrigemAnimalLabels) as [val, label]}
+                        <option value={val}>{label}</option>
+                    {/each}
+                </select>
+            </div>
+
+            <div>
+                <label for="filterAtivoAnimais" class="label label-text text-xs"
+                    >Status Ativo</label
+                >
+                <select
+                    id="filterAtivoAnimais"
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterAtivo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todos (Ativos e Inativos)</option>
+                    <option value="true">Apenas Ativos</option>
+                    <option value="false">Apenas Inativos</option>
+                </select>
+            </div>
+
+            <div>
+                <label
+                    for="filterLotePastoInput"
+                    class="label label-text text-xs">Lote / Pasto / Baia</label
+                >
+                <input
+                    id="filterLotePastoInput"
+                    type="text"
+                    placeholder="Ex: P-02, Baia..."
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterLoteOuPasto}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
+            <div>
+                <label for="filterTipoIdent" class="label label-text text-xs"
+                    >Tipo de Identificador</label
+                >
+                <select
+                    id="filterTipoIdent"
+                    class="select select-bordered select-sm w-full"
+                    bind:value={filterTipoIdentificador}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                >
+                    <option value="">Todos os tipos</option>
+                    {#each Object.entries(TipoIdentificadorLabels) as [val, label]}
+                        <option value={val}>{label}</option>
+                    {/each}
+                </select>
+            </div>
+
+            <div>
+                <label for="filterIdentValor" class="label label-text text-xs"
+                    >Valor do Identificador</label
+                >
+                <input
+                    id="filterIdentValor"
+                    type="text"
+                    placeholder="Ex: 0012, SISBOV..."
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterIdentificador}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
             <div>
                 <label for="filterNascDe" class="label label-text text-xs"
                     >Nascimento de</label
@@ -297,6 +539,7 @@
                     }}
                 />
             </div>
+
             <div>
                 <label for="filterNascAte" class="label label-text text-xs"
                     >Nascimento até</label
@@ -306,6 +549,38 @@
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterDataTo}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
+            <div>
+                <label for="filterCadDe" class="label label-text text-xs"
+                    >Cadastro de</label
+                >
+                <input
+                    id="filterCadDe"
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterCreatedFrom}
+                    onchange={() => {
+                        currentPage = 1;
+                        load();
+                    }}
+                />
+            </div>
+
+            <div>
+                <label for="filterCadAte" class="label label-text text-xs"
+                    >Cadastro até</label
+                >
+                <input
+                    id="filterCadAte"
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    bind:value={filterCreatedTo}
                     onchange={() => {
                         currentPage = 1;
                         load();
@@ -479,19 +754,7 @@
             />
         </div>
         <div>
-            <label for="formRacaSelect" class="label label-text text-xs"
-                >Raça</label
-            >
-            <select
-                id="formRacaSelect"
-                class="select select-bordered w-full"
-                bind:value={form.racaId}
-            >
-                <option value="">— Selecione —</option>
-                {#each racas as r}
-                    <option value={r.id}>{r.nome}</option>
-                {/each}
-            </select>
+            <RacaSelect label="Raça" bind:value={form.racaId} />
         </div>
         <div>
             <Input
