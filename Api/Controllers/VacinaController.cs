@@ -23,7 +23,6 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<List<VacinaShortResponseDto>>> GetAllByName(
         [FromQuery] int page = 1,
-        [FromQuery] string? search = null,
         [FromQuery] string? name = null,
         [FromQuery] VacinaSearchDto? searchDto = null,
         CancellationToken cancellationToken = default)
@@ -33,8 +32,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
             return Problem(detail: "page must be an positive number", statusCode: 400, title: "Error On Fetch Data");
         }
 
-        var searchTerm = search ?? name ?? "";
-        var vacinas = await vacinaService.GetAllByNameAsync(page, searchTerm, searchDto, cancellationToken);
+        var vacinas = await vacinaService.GetAllByNameAsync(page, name ?? "", searchDto, cancellationToken);
 
         return vacinas.Select(VacinaMapper.MapToShort).ToList();
     }

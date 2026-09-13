@@ -3,7 +3,7 @@
         label,
         id = "",
         type = "text",
-        value = $bindable(""),
+        value = $bindable(),
         placeholder = "",
         required = false,
         disabled = false,
@@ -60,7 +60,7 @@
     <input
         {id}
         {type}
-        {value}
+        value={value ?? ""}
         {placeholder}
         {required}
         {disabled}

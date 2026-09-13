@@ -57,13 +57,13 @@
         animalId: "",
         vacinaId: "",
         dataAplicacao: hoje(),
-        dataProximaDose: undefined,
+        dataProximaDose: "",
         numeroLote: "",
-        doseMl: undefined,
+        doseMl: "",
         veterinarioResponsavel: "",
-        aplicador: undefined,
-        laboratorioFabricante: undefined,
-        observacoes: undefined,
+        aplicador: "",
+        laboratorioFabricante: "",
+        observacoes: "",
     });
 
     function openModal() {
@@ -71,13 +71,13 @@
             animalId: "",
             vacinaId: "",
             dataAplicacao: hoje(),
-            dataProximaDose: undefined,
+            dataProximaDose: "",
             numeroLote: "",
-            doseMl: undefined,
+            doseMl: "",
             veterinarioResponsavel: "",
-            aplicador: undefined,
-            laboratorioFabricante: undefined,
-            observacoes: undefined,
+            aplicador: "",
+            laboratorioFabricante: "",
+            observacoes: "",
         };
         formError = "";
         showModal = true;
@@ -256,37 +256,27 @@
             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
         >
             <div>
-                <label class="label label-text text-xs">Vacina</label>
-                <select
-                    class="select select-bordered select-sm w-full"
+                <VacinaSelect
+                    label="Vacina"
+                    placeholder="Todas as Vacinas"
                     bind:value={filterVacinaId}
-                    onchange={() => {
+                    onSelect={() => {
                         currentPage = 1;
                         load();
                     }}
-                >
-                    <option value="">Todas</option>
-                    {#each vacinas as v}
-                        <option value={v.id}>{v.name}</option>
-                    {/each}
-                </select>
+                />
             </div>
 
             <div>
-                <label class="label label-text text-xs">Animal</label>
-                <select
-                    class="select select-bordered select-sm w-full"
+                <AnimalSelect
+                    label="Animal"
+                    placeholder="Todos os Animais"
                     bind:value={filterAnimalId}
-                    onchange={() => {
+                    onSelect={() => {
                         currentPage = 1;
                         load();
                     }}
-                >
-                    <option value="">Todos</option>
-                    {#each animais as a}
-                        <option value={a.id}>{getAnimalName(a)}</option>
-                    {/each}
-                </select>
+                />
             </div>
 
             <div>

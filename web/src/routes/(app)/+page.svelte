@@ -207,6 +207,9 @@
         dataProximaDose: "",
         numeroLote: "",
         doseMl: "",
+        veterinarioResponsavel: "",
+        aplicador: "",
+        laboratorioFabricante: "",
         observacoes: "",
     });
 
@@ -218,6 +221,9 @@
             dataProximaDose: "",
             numeroLote: "",
             doseMl: "",
+            veterinarioResponsavel: "",
+            aplicador: "",
+            laboratorioFabricante: "",
             observacoes: "",
         };
         aplicacaoFormError = "";
@@ -597,49 +603,29 @@
                     class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
                 >
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroAnimalAtrasadas">Animal</label
-                        >
-                        <select
+                        <AnimalSelect
                             id="filtroAnimalAtrasadas"
-                            class="select select-bordered select-sm w-full"
+                            label="Animal"
+                            placeholder="Todos os Animais"
                             bind:value={filterAnimalAtrasadas}
-                            onchange={() => {
+                            onSelect={() => {
                                 pageAtrasadas = 1;
                                 loadAtrasadas();
                             }}
-                        >
-                            <option value="">Todos os Animais</option>
-                            {#each animais as a}
-                                <option value={a.id}>
-                                    {getAnimalName(a)} ({a
-                                        .identificadorPrincipal?.valor ||
-                                        a.id?.slice(0, 6)})
-                                </option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroVacinaAtrasadas">Vacina</label
-                        >
-                        <select
+                        <VacinaSelect
                             id="filtroVacinaAtrasadas"
-                            class="select select-bordered select-sm w-full"
+                            label="Vacina"
+                            placeholder="Todas as Vacinas"
                             bind:value={filterVacinaAtrasadas}
-                            onchange={() => {
+                            onSelect={() => {
                                 pageAtrasadas = 1;
                                 loadAtrasadas();
                             }}
-                        >
-                            <option value="">Todas as Vacinas</option>
-                            {#each vacinas as v}
-                                <option value={v.id}>{v.name}</option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div>
@@ -905,49 +891,29 @@
                     class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4"
                 >
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroAnimalPendentes">Animal</label
-                        >
-                        <select
+                        <AnimalSelect
                             id="filtroAnimalPendentes"
-                            class="select select-bordered select-sm w-full"
+                            label="Animal"
+                            placeholder="Todos os Animais"
                             bind:value={filterAnimalPendentes}
-                            onchange={() => {
+                            onSelect={() => {
                                 pagePendentes = 1;
                                 loadPendentes();
                             }}
-                        >
-                            <option value="">Todos os Animais</option>
-                            {#each animais as a}
-                                <option value={a.id}>
-                                    {getAnimalName(a)} ({a
-                                        .identificadorPrincipal?.valor ||
-                                        a.id?.slice(0, 6)})
-                                </option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroVacinaPendentes">Vacina</label
-                        >
-                        <select
+                        <VacinaSelect
                             id="filtroVacinaPendentes"
-                            class="select select-bordered select-sm w-full"
+                            label="Vacina"
+                            placeholder="Todas as Vacinas"
                             bind:value={filterVacinaPendentes}
-                            onchange={() => {
+                            onSelect={() => {
                                 pagePendentes = 1;
                                 loadPendentes();
                             }}
-                        >
-                            <option value="">Todas as Vacinas</option>
-                            {#each vacinas as v}
-                                <option value={v.id}>{v.name}</option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div>
@@ -1242,49 +1208,29 @@
                     {/if}
 
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroAnimalProximas">Animal</label
-                        >
-                        <select
+                        <AnimalSelect
                             id="filtroAnimalProximas"
-                            class="select select-bordered select-sm w-full"
+                            label="Animal"
+                            placeholder="Todos os Animais"
                             bind:value={filterAnimalProximas}
-                            onchange={() => {
+                            onSelect={() => {
                                 pageProximas = 1;
                                 loadProximas();
                             }}
-                        >
-                            <option value="">Todos os Animais</option>
-                            {#each animais as a}
-                                <option value={a.id}>
-                                    {getAnimalName(a)} ({a
-                                        .identificadorPrincipal?.valor ||
-                                        a.id?.slice(0, 6)})
-                                </option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div>
-                        <label
-                            class="label label-text text-xs"
-                            for="filtroVacinaProximas">Vacina</label
-                        >
-                        <select
+                        <VacinaSelect
                             id="filtroVacinaProximas"
-                            class="select select-bordered select-sm w-full"
+                            label="Vacina"
+                            placeholder="Todas as Vacinas"
                             bind:value={filterVacinaProximas}
-                            onchange={() => {
+                            onSelect={() => {
                                 pageProximas = 1;
                                 loadProximas();
                             }}
-                        >
-                            <option value="">Todas as Vacinas</option>
-                            {#each vacinas as v}
-                                <option value={v.id}>{v.name}</option>
-                            {/each}
-                        </select>
+                        />
                     </div>
 
                     <div class="flex items-end">

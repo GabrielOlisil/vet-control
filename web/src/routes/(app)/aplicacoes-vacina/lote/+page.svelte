@@ -6,6 +6,8 @@
     import { especieService } from "$lib/api/especies";
     import { racaService } from "$lib/api/racas";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
+    import EspecieSelect from "$lib/components/EspecieSelect.svelte";
+    import RacaSelect from "$lib/components/RacaSelect.svelte";
     import VacinaSelect, {
         type VacinaOption,
     } from "$lib/components/VacinaSelect.svelte";
@@ -491,39 +493,30 @@
 
                             <!-- Filtro Espécie -->
                             <div>
-                                <select
-                                    class="select select-bordered select-sm w-full text-xs"
+                                <EspecieSelect
+                                    label=""
+                                    placeholder="Todas Espécies..."
                                     bind:value={filterEspecieId}
-                                    onchange={() => {
+                                    onSelect={() => {
                                         currentPage = 1;
                                         filterRacaId = "";
                                         loadAnimais();
                                     }}
-                                >
-                                    <option value="">Todas Espécies</option>
-                                    {#each especies as esp}
-                                        <option value={esp.id}
-                                            >{esp.nome}</option
-                                        >
-                                    {/each}
-                                </select>
+                                />
                             </div>
 
                             <!-- Filtro Raça -->
                             <div>
-                                <select
-                                    class="select select-bordered select-sm w-full text-xs"
+                                <RacaSelect
+                                    label=""
+                                    placeholder="Todas Raças..."
+                                    especieId={filterEspecieId}
                                     bind:value={filterRacaId}
-                                    onchange={() => {
+                                    onSelect={() => {
                                         currentPage = 1;
                                         loadAnimais();
                                     }}
-                                >
-                                    <option value="">Todas Raças</option>
-                                    {#each racasFiltradas as r}
-                                        <option value={r.id}>{r.nome}</option>
-                                    {/each}
-                                </select>
+                                />
                             </div>
 
                             <!-- Botões de Ação de Filtro -->

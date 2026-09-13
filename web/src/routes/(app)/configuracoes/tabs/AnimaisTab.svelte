@@ -3,6 +3,7 @@
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
     import RacaSelect from "$lib/components/RacaSelect.svelte";
+    import EspecieSelect from "$lib/components/EspecieSelect.svelte";
     import { animalService } from "$lib/api/animais";
     import { racaService } from "$lib/api/racas";
     import { especieService } from "$lib/api/especies";
@@ -369,44 +370,31 @@
             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
         >
             <div>
-                <label
-                    for="filterEspecieAnimais"
-                    class="label label-text text-xs">Espécie</label
-                >
-                <select
+                <EspecieSelect
                     id="filterEspecieAnimais"
-                    class="select select-bordered select-sm w-full"
+                    label="Espécie"
+                    placeholder="Todas as espécies..."
                     bind:value={filterEspecieId}
-                    onchange={() => {
+                    onSelect={() => {
                         currentPage = 1;
+                        filterRacaId = "";
                         load();
                     }}
-                >
-                    <option value="">Todas as espécies</option>
-                    {#each especies as esp}
-                        <option value={esp.id}>{esp.nome}</option>
-                    {/each}
-                </select>
+                />
             </div>
 
             <div>
-                <label for="filterRacaAnimais" class="label label-text text-xs"
-                    >Raça</label
-                >
-                <select
+                <RacaSelect
                     id="filterRacaAnimais"
-                    class="select select-bordered select-sm w-full"
+                    label="Raça"
+                    placeholder="Todas as raças..."
+                    especieId={filterEspecieId}
                     bind:value={filterRacaId}
-                    onchange={() => {
+                    onSelect={() => {
                         currentPage = 1;
                         load();
                     }}
-                >
-                    <option value="">Todas as raças</option>
-                    {#each racas as r}
-                        <option value={r.id}>{r.nome}</option>
-                    {/each}
-                </select>
+                />
             </div>
 
             <div>

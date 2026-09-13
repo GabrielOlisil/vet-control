@@ -46,7 +46,6 @@ export const vacinaService = {
         const { data, error } = await apiClient.GET('/api/v1/vacinas/search', {
             params: {
                 query: {
-                    search,
                     name: search,
                     page,
                     EspecieId: filters?.EspecieId,

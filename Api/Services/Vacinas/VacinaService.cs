@@ -121,7 +121,7 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
 
         if (!string.IsNullOrWhiteSpace(name))
         {
-            query = query.Where(e => EF.Functions.ILike(e.Name, $"{name}%"));
+            query = query.Where(e => EF.Functions.ILike(e.Name, $"%{name}%"));
         }
 
         query = ApplyFilters(query, search);

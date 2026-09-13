@@ -2,7 +2,7 @@
     let {
         label = "",
         id = "",
-        value = $bindable(""),
+        value = $bindable(),
         options = [],
         placeholder = "",
         required = false,
@@ -45,7 +45,7 @@
     {/if}
     <select
         {id}
-        {value}
+        value={value ?? ""}
         {required}
         {disabled}
         onchange={handleChange}

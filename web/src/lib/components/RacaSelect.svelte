@@ -24,8 +24,9 @@
     let {
         label = "Raça",
         id = "raca-select",
-        value = $bindable(""),
+        value = $bindable(),
         especieId = "",
+        size = "sm",
         required = false,
         disabled = false,
         placeholder = "Buscar raça...",
@@ -36,6 +37,7 @@
         id?: string;
         value?: string | null;
         especieId?: string;
+        size?: "sm" | "md";
         required?: boolean;
         disabled?: boolean;
         placeholder?: string;
@@ -141,10 +143,13 @@
     });
 
     // Recarregar se especieId mudar
-    let lastEspecieId = $state(especieId);
+    let lastEspecieId = $state<string | undefined>(undefined);
     $effect(() => {
-        if (especieId !== lastEspecieId) {
-            lastEspecieId = especieId;
+        const currentEsp = especieId || "";
+        if (lastEspecieId === undefined) {
+            lastEspecieId = currentEsp;
+        } else if (currentEsp !== lastEspecieId) {
+            lastEspecieId = currentEsp;
             currentPage = 1;
             loadPage(1);
         }
@@ -159,6 +164,13 @@
         clearTimeout(searchDebounce);
 
         if (!text.trim()) {
+            if (value) {
+                value = "";
+                selectedItem = null;
+                if (onSelect) {
+                    onSelect(null);
+                }
+            }
             isSearching = false;
             loadPage(1);
             return;
@@ -216,11 +228,11 @@
     }
 </script>
 
-<div class="w-full mb-3 relative" bind:this={containerRef}>
+<div class="w-full {label ? 'mb-2' : 'mb-0'} relative" bind:this={containerRef}>
     {#if label}
         <label for={id} class="label py-1 block">
             <span
-                class="label-text font-medium text-sm flex items-center gap-1"
+                class="label-text font-medium text-xs flex items-center gap-1"
             >
                 {label}
                 {#if required}
@@ -234,7 +246,9 @@
         <input
             {id}
             type="text"
-            class="input input-bordered w-full pl-9 pr-16 transition-all {error
+            class="input input-bordered {size === 'sm'
+                ? 'input-sm text-xs'
+                : ''} w-full pl-8 pr-14 transition-all {error
                 ? 'input-error'
                 : 'focus:input-primary'}"
             {placeholder}
@@ -246,9 +260,9 @@
         />
 
         <div
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 pointer-events-none flex items-center"
+            class="absolute left-2.5 top-1/2 -translate-y-1/2 text-base-content/40 pointer-events-none flex items-center"
         >
-            <IconSearch width="18" height="18" />
+            <IconSearch width="16" height="16" />
         </div>
 
         <div

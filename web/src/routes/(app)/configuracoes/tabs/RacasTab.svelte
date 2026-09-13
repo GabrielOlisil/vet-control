@@ -263,20 +263,15 @@
                     height="18"
                     class="text-base-content/60 shrink-0"
                 />
-                <label for="filtroEspecieTab" class="sr-only"
-                    >Filtrar por espécie</label
-                >
-                <select
-                    id="filtroEspecieTab"
-                    class="select select-bordered select-sm w-full sm:w-60"
-                    bind:value={selectedEspecieId}
-                    onchange={handleEspecieFilterChange}
-                >
-                    <option value="">Todas as Espécies</option>
-                    {#each especies as esp}
-                        <option value={esp.id}>{esp.nome}</option>
-                    {/each}
-                </select>
+                <div class="w-full sm:w-60">
+                    <EspecieSelect
+                        id="filtroEspecieTab"
+                        label=""
+                        placeholder="Todas as Espécies..."
+                        bind:value={selectedEspecieId}
+                        onSelect={handleEspecieFilterChange}
+                    />
+                </div>
 
                 <button
                     type="button"

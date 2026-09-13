@@ -318,24 +318,16 @@
             <!-- Linha 2: Filtros de Espécie e Obrigatória -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                    <label
-                        for="filtroVacinaEspecie"
-                        class="label label-text text-xs">Espécie</label
-                    >
-                    <select
+                    <EspecieSelect
                         id="filtroVacinaEspecie"
-                        class="select select-bordered select-sm w-full"
+                        label="Espécie"
+                        placeholder="Todas as espécies..."
                         bind:value={filterEspecieId}
-                        onchange={() => {
+                        onSelect={() => {
                             currentPage = 1;
                             load();
                         }}
-                    >
-                        <option value="">Todas as espécies</option>
-                        {#each especies as esp}
-                            <option value={esp.id}>{esp.nome}</option>
-                        {/each}
-                    </select>
+                    />
                 </div>
 
                 <div>
