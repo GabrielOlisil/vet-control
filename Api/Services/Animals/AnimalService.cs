@@ -58,6 +58,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             Name = dto.Name ?? string.Empty,
             RacaId = dto.RacaId,
             DataNascimento = dto.DataNascimento,
+            DataNascimentoAproximada = dto.DataNascimentoAproximada,
             Sexo = dto.Sexo,
             OrigemAnimal = dto.Origem,
             LoteOuPasto = dto.LoteOuPasto,
@@ -88,7 +89,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             return null;
         }
 
-        if (dto.Name is not null)
+        if (dto.NameWasProvided)
         {
             animal.Name = dto.Name;
         }
@@ -98,9 +99,14 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             animal.DataNascimento = dto.DataNascimento.Value;
         }
 
-        if (dto.RacaId.HasValue)
+        if (dto.DataNascimentoAproximada.HasValue)
         {
-            animal.RacaId = dto.RacaId.Value;
+            animal.DataNascimentoAproximada = dto.DataNascimentoAproximada.Value;
+        }
+
+        if (dto.RacaIdWasProvided)
+        {
+            animal.RacaId = dto.RacaId;
         }
 
         if (dto.Sexo.HasValue)
@@ -113,7 +119,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             animal.OrigemAnimal = dto.Origem.Value;
         }
 
-        if (dto.LoteOuPasto is not null)
+        if (dto.LoteOuPastoWasProvided)
         {
             animal.LoteOuPasto = dto.LoteOuPasto;
         }

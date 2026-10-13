@@ -1694,6 +1694,7 @@ export interface components {
             origem?: components["schemas"]["OrigemAnimal"];
             /** Format: date */
             dataNascimento?: string;
+            dataNascimentoAproximada?: boolean;
             loteOuPasto?: null | string;
             ativo?: boolean;
             raca?: null | components["schemas"]["RacaShortResponseDto"];

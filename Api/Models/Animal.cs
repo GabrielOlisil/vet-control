@@ -11,6 +11,7 @@ public class Animal : IAuditedEntity
     public SexoAnimal Sexo { get; set; } = SexoAnimal.Indefinido;
     public Guid? RacaId { get; set; }
     public DateOnly DataNascimento { get; set; }
+    public bool DataNascimentoAproximada { get; set; }
 
     public OrigemAnimal OrigemAnimal { get; set; } = OrigemAnimal.Externo;
 

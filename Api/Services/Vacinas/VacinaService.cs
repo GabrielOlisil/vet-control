@@ -67,7 +67,7 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
             vacina.Name = dto.Name;
         }
 
-        if (dto.Descricao is not null)
+        if (dto.DescricaoWasProvided)
         {
             vacina.Descricao = dto.Descricao;
         }
@@ -82,9 +82,9 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
             vacina.ObrigatorioOrgaoSanitario = dto.ObrigatorioOrgaoSanitario.Value;
         }
 
-        if (dto.EspecieId.HasValue)
+        if (dto.EspecieIdWasProvided)
         {
-            vacina.EspecieId = dto.EspecieId.Value;
+            vacina.EspecieId = dto.EspecieId;
         }
 
         await context.SaveChangesAsync(cancellationToken);

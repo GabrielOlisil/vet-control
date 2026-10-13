@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 using Api.Models.Enums;
 
@@ -21,8 +22,24 @@ public sealed record EspecieCreateDto
 
 public sealed record EspeciePatchDto
 {
+    private string? _nomeCientifico;
+
     [StringLength(100, MinimumLength = 1)] public string? Nome { get; init; }
-    [StringLength(100, MinimumLength = 1)] public string? NomeCientifico { get; init; }
+
+    [StringLength(100, MinimumLength = 1)]
+    public string? NomeCientifico
+    {
+        get => _nomeCientifico;
+        init
+        {
+            _nomeCientifico = value;
+            NomeCientificoWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool NomeCientificoWasProvided { get; private set; }
+
     public PorteAnimal? PortePadrao { get; init; }
     [StringLength(100)] public string? IconeKey { get; init; }
 }

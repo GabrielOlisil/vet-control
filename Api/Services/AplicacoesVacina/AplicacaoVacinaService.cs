@@ -73,9 +73,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             aplicacao.DataAplicacao = dto.DataAplicacao.Value;
         }
 
-        if (dto.DataProximaDose.HasValue)
+        if (dto.DataProximaDoseWasProvided)
         {
-            aplicacao.DataProximaDose = dto.DataProximaDose.Value;
+            aplicacao.DataProximaDose = dto.DataProximaDose;
         }
 
         if (dto.CicloFinalizado.HasValue)
@@ -88,7 +88,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             aplicacao.StatusComprovante = dto.StatusComprovante.Value;
         }
 
-        if (dto.ComprovanteDocumentoPath is not null)
+        if (dto.ComprovanteDocumentoPathWasProvided)
         {
             aplicacao.ComprovanteDocumentoPath = dto.ComprovanteDocumentoPath;
         }
@@ -98,27 +98,27 @@ public sealed class AplicacaoVacinaService(ApiContext context, IWebHostEnvironme
             aplicacao.NumeroLote = dto.NumeroLote;
         }
 
-        if (dto.DoseMl is not null)
+        if (dto.DoseMlWasProvided)
         {
             aplicacao.DoseMl = dto.DoseMl;
         }
 
-        if (dto.Observacoes is not null)
+        if (dto.ObservacoesWasProvided)
         {
             aplicacao.Observacoes = dto.Observacoes;
         }
 
-        if (dto.VeterinarioResponsavel is not null)
+        if (dto.VeterinarioResponsavelWasProvided)
         {
             aplicacao.VeterinarioResponsavel = dto.VeterinarioResponsavel;
         }
 
-        if (dto.Aplicador is not null)
+        if (dto.AplicadorWasProvided)
         {
             aplicacao.Aplicador = dto.Aplicador;
         }
 
-        if (dto.LaboratorioFabricante is not null)
+        if (dto.LaboratorioFabricanteWasProvided)
         {
             aplicacao.LaboratorioFabricante = dto.LaboratorioFabricante;
         }

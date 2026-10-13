@@ -67,6 +67,14 @@ public sealed record AplicacaoVacinaCreateDto
 
 public sealed record AplicacaoVacinaPatchDto
 {
+    private DateOnly? _dataProximaDose;
+    private string? _comprovanteDocumentoPath;
+    private string? _doseMl;
+    private string? _observacoes;
+    private string? _veterinarioResponsavel;
+    private string? _aplicador;
+    private string? _laboratorioFabricante;
+
     public Guid? AnimalId { get; init; }
 
     public Guid? VacinaId { get; init; }
@@ -75,26 +83,103 @@ public sealed record AplicacaoVacinaPatchDto
     public DateOnly? DataAplicacao { get; init; }
 
     [DataType(DataType.Date)]
-    public DateOnly? DataProximaDose { get; init; }
+    public DateOnly? DataProximaDose
+    {
+        get => _dataProximaDose;
+        init
+        {
+            _dataProximaDose = value;
+            DataProximaDoseWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool DataProximaDoseWasProvided { get; private set; }
 
     public bool? CicloFinalizado { get; init; }
 
     public StatusComprovanteVacina? StatusComprovante { get; init; }
 
-    public string? ComprovanteDocumentoPath { get; init; }
+    public string? ComprovanteDocumentoPath
+    {
+        get => _comprovanteDocumentoPath;
+        init
+        {
+            _comprovanteDocumentoPath = value;
+            ComprovanteDocumentoPathWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool ComprovanteDocumentoPathWasProvided { get; private set; }
 
     public string? NumeroLote { get; init; }
 
     [JsonConverter(typeof(StringOrNumberConverter))]
-    public string? DoseMl { get; init; }
+    public string? DoseMl
+    {
+        get => _doseMl;
+        init
+        {
+            _doseMl = value;
+            DoseMlWasProvided = true;
+        }
+    }
 
-    public string? Observacoes { get; init; }
+    [JsonIgnore]
+    public bool DoseMlWasProvided { get; private set; }
 
-    public string? VeterinarioResponsavel { get; init; }
+    public string? Observacoes
+    {
+        get => _observacoes;
+        init
+        {
+            _observacoes = value;
+            ObservacoesWasProvided = true;
+        }
+    }
 
-    public string? Aplicador { get; init; }
+    [JsonIgnore]
+    public bool ObservacoesWasProvided { get; private set; }
 
-    public string? LaboratorioFabricante { get; init; }
+    public string? VeterinarioResponsavel
+    {
+        get => _veterinarioResponsavel;
+        init
+        {
+            _veterinarioResponsavel = value;
+            VeterinarioResponsavelWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool VeterinarioResponsavelWasProvided { get; private set; }
+
+    public string? Aplicador
+    {
+        get => _aplicador;
+        init
+        {
+            _aplicador = value;
+            AplicadorWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool AplicadorWasProvided { get; private set; }
+
+    public string? LaboratorioFabricante
+    {
+        get => _laboratorioFabricante;
+        init
+        {
+            _laboratorioFabricante = value;
+            LaboratorioFabricanteWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool LaboratorioFabricanteWasProvided { get; private set; }
 }
 
 public sealed record AplicacaoVacinaShortResponseDto

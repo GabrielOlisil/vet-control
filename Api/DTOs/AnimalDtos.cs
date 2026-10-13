@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Api.Models;
 using Api.Models.Enums;
 
@@ -35,19 +36,57 @@ public sealed record AnimalCreateDto
 
 public sealed record AnimalPatchDto
 {
-    [StringLength(100, MinimumLength = 1)] public string? Name { get; init; }
+    private string? _name;
+    private Guid? _racaId;
+    private string? _loteOuPasto;
+
+    [StringLength(100, MinimumLength = 1)]
+    public string? Name
+    {
+        get => _name;
+        init
+        {
+            _name = value;
+            NameWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool NameWasProvided { get; private set; }
 
     [DataType(DataType.Date)] public DateOnly? DataNascimento { get; init; }
 
     public bool? DataNascimentoAproximada { get; init; }
 
-    public Guid? RacaId { get; init; }
+    public Guid? RacaId
+    {
+        get => _racaId;
+        init
+        {
+            _racaId = value;
+            RacaIdWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool RacaIdWasProvided { get; private set; }
 
     public SexoAnimal? Sexo { get; init; }
 
     public OrigemAnimal? Origem { get; init; }
 
-    public string? LoteOuPasto { get; init; }
+    public string? LoteOuPasto
+    {
+        get => _loteOuPasto;
+        init
+        {
+            _loteOuPasto = value;
+            LoteOuPastoWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool LoteOuPastoWasProvided { get; private set; }
 
     public bool? Ativo { get; init; }
 
@@ -74,6 +113,8 @@ public sealed record AnimalReadResponseDto
     public OrigemAnimal Origem { get; init; }
 
     public DateOnly DataNascimento { get; init; }
+
+    public bool DataNascimentoAproximada { get; init; }
 
     public string? LoteOuPasto { get; init; }
 

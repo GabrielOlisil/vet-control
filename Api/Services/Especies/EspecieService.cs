@@ -68,7 +68,7 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
             especie.Nome = dto.Nome;
         }
 
-        if (dto.NomeCientifico is not null)
+        if (dto.NomeCientificoWasProvided)
         {
             especie.NomeCientifico = dto.NomeCientifico;
         }
