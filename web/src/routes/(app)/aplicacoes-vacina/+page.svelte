@@ -5,11 +5,11 @@
     import Input from "$lib/components/Input.svelte";
     import VacinaSelect from "$lib/components/VacinaSelect.svelte";
     import AnimalSelect from "$lib/components/AnimalSelect.svelte";
-    import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
     import { vacinaService } from "$lib/api/vacinas";
     import { animalService } from "$lib/api/animais";
+    import { protocoloVacinalService } from "$lib/api/protocolos-vacinais";
     import {
         getAnimalName,
         hoje,
@@ -18,6 +18,7 @@
         type AplicacaoVacinaCreateDto,
         type VacinaReadResponseDto,
         type AnimalReadResponseDto,
+        type ProtocoloVacinalReadResponseDto,
     } from "$lib/types";
 
     import IconAdd from "@iconify-svelte/material-symbols/add-rounded";
@@ -34,6 +35,7 @@
 
     let vacinas = $state<VacinaReadResponseDto[]>([]);
     let animais = $state<AnimalReadResponseDto[]>([]);
+    let protocolos = $state<ProtocoloVacinalReadResponseDto[]>([]);
 
     // Filtros
     let filterVacinaId = $state("");
@@ -48,6 +50,7 @@
     let filterProximas = $state("");
     let filterCicloFinalizado = $state("");
     let filterStatusComprovante = $state("");
+    let filterProtocoloId = $state("");
 
     // ── Modal: Registrar Vacinação ────────────────────────────────────────────
     let showModal = $state(false);
@@ -161,6 +164,7 @@
                 filterStatusComprovante !== ""
                     ? Number(filterStatusComprovante)
                     : undefined,
+            ProtocoloVacinalId: filterProtocoloId || undefined,
         };
     }
 
@@ -195,17 +199,20 @@
         filterProximas = "";
         filterCicloFinalizado = "";
         filterStatusComprovante = "";
+        filterProtocoloId = "";
         currentPage = 1;
         load();
     }
 
     onMount(async () => {
-        const [vs, as_] = await Promise.all([
+        const [vs, as_, ps] = await Promise.all([
             vacinaService.getList(),
             animalService.getList(),
+            protocoloVacinalService.getList({ Ativo: true }),
         ]);
         vacinas = vs;
         animais = as_;
+        protocolos = ps;
         await load();
     });
 
@@ -277,6 +284,14 @@
                         load();
                     }}
                 />
+            </div>
+
+            <div>
+                <span class="label label-text text-xs">Protocolo Vacinal</span>
+                <select class="select select-bordered select-sm w-full" bind:value={filterProtocoloId} onchange={() => { currentPage = 1; load(); }}>
+                    <option value="">Todos os protocolos</option>
+                    {#each protocolos as protocolo}<option value={protocolo.id}>{protocolo.nome}</option>{/each}
+                </select>
             </div>
 
             <div>

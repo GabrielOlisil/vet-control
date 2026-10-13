@@ -10,7 +10,8 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"types:g": "openapi-typescript http://localhost:8080/openapi/v1.json -o ./src/lib/types/contract.d.ts "
+		"types:g": "openapi-typescript http://localhost:8080/openapi/v1.json -o ./src/lib/types/contract.d.ts ",
+		"types:g:auth": "node scripts/generate-auth-contract.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/kit": "^2.63.0",

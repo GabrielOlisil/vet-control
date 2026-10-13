@@ -34,6 +34,38 @@ public sealed record AplicacaoVacinaSearchDto
     public bool? Proximas { get; init; }
     public bool? CicloFinalizado { get; init; }
     public StatusComprovanteVacina? StatusComprovante { get; init; }
+    public Guid? AnimalProtocoloVacinalId { get; init; }
+    public Guid? ProtocoloVacinalDoseId { get; init; }
+    public Guid? ProtocoloVacinalId { get; init; }
+}
+
+public sealed record ProtocoloVacinalSearchDto
+{
+    public Guid? EspecieId { get; init; }
+    public bool? Ativo { get; init; }
+    public string? Nome { get; init; }
+    public string? Finalidade { get; init; }
+}
+
+public sealed record ProtocoloVacinalPendenciaSearchDto
+{
+    public Guid? AnimalId { get; init; }
+    public Guid? ProtocoloVacinalId { get; init; }
+    public Guid? EspecieId { get; init; }
+    public DateOnly? DataPrevistaFrom { get; init; }
+    public DateOnly? DataPrevistaTo { get; init; }
+    public StatusPendenciaVacinal? Status { get; init; }
+    public bool? SomenteObrigatorias { get; init; }
+}
+
+public sealed record MovimentacaoAnimalSearchDto
+{
+    public Guid? AnimalId { get; init; }
+    public TipoMovimentacaoAnimal? Tipo { get; init; }
+    public DateOnly? DataMovimentacaoFrom { get; init; }
+    public DateOnly? DataMovimentacaoTo { get; init; }
+    public string? LocalOrigem { get; init; }
+    public string? LocalDestino { get; init; }
 }
 
 public sealed record RacaSearchDto

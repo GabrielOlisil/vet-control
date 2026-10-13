@@ -2,14 +2,20 @@
     import "../../app.css";
     import { page } from "$app/stores";
     import type { Snippet } from "svelte";
+    import { afterNavigate } from "$app/navigation";
+    import AccountMenu from "$lib/components/AccountMenu.svelte";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
     import IconDashboard from "@iconify-svelte/material-symbols/dashboard-rounded";
     import IconSettings from "@iconify-svelte/material-symbols/settings-rounded";
     import IconMenu from "@iconify-svelte/material-symbols/menu-rounded";
+    import { VET_API_URL } from "$lib/auth/session";
+    import type { VetSession } from "$lib/auth/types";
 
-    let { children }: { children?: Snippet } = $props();
+    let { children, data }: { children?: Snippet; data: { session: VetSession } } = $props();
+    let drawerOpen = $state(false);
+    afterNavigate(() => { drawerOpen = false; });
 
     const usabilityLinks = [
         { href: "/", label: "Dashboard", icon: IconDashboard },
@@ -39,53 +45,66 @@
 <div
     class="drawer lg:drawer-open min-h-screen bg-base-200 text-base-content font-sans"
 >
-    <input id="app-drawer" type="checkbox" class="drawer-toggle" />
+    <input id="app-drawer" type="checkbox" class="drawer-toggle" bind:checked={drawerOpen} />
 
     <!-- Drawer Content (Área Principal da Página) -->
-    <div class="drawer-content flex flex-col min-h-screen">
+    <div class="drawer-content flex min-h-screen min-w-0 flex-col">
         <!-- Top Bar (Header) -->
         <header
-            class="navbar bg-base-100 border-b border-base-300 sticky top-0 z-30 shadow-xs px-4 sm:px-6"
+            class="sticky top-0 z-30 border-b border-base-300 bg-base-100 shadow-xs"
         >
-            <div class="flex-none lg:hidden">
-                <label
-                    for="app-drawer"
-                    class="btn btn-square btn-ghost"
+            <nav class="flex min-h-16 min-w-0 items-center gap-2 px-3 sm:gap-4 sm:px-6" aria-label="Navegação principal">
+                <button
+                    type="button"
+                    class="btn btn-square btn-ghost shrink-0 lg:hidden"
                     aria-label="Abrir menu lateral"
+                    aria-controls="app-sidebar"
+                    aria-expanded={drawerOpen}
+                    onclick={() => (drawerOpen = !drawerOpen)}
                 >
                     <IconMenu width="22" height="22" />
-                </label>
-            </div>
+                </button>
 
-            <div class="flex-1 px-2">
+            <div class="min-w-0 flex-1">
                 <!-- Mobile Brand -->
                 <a
                     href="/"
-                    class="flex items-center gap-2 lg:hidden font-extrabold text-base"
+                    class="inline-flex max-w-full items-center gap-2 font-extrabold text-base lg:hidden"
                 >
                     <span
-                        class="p-1.5 rounded-lg bg-primary text-primary-content flex items-center justify-center text-sm shadow-xs"
+                        class="hidden shrink-0 rounded-lg bg-primary p-1.5 text-primary-content min-[380px]:flex"
                     >
                         <IconPets width="18" height="18" />
                     </span>
-                    <span class="tracking-tight">Vet Control</span>
+                    <span class="truncate tracking-tight">Vet Control</span>
                 </a>
+                <p class="hidden truncate text-sm font-semibold lg:block">Controle vacinal</p>
             </div>
 
             <!-- Ações rápidas no Header -->
-            <div class="flex-none gap-2">
                 <a
                     href="/aplicacoes-vacina/lote"
-                    class="btn btn-primary btn-sm rounded-lg shadow-xs inline-flex gap-1.5"
+                    class="btn btn-primary btn-sm hidden shrink-0 gap-1.5 rounded-lg shadow-xs md:inline-flex"
                 >
                     <IconVaccines width="16" height="16" />
                     <span>Vacinar em Lote</span>
                 </a>
-            </div>
+                <AccountMenu name={data.session.name} email={data.session.email}>
+                    <a href="/aplicacoes-vacina/lote" class="btn btn-ghost justify-start md:hidden">Vacinar em lote</a>
+                    {#if data.session.roles.includes("admin")}
+                        <a href="/auth" class="btn btn-ghost justify-start">Gerenciar usuários</a>
+                    {/if}
+                    <a href="/auth/password" class="btn btn-ghost justify-start">Minha senha</a>
+                    <form method="POST" action={`${VET_API_URL}/api/v1/auth/logout`} class="border-t border-base-200 pt-1">
+                        <input type="hidden" name="__RequestVerificationToken" value={data.session.csrfToken ?? ""} />
+                        <button type="submit" class="btn btn-ghost w-full justify-start text-error">Sair da conta</button>
+                    </form>
+                </AccountMenu>
+            </nav>
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <main class="mx-auto w-full min-w-0 max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
             {@render children?.()}
         </main>
 
@@ -116,6 +135,7 @@
             class="drawer-overlay"
         ></label>
         <aside
+            id="app-sidebar"
             class="bg-base-100 border-r border-base-300 min-h-full w-64 p-4 flex flex-col justify-between"
         >
             <div>

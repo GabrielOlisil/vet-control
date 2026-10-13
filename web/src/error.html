@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>Não foi possível abrir a página | Vet Control</title>
+        <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #eef4f1; color: #193b2c; font-family: system-ui, sans-serif; }
+            main { width: min(100%, 560px); padding: clamp(24px, 6vw, 48px); border: 1px solid #dbe5df; border-radius: 24px; background: #fff; }
+            .brand { font-size: 12px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+            .code { margin: 24px 0 12px; font-size: clamp(64px, 15vw, 96px); line-height: 1; font-weight: 800; color: #16845e; }
+            h1 { font-size: clamp(24px, 5vw, 30px); line-height: 1.2; }
+            p { line-height: 1.6; }
+            .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+            a { padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; }
+            .primary { background: #16845e; color: #fff; }
+            .secondary { border: 1px solid #a3b8ac; color: #193b2c; }
+            a:focus-visible { outline: 3px solid #16845e; outline-offset: 4px; }
+            @media (prefers-color-scheme: dark) { body { background: #15251c; color: #e1ede5; } main { background: #1c3023; border-color: #314c3b; } .code { color: #62c897; } .secondary { color: #e1ede5; border-color: #587862; } }
+        </style>
+    </head>
+    <body>
+        <main>
+            <p class="brand">Vet Control</p>
+            <p class="code">%sveltekit.status%</p>
+            <h1>Não foi possível abrir esta página</h1>
+            <p>Tente novamente em instantes ou volte ao início para continuar usando o sistema.</p>
+            <div class="actions"><a class="primary" href="/">Ir para o início</a><a class="secondary" href="/validar-vacinacao">Validar vacinação</a></div>
+        </main>
+    </body>
+</html>

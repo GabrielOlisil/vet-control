@@ -15,6 +15,7 @@ public class Especie : IAuditedEntity
 
     public List<Raca> Racas { get; set; } = [];
     public List<Vacina> VacinasRestritas { get; set; } = [];
+    public List<ProtocoloVacinal> ProtocolosVacinais { get; set; } = [];
     public DateTimeOffset CreationDateTime { get; set; }
     public DateTimeOffset? LastModificationDateTime { get; set; }
 }

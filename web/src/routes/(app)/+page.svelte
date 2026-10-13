@@ -17,6 +17,7 @@
         type VacinaReadResponseDto,
         type AplicacaoVacinaReadResponseDto,
         type AplicacaoVacinaCreateDto,
+        type AplicacaoVacinaAssinaturaDto,
     } from "$lib/types";
 
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
@@ -154,45 +155,50 @@
         await Promise.all([loadProximas(), loadKpis()]);
     }
 
-    // ── Upload de Comprovante Modal ───────────────────────────────────────────
-    let showUploadModal = $state(false);
-    let uploadAplicacaoId = $state("");
-    let uploadFile = $state<File | null>(null);
-    let isUploading = $state(false);
-    let uploadError = $state("");
+    // ── Assinatura interna auditável ─────────────────────────────────────────
+    let showSignatureModal = $state(false);
+    let signatureAplicacaoId = $state("");
+    let isSigning = $state(false);
+    let signatureError = $state("");
+    let signatureForm = $state<AplicacaoVacinaAssinaturaDto>({
+        nomeAssinante: "",
+        crmv: "",
+        crmvUf: "",
+        observacoes: "",
+    });
 
-    function openUploadModal(aplicacaoId: string) {
-        uploadAplicacaoId = aplicacaoId;
-        uploadFile = null;
-        uploadError = "";
-        showUploadModal = true;
+    function openSignatureModal(aplicacaoId: string) {
+        signatureAplicacaoId = aplicacaoId;
+        signatureForm = { nomeAssinante: "", crmv: "", crmvUf: "", observacoes: "" };
+        signatureError = "";
+        showSignatureModal = true;
     }
 
-    async function handleUploadComprovante() {
-        if (!uploadFile) {
-            uploadError = "Selecione um arquivo PDF para anexar.";
+    async function handleSignature() {
+        if (!signatureForm.nomeAssinante?.trim() || !signatureForm.crmv?.trim() || !signatureForm.crmvUf?.trim()) {
+            signatureError = "Informe nome, CRMV e UF do veterinário assinante.";
             return;
         }
-        isUploading = true;
-        uploadError = "";
+        isSigning = true;
+        signatureError = "";
         try {
-            await aplicacaoVacinaService.uploadComprovante(
-                uploadAplicacaoId,
-                uploadFile,
-            );
-            showUploadModal = false;
+            await aplicacaoVacinaService.assinar(signatureAplicacaoId, {
+                ...signatureForm,
+                nomeAssinante: signatureForm.nomeAssinante.trim(),
+                crmv: signatureForm.crmv.trim(),
+                crmvUf: signatureForm.crmvUf.trim().toUpperCase(),
+                observacoes: signatureForm.observacoes?.trim() || undefined,
+            });
+            showSignatureModal = false;
             await loadPendentes();
             hasLoadedAtrasadas = false;
             hasLoadedProximas = false;
             if (activeTab === "atrasadas") await loadAtrasadas();
             await loadKpis();
         } catch (err) {
-            uploadError =
-                err instanceof Error
-                    ? err.message
-                    : "Erro no upload do comprovante";
+            signatureError = err instanceof Error ? err.message : "Erro ao assinar aplicação";
         } finally {
-            isUploading = false;
+            isSigning = false;
         }
     }
 
@@ -207,7 +213,12 @@
         dataProximaDose: "",
         numeroLote: "",
         doseMl: "",
+        dataFabricacao: "",
+        dataValidade: "",
+        localAplicacao: "",
         veterinarioResponsavel: "",
+        veterinarioCrmv: "",
+        veterinarioCrmvUf: "",
         aplicador: "",
         laboratorioFabricante: "",
         observacoes: "",
@@ -221,7 +232,12 @@
             dataProximaDose: "",
             numeroLote: "",
             doseMl: "",
+            dataFabricacao: "",
+            dataValidade: "",
+            localAplicacao: "",
             veterinarioResponsavel: "",
+            veterinarioCrmv: "",
+            veterinarioCrmvUf: "",
             aplicador: "",
             laboratorioFabricante: "",
             observacoes: "",
@@ -755,7 +771,7 @@
                                         </td>
                                         <td>
                                             <span
-                                                class="badge badge-sm badge-error text-white font-bold gap-1"
+                                                class="badge badge-sm badge-error text-white font-bold gap-1 py-5"
                                             >
                                                 {diasAtraso} dia(s)
                                             </span>
@@ -763,10 +779,6 @@
                                         <td>
                                             <ComprovanteStatusBadge
                                                 status={item.statusComprovante}
-                                                temComprovanteAnexo={Boolean(
-                                                    item.comprovanteDocumentoPath,
-                                                )}
-                                                aplicacaoId={item.id || ""}
                                             />
                                         </td>
                                         <td
@@ -865,8 +877,7 @@
                             {/if}
                         </h2>
                         <p class="text-xs text-base-content/60 mt-0.5">
-                            Aplicações registradas que ainda aguardam upload ou
-                            validação do comprovante.
+                            Aplicações registradas que aguardam a assinatura interna do veterinário.
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
@@ -974,8 +985,7 @@
                             Nenhuma pendência de assinatura encontrada.
                         </p>
                         <p class="text-xs text-base-content/60 mt-1">
-                            Todas as aplicações possuem seus comprovantes
-                            anexados.
+                            Todas as aplicações estão assinadas.
                         </p>
                     </div>
                 {:else}
@@ -1046,10 +1056,6 @@
                                         <td>
                                             <ComprovanteStatusBadge
                                                 status={item.statusComprovante}
-                                                temComprovanteAnexo={Boolean(
-                                                    item.comprovanteDocumentoPath,
-                                                )}
-                                                aplicacaoId={item.id || ""}
                                             />
                                         </td>
                                         <td class="text-right">
@@ -1058,12 +1064,9 @@
                                             >
                                                 <button
                                                     class="btn btn-xs btn-outline btn-warning"
-                                                    onclick={() =>
-                                                        openUploadModal(
-                                                            item.id || "",
-                                                        )}
+                                                    onclick={() => openSignatureModal(item.id || "")}
                                                 >
-                                                    Anexar PDF
+                                                    Assinar
                                                 </button>
                                                 <a
                                                     href="/prontuario/{item.animalId}"
@@ -1419,40 +1422,28 @@
     </div>
 </div>
 
-<!-- ── Modal: Anexar Comprovante PDF ─────────────────────────────────────── -->
+<!-- ── Modal: Assinatura interna auditável ───────────────────────────────── -->
 <FormModal
-    isOpen={showUploadModal}
-    title="Anexar Comprovante Assinado (PDF)"
-    isLoading={isUploading}
-    submitText="Salvar Comprovante"
-    onClose={() => (showUploadModal = false)}
-    onSubmit={handleUploadComprovante}
+    isOpen={showSignatureModal}
+    title="Assinar aplicação de vacina"
+    isLoading={isSigning}
+    submitText="Assinar aplicação"
+    onClose={() => (showSignatureModal = false)}
+    onSubmit={handleSignature}
 >
-    {#if uploadError}
-        <div class="alert alert-error text-sm py-2 mb-3">{uploadError}</div>
+    {#if signatureError}
+        <div class="alert alert-error text-sm py-2 mb-3">{signatureError}</div>
     {/if}
-
-    <div class="space-y-4">
-        <p class="text-xs text-base-content/70">
-            Selecione o arquivo PDF contendo o comprovante de vacinação assinado
-            pelo médico veterinário.
-        </p>
-
-        <div>
-            <label
-                class="label label-text text-xs font-semibold"
-                for="pdfFileInput">Arquivo PDF *</label
-            >
-            <input
-                id="pdfFileInput"
-                type="file"
-                accept="application/pdf"
-                class="file-input file-input-bordered file-input-sm w-full"
-                onchange={(e) => {
-                    const files = (e.currentTarget as HTMLInputElement).files;
-                    uploadFile = files && files[0] ? files[0] : null;
-                }}
-            />
+    <p class="text-xs text-base-content/70 mb-3">
+        A assinatura cria um registro imutável com hash e identificação do veterinário.
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2"><Input label="Nome do veterinário *" bind:value={signatureForm.nomeAssinante} required /></div>
+        <Input label="CRMV *" bind:value={signatureForm.crmv} required />
+        <Input label="UF *" maxlength={2} bind:value={signatureForm.crmvUf} required />
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs" for="assinaturaObservacoesDashboard">Observações da assinatura</label>
+            <textarea id="assinaturaObservacoesDashboard" class="textarea textarea-bordered w-full" rows="2" bind:value={signatureForm.observacoes}></textarea>
         </div>
     </div>
 </FormModal>
@@ -1522,6 +1513,25 @@
                 bind:value={aplicacaoForm.doseMl}
             />
         </div>
+
+        <div>
+            <Input label="Data de fabricação" type="date" bind:value={aplicacaoForm.dataFabricacao} />
+        </div>
+        <div>
+            <Input label="Data de validade" type="date" bind:value={aplicacaoForm.dataValidade} />
+        </div>
+        <div>
+            <Input label="Fabricante / Laboratório" bind:value={aplicacaoForm.laboratorioFabricante} />
+        </div>
+        <div>
+            <Input label="Local da aplicação" bind:value={aplicacaoForm.localAplicacao} />
+        </div>
+        <div class="sm:col-span-2">
+            <Input label="Veterinário responsável" bind:value={aplicacaoForm.veterinarioResponsavel} />
+        </div>
+        <div><Input label="CRMV" bind:value={aplicacaoForm.veterinarioCrmv} /></div>
+        <div><Input label="UF do CRMV" maxlength={2} bind:value={aplicacaoForm.veterinarioCrmvUf} /></div>
+        <div><Input label="Aplicador" bind:value={aplicacaoForm.aplicador} /></div>
 
         <div class="sm:col-span-2">
             <label class="label label-text text-xs font-medium" for="modalObs"

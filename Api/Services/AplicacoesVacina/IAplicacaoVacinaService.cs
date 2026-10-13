@@ -12,6 +12,12 @@ public interface IAplicacaoVacinaService
     Task<AplicacaoVacina?> PatchAsync(Guid id, AplicacaoVacinaPatchDto dto,
         CancellationToken cancellationToken = default);
 
+    Task<AplicacaoVacina?> AssinarAsync(Guid id, AplicacaoVacinaAssinaturaDto dto,
+        CancellationToken cancellationToken = default);
+
+    Task<AssinaturaValidacaoResponseDto?> ValidarAssinaturaAsync(Guid id,
+        CancellationToken cancellationToken = default);
+
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<AplicacaoVacina?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -42,6 +48,6 @@ public interface IAplicacaoVacinaService
     Task<List<AplicacaoVacina>> VacinarLoteAsync(AplicacaoVacinaLoteCreateDto dto,
         CancellationToken cancellationToken = default);
 
-    Task<bool> UploadComprovanteAsync(Guid aplicacaoId, Stream streamArquivo, string contentType, CancellationToken ct);
-    Task<(byte[] Bytes, string ContentType)?> GetComprovanteAsync(Guid aplicacaoId, CancellationToken ct);
+    Task<ComprovanteVacinasDadosResponseDto?> GetComprovanteVacinasDadosAsync(Guid animalId,
+        bool incluirNaoAssinadas, CancellationToken cancellationToken = default);
 }

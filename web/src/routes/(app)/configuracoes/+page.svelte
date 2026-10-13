@@ -4,6 +4,7 @@
     import AnimaisTab from "./tabs/AnimaisTab.svelte";
     import EspeciesTab from "./tabs/EspeciesTab.svelte";
     import RacasTab from "./tabs/RacasTab.svelte";
+    import ProtocolosTab from "./tabs/ProtocolosTab.svelte";
 
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
@@ -11,9 +12,9 @@
     import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
     import IconSettings from "@iconify-svelte/material-symbols/settings-rounded";
 
-    type TabKey = "vacinas" | "animais" | "especies" | "racas";
+    type TabKey = "vacinas" | "protocolos" | "animais" | "especies" | "racas";
 
-    const validTabs: TabKey[] = ["vacinas", "animais", "especies", "racas"];
+    const validTabs: TabKey[] = ["vacinas", "protocolos", "animais", "especies", "racas"];
 
     // Default tab is "vacinas" (1ª aba)
     let activeTab = $state<TabKey>("vacinas");
@@ -79,6 +80,10 @@
                 <span>Vacinas</span>
             </button>
 
+            <button type="button" role="tab" class="tab gap-2 pb-3 pt-2 text-sm font-semibold transition-all {activeTab === 'protocolos' ? 'tab-active font-black text-primary bg-base-100 shadow-xs font-bold' : 'text-base-content/60 hover:text-base-content'}" onclick={() => selectTab("protocolos")} aria-selected={activeTab === "protocolos"}>
+                <IconVaccines width="18" height="18" /><span>Protocolos</span>
+            </button>
+
             <button
                 type="button"
                 role="tab"
@@ -127,6 +132,10 @@
     <div class="mt-4">
         <div class:hidden={activeTab !== "vacinas"}>
             <VacinasTab isActive={activeTab === "vacinas"} />
+        </div>
+
+        <div class:hidden={activeTab !== "protocolos"}>
+            <ProtocolosTab isActive={activeTab === "protocolos"} />
         </div>
 
         <div class:hidden={activeTab !== "animais"}>

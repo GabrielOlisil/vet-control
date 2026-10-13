@@ -6,8 +6,13 @@
 --  - 5 Espécies de Grande Porte (PortePadrao = 2)
 --  - 2 Raças para cada Espécie (Total: 10 Raças)
 --  - 5 Animais para cada Raça (Total: 50 Animais)
+--  - DataNascimentoAproximada preenchida para animais com data estimada
 --  - 2 Identificadores por Animal (Principal + Secundário: SISBOV, Brinco, Microchip, Registro, Tatuagem)
 --  - 20 Vacinas Imunobiológicas
+--  - 3 Protocolos Vacinais e 7 doses de protocolo
+--  - 6 Atribuições de protocolos a animais
+--  - Histórico inicial de movimentação para todo o plantel
+--  - Aplicações de vacina avulsas e vinculadas a doses de protocolos
 --
 -- Padrão de GUIDs Incrementais:
 --  - Espécies:        00000001-0000-0000-0000-000000000001 .. 00000001-0000-0000-0000-000000000005
@@ -15,6 +20,9 @@
 --  - Animais:         00000003-0000-0000-0000-000000000001 .. 00000003-0000-0000-0000-000000000050
 --  - Vacinas:         00000004-0000-0000-0000-000000000001 .. 00000004-0000-0000-0000-000000000020
 --  - Identificadores: 00000005-0000-0000-0000-000000000001 .. 00000005-0000-0000-0000-000000000100
+--  - Protocolos:      00000007-0000-0000-0000-000000000001 .. 00000007-0000-0000-0000-000000000003
+--  - Doses:           00000008-0000-0000-0000-000000000001 .. 00000008-0000-0000-0000-000000000007
+--  - Atribuições:     00000009-0000-0000-0000-000000000001 .. 00000009-0000-0000-0000-000000000006
 -- =============================================================================
 
 START TRANSACTION;
@@ -338,5 +346,94 @@ VALUES
     -- Vacinas Gerais / Multiespécie (EspecieId = NULL)
     ('00000004-0000-0000-0000-000000000019', NULL, 'Vacina Polivalente de Grande Porte (Multiespécie)', 'Formulação imunoprofilática ampla aplicável a bovinos, bubalinos e equídeos.', 365, false, NOW(), NULL),
     ('00000004-0000-0000-0000-000000000020', NULL, 'Vacina Imunoprofilática Amplo Espectro', 'Reforço imunitário geral contra patógenos oportunistas em animais de grande porte.', 365, false, NOW(), NULL);
+
+-- -----------------------------------------------------------------------------
+-- 6. DATAS DE NASCIMENTO APROXIMADAS
+-- -----------------------------------------------------------------------------
+UPDATE "Animals"
+SET "DataNascimentoAproximada" = true
+WHERE "Id" IN (
+    '00000003-0000-0000-0000-000000000003',
+    '00000003-0000-0000-0000-000000000013',
+    '00000003-0000-0000-0000-000000000024',
+    '00000003-0000-0000-0000-000000000035',
+    '00000003-0000-0000-0000-000000000045'
+);
+
+-- -----------------------------------------------------------------------------
+-- 7. PROTOCOLOS VACINAIS
+-- -----------------------------------------------------------------------------
+INSERT INTO "ProtocolosVacinais" ("Id", "Nome", "Descricao", "Finalidade", "EspecieId", "Ativo", "IdadeMinimaDias", "IdadeMaximaDias", "CreationDateTime", "LastModificationDateTime")
+VALUES
+    ('00000007-0000-0000-0000-000000000001', 'Protocolo Bovino de Entrada', 'Esquema inicial para bovinos recém-integrados ao plantel.', 'Entrada no plantel', '00000001-0000-0000-0000-000000000001', true, NULL, NULL, NOW(), NULL),
+    ('00000007-0000-0000-0000-000000000002', 'Protocolo Equino Sanitário', 'Esquema básico para equinos de trabalho, reprodução e esporte.', 'Rotina sanitária', '00000001-0000-0000-0000-000000000002', true, NULL, NULL, NOW(), NULL),
+    ('00000007-0000-0000-0000-000000000003', 'Protocolo Multiespécie de Reforço', 'Esquema genérico para animais de grande porte quando não há protocolo específico.', 'Reforço geral', NULL, true, NULL, NULL, NOW(), NULL);
+
+INSERT INTO "ProtocoloVacinalDoses" ("Id", "ProtocoloVacinalId", "VacinaId", "Ordem", "DiasAposInicio", "IntervaloReforcoDias", "Obrigatoria", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+VALUES
+    ('00000008-0000-0000-0000-000000000001', '00000007-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000004', 1, 0, 365, true, 'Aplicar na entrada ou no primeiro manejo sanitário.', NOW(), NULL),
+    ('00000008-0000-0000-0000-000000000002', '00000007-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000002', 2, 90, NULL, true, 'Indicada conforme faixa etária e orientação veterinária.', NOW(), NULL),
+    ('00000008-0000-0000-0000-000000000003', '00000007-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000005', 3, 180, 365, false, 'Reforço anual quando aplicável.', NOW(), NULL),
+
+    ('00000008-0000-0000-0000-000000000004', '00000007-0000-0000-0000-000000000002', '00000004-0000-0000-0000-000000000009', 1, 0, 365, true, 'Primeira dose do protocolo equino.', NOW(), NULL),
+    ('00000008-0000-0000-0000-000000000005', '00000007-0000-0000-0000-000000000002', '00000004-0000-0000-0000-000000000010', 2, 30, 180, true, 'Reforço semestral conforme calendário sanitário.', NOW(), NULL),
+
+    ('00000008-0000-0000-0000-000000000006', '00000007-0000-0000-0000-000000000003', '00000004-0000-0000-0000-000000000019', 1, 0, 365, true, 'Dose de cobertura para animais sem protocolo específico.', NOW(), NULL),
+    ('00000008-0000-0000-0000-000000000007', '00000007-0000-0000-0000-000000000003', '00000004-0000-0000-0000-000000000020', 2, 30, NULL, false, 'Dose complementar de acordo com avaliação veterinária.', NOW(), NULL);
+
+-- -----------------------------------------------------------------------------
+-- 8. ATRIBUIÇÃO DE PROTOCOLOS A ANIMAIS
+-- -----------------------------------------------------------------------------
+INSERT INTO "AnimalProtocolosVacinais" ("Id", "AnimalId", "ProtocoloVacinalId", "DataInicio", "Ativo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+VALUES
+    ('00000009-0000-0000-0000-000000000001', '00000003-0000-0000-0000-000000000001', '00000007-0000-0000-0000-000000000001', '2025-01-10', true, 'Protocolo iniciado na entrada do animal no plantel.', NOW(), NULL),
+    ('00000009-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000006', '00000007-0000-0000-0000-000000000001', '2025-02-15', true, NULL, NOW(), NULL),
+    ('00000009-0000-0000-0000-000000000003', '00000003-0000-0000-0000-000000000011', '00000007-0000-0000-0000-000000000002', '2025-03-20', true, 'Animal de trabalho.', NOW(), NULL),
+    ('00000009-0000-0000-0000-000000000004', '00000003-0000-0000-0000-000000000016', '00000007-0000-0000-0000-000000000002', '2025-04-05', true, NULL, NOW(), NULL),
+    ('00000009-0000-0000-0000-000000000005', '00000003-0000-0000-0000-000000000021', '00000007-0000-0000-0000-000000000003', '2025-01-25', true, 'Protocolo multiespécie para bubalino.', NOW(), NULL),
+    ('00000009-0000-0000-0000-000000000006', '00000003-0000-0000-0000-000000000031', '00000007-0000-0000-0000-000000000003', '2025-05-12', true, NULL, NOW(), NULL);
+
+-- -----------------------------------------------------------------------------
+-- 9. HISTÓRICO DE MOVIMENTAÇÃO
+-- Uma entrada inicial é criada para cada animal usando o lote/pasto atual.
+-- O UUID é determinístico para manter a relação estável em ambientes de teste.
+-- TipoMovimentacaoAnimal: 0 = Entrada, 1 = Transferencia, 2 = Saida, 3 = Ajuste
+-- -----------------------------------------------------------------------------
+INSERT INTO "MovimentacoesAnimais" ("Id", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+SELECT
+    md5('movimentacao-entrada-' || a."Id"::text)::uuid,
+    a."Id",
+    a."CreationDateTime"::date,
+    0,
+    NULL,
+    a."LoteOuPasto",
+    'Entrada inicial no plantel',
+    'Registro criado pelo seed.',
+    a."CreationDateTime",
+    NULL
+FROM "Animals" a;
+
+INSERT INTO "MovimentacoesAnimais" ("Id", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+VALUES
+    ('00000006-0000-0000-0000-000000000001', '00000003-0000-0000-0000-000000000001', '2025-06-15', 1, 'Pasto 01 - Nelore Corte', 'Pasto de Manejo Sanitário', 'Manejo sanitário', 'Transferência temporária para vacinação.', NOW(), NULL),
+    ('00000006-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000011', '2025-07-02', 1, 'Haras Piquete 01', 'Baia de Observação', 'Observação clínica', NULL, NOW(), NULL),
+    ('00000006-0000-0000-0000-000000000003', '00000003-0000-0000-0000-000000000021', '2025-08-10', 3, 'Pasto 03 - Várzea dos Búfalos', 'Pasto 03 - Várzea dos Búfalos', 'Ajuste cadastral', 'Correção do local atual.', NOW(), NULL);
+
+-- -----------------------------------------------------------------------------
+-- 10. APLICAÇÕES DE VACINA
+-- StatusComprovanteVacina: 0 = NaoEmitido, 1 = PendenteAssinatura, 2 = Assinado
+-- -----------------------------------------------------------------------------
+INSERT INTO "AplicacoesVacina" ("Id", "VacinaId", "AnimalId", "AnimalProtocoloVacinalId", "ProtocoloVacinalDoseId", "DataAplicacao", "DataProximaDose", "CicloFinalizado", "StatusComprovante", "NumeroLote", "DoseMl", "DataFabricacao", "DataValidade", "LocalAplicacao", "Observacoes", "VeterinarioResponsavel", "VeterinarioCrmv", "VeterinarioCrmvUf", "Aplicador", "LaboratorioFabricante", "AssinadaEm", "Assinante", "AssinanteCrmv", "AssinanteCrmvUf", "HashAssinatura", "MetodoAssinatura", "CreationDateTime", "LastModificationDateTime")
+VALUES
+    ('0000000a-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000004', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000001', '2025-01-10', '2026-01-10', false, 1, 'LOT-SEED-BOV-001', '5.0', '2024-08-01', '2026-08-01', 'Pasto de Manejo Sanitário', 'Dose inicial do protocolo bovino.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000002', '00000004-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000002', '2025-04-10', NULL, true, 2, 'LOT-SEED-BRU-001', '2.0', '2024-09-10', '2026-09-10', 'Pasto de Manejo Sanitário', 'Dose de acordo com a idade do animal.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', '2025-04-10 14:30:00+00', 'Dra. Ana Ribeiro', '10001', 'AM', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000003', '00000004-0000-0000-0000-000000000009', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000004', '2025-03-20', '2026-03-20', false, 1, 'LOT-SEED-EQU-001', '3.0', '2024-12-20', '2026-12-20', 'Haras Piquete 01', 'Primeira dose equina.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000004', '00000004-0000-0000-0000-000000000010', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000005', '2025-04-19', '2025-10-16', false, 1, 'LOT-SEED-INF-001', '2.5', '2024-11-19', '2026-11-19', 'Haras Piquete 01', 'Reforço de influenza pendente de assinatura.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000005', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000021', '00000009-0000-0000-0000-000000000005', '00000008-0000-0000-0000-000000000006', '2025-01-25', '2026-01-25', false, 1, 'LOT-SEED-MUL-001', '4.0', '2024-07-25', '2026-07-25', 'Pasto 03 - Várzea dos Búfalos', 'Cobertura multiespécie.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000006', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000031', NULL, NULL, '2025-05-12', '2026-05-12', false, 1, 'LOT-SEED-AVU-001', '4.0', '2024-10-12', '2026-10-12', 'Pasto 02', 'Aplicação avulsa para demonstração.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL);
+
+INSERT INTO "AssinaturasAplicacoesVacina" ("Id", "AplicacaoVacinaId", "TipoEvento", "NomeAssinante", "Crmv", "CrmvUf", "DataHora", "HashConteudo", "Metodo", "Observacoes")
+VALUES
+    ('0000000b-0000-0000-0000-000000000001', '0000000a-0000-0000-0000-000000000002', 'Assinatura', 'Dra. Ana Ribeiro', '10001', 'AM', '2025-04-10 14:30:00+00', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', 'Assinatura interna criada pelo seed.');
 
 COMMIT;

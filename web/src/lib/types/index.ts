@@ -36,11 +36,27 @@ export type IdentificadorCreateDto = Schemas['IdentificadorCreateDto'];
 export type IdentificadorResponseDto = Schemas['IdentificadorResponseDto'];
 
 // ── Aplicacao Vacina ─────────────────────────────────────────────────────────
-export type AplicacaoVacinaCreateDto = Schemas['AplicacaoVacinaCreateDto'];
-export type AplicacaoVacinaDetailResponseDto = Schemas['AplicacaoVacinaDetailResponseDto'];
-export type AplicacaoVacinaPatchDto = Schemas['AplicacaoVacinaPatchDto'];
-export type AplicacaoVacinaReadResponseDto = Schemas['AplicacaoVacinaReadResponseDto'];
+export type AplicacaoVacinaCreateDto = Schemas['AplicacaoVacinaCreateDto'] & {
+    animalProtocoloVacinalId?: string;
+    protocoloVacinalDoseId?: string;
+};
+export type AplicacaoVacinaDetailResponseDto = Schemas['AplicacaoVacinaDetailResponseDto'] & {
+    animalProtocoloVacinalId?: string | null;
+    protocoloVacinalDoseId?: string | null;
+};
+export type AplicacaoVacinaPatchDto = Schemas['AplicacaoVacinaPatchDto'] & {
+    animalProtocoloVacinalId?: string;
+    protocoloVacinalDoseId?: string;
+};
+export type AplicacaoVacinaReadResponseDto = Schemas['AplicacaoVacinaReadResponseDto'] & {
+    animalProtocoloVacinalId?: string | null;
+    protocoloVacinalDoseId?: string | null;
+};
 export type AplicacaoVacinaLoteCreateDto = Schemas['AplicacaoVacinaLoteCreateDto'];
+export type AplicacaoVacinaAssinaturaDto = Schemas['AplicacaoVacinaAssinaturaDto'];
+export type AssinaturaValidacaoResponseDto = Schemas['AssinaturaValidacaoResponseDto'];
+export type ValidacaoPublicaVacinaResponseDto = Schemas['ValidacaoPublicaVacinaResponseDto'];
+export type ComprovanteVacinasDadosResponseDto = Schemas['ComprovanteVacinasDadosResponseDto'];
 export type ItemAnimalLoteDto = Schemas['ItemAnimalLoteDto'];
 
 // ── Especie ──────────────────────────────────────────────────────────────────
@@ -64,6 +80,25 @@ export type VacinaPatchDto = Schemas['VacinaPatchDto'];
 export type VacinaReadResponseDto = Schemas['VacinaReadResponseDto'];
 export type VacinaShortResponseDto = Schemas['VacinaShortResponseDto'];
 
+// ── Protocolo vacinal e movimentação ────────────────────────────────────────
+export type StatusPendenciaVacinal = Schemas['StatusPendenciaVacinal'];
+export type TipoMovimentacaoAnimal = Schemas['TipoMovimentacaoAnimal'];
+export type ProtocoloVacinalDoseCreateDto = Schemas['ProtocoloVacinalDoseCreateDto'];
+export type ProtocoloVacinalCreateDto = Schemas['ProtocoloVacinalCreateDto'];
+export type ProtocoloVacinalPatchDto = Schemas['ProtocoloVacinalPatchDto'];
+export type ProtocoloVacinalDoseResponseDto = Schemas['ProtocoloVacinalDoseResponseDto'];
+export type ProtocoloVacinalReadResponseDto = Schemas['ProtocoloVacinalReadResponseDto'];
+export type ProtocoloVacinalDetailResponseDto = Schemas['ProtocoloVacinalDetailResponseDto'];
+export type AnimalProtocoloVacinalCreateDto = Schemas['AnimalProtocoloVacinalCreateDto'];
+export type AnimalProtocoloVacinalPatchDto = Schemas['AnimalProtocoloVacinalPatchDto'];
+export type AnimalProtocoloVacinalDoseResponseDto = Schemas['AnimalProtocoloVacinalDoseResponseDto'];
+export type AnimalProtocoloVacinalReadResponseDto = Schemas['AnimalProtocoloVacinalReadResponseDto'];
+export type ProtocoloVacinalPendenciaResponseDto = Schemas['ProtocoloVacinalPendenciaResponseDto'];
+export type MovimentacaoAnimalCreateDto = Schemas['MovimentacaoAnimalCreateDto'];
+export type MovimentacaoAnimalResponseDto = Schemas['MovimentacaoAnimalResponseDto'];
+export type ProtocoloVacinalSearchParams = NonNullable<paths['/api/v1/protocolos-vacinais']['get']['parameters']['query']>;
+export type MovimentacaoAnimalSearchParams = NonNullable<paths['/api/v1/movimentacoes-animais']['get']['parameters']['query']>;
+
 // ── Helpers de nome ──────────────────────────────────────────────────────────
 export function getAnimalName(animal?: { identificadorPrincipal?: any; name?: string | null } | null): string {
     if (!animal) return 'Sem nome';
@@ -85,6 +120,8 @@ export {
     PorteAnimalLabels,
     TipoIdentificadorLabels,
     StatusComprovanteLabels,
+    StatusPendenciaVacinalLabels,
+    TipoMovimentacaoAnimalLabels,
     calcularIdade,
     formatarPeriodo,
     hoje,

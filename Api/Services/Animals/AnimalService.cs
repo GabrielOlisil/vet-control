@@ -72,6 +72,18 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             }).ToList()
         };
 
+        if (!string.IsNullOrWhiteSpace(dto.LoteOuPasto))
+        {
+            animal.Movimentacoes.Add(new MovimentacaoAnimal
+            {
+                Id = Guid.NewGuid(),
+                DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
+                Tipo = TipoMovimentacaoAnimal.Entrada,
+                LocalDestino = dto.LoteOuPasto.Trim(),
+                Motivo = "Cadastro do animal"
+            });
+        }
+
         context.Animals.Add(animal);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -119,9 +131,39 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             animal.OrigemAnimal = dto.Origem.Value;
         }
 
+        var loteOuPastoAnterior = animal.LoteOuPasto;
         if (dto.LoteOuPastoWasProvided)
         {
             animal.LoteOuPasto = dto.LoteOuPasto;
+
+            if (!string.Equals(loteOuPastoAnterior?.Trim(), dto.LoteOuPasto?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(dto.LoteOuPasto))
+                {
+                    animal.Movimentacoes.Add(new MovimentacaoAnimal
+                    {
+                        Id = Guid.NewGuid(),
+                        DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
+                        Tipo = string.IsNullOrWhiteSpace(loteOuPastoAnterior)
+                            ? TipoMovimentacaoAnimal.Entrada
+                            : TipoMovimentacaoAnimal.Transferencia,
+                        LocalOrigem = loteOuPastoAnterior,
+                        LocalDestino = dto.LoteOuPasto.Trim(),
+                        Motivo = "Alteração de lote/pasto"
+                    });
+                }
+                else if (!string.IsNullOrWhiteSpace(loteOuPastoAnterior))
+                {
+                    animal.Movimentacoes.Add(new MovimentacaoAnimal
+                    {
+                        Id = Guid.NewGuid(),
+                        DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
+                        Tipo = TipoMovimentacaoAnimal.Saida,
+                        LocalOrigem = loteOuPastoAnterior,
+                        Motivo = "Remoção do lote/pasto atual"
+                    });
+                }
+            }
         }
 
         if (dto.Ativo.HasValue)

@@ -1,10 +1,26 @@
 import createClient from 'openapi-fetch';
 import type { paths } from '$lib/types/contract';
+import { csrfHeader, VET_API_URL } from '$lib/auth/session';
 
-export const API_BASE_URL = 'http://localhost:8080';
+export const API_BASE_URL = VET_API_URL;
 
 export const apiClient = createClient<paths>({
     baseUrl: API_BASE_URL,
+    credentials: 'include',
+});
+
+apiClient.use({
+    async onRequest({ request }) {
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) request.headers.set('X-CSRF-TOKEN', await csrfHeader());
+        return request;
+    },
+    onResponse({ response }) {
+        if (response.status === 401 && typeof window !== 'undefined' &&
+            !window.location.pathname.startsWith('/auth') && !window.location.pathname.startsWith('/validar-vacinacao')) {
+            window.location.assign(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        }
+        return response;
+    }
 });
 
 /**

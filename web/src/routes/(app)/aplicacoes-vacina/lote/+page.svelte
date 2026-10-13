@@ -46,8 +46,16 @@
     let vacinaId = $state("");
     let numeroLote = $state("");
     let doseMl = $state("");
+    let dataFabricacao = $state("");
+    let dataValidade = $state("");
     let dataAplicacao = $state(hoje());
     let dataProximaDose = $state("");
+    let localAplicacao = $state("");
+    let veterinarioResponsavel = $state("");
+    let veterinarioCrmv = $state("");
+    let veterinarioCrmvUf = $state("");
+    let aplicador = $state("");
+    let laboratorioFabricante = $state("");
     let observacoes = $state("");
 
     // ── Catálogos e Listas ────────────────────────────────────────────────────
@@ -252,10 +260,18 @@
                 vacinaId,
                 numeroLote: numeroLote.trim(),
                 doseMl: doseMl.trim() ? doseMl.trim() : undefined,
+                dataFabricacao: dataFabricacao || undefined,
+                dataValidade: dataValidade || undefined,
                 dataAplicacao: dataAplicacao || hoje(),
                 dataProximaDose: dataProximaDose.trim()
                     ? dataProximaDose.trim()
                     : undefined,
+                localAplicacao: localAplicacao.trim() || undefined,
+                veterinarioResponsavel: veterinarioResponsavel.trim() || undefined,
+                veterinarioCrmv: veterinarioCrmv.trim() || undefined,
+                veterinarioCrmvUf: veterinarioCrmvUf.trim().toUpperCase() || undefined,
+                aplicador: aplicador.trim() || undefined,
+                laboratorioFabricante: laboratorioFabricante.trim() || undefined,
                 observacoes: observacoes.trim()
                     ? observacoes.trim()
                     : undefined,
@@ -270,7 +286,15 @@
             bucket = [];
             numeroLote = "";
             doseMl = "";
+            dataFabricacao = "";
+            dataValidade = "";
             dataProximaDose = "";
+            localAplicacao = "";
+            veterinarioResponsavel = "";
+            veterinarioCrmv = "";
+            veterinarioCrmvUf = "";
+            aplicador = "";
+            laboratorioFabricante = "";
             observacoes = "";
         } catch (err: unknown) {
             errorMsg =
@@ -380,6 +404,9 @@
                             />
                         </div>
 
+                        <div><Input label="Data de fabricação" type="date" bind:value={dataFabricacao} /></div>
+                        <div><Input label="Data de validade" type="date" bind:value={dataValidade} /></div>
+
                         <!-- Data Aplicação -->
                         <div>
                             <Input
@@ -402,6 +429,13 @@
                                 exigir reforço.
                             </span>
                         </div>
+
+                        <div><Input label="Fabricante / Laboratório" bind:value={laboratorioFabricante} /></div>
+                        <div><Input label="Local da aplicação" bind:value={localAplicacao} /></div>
+                        <div><Input label="Veterinário responsável" bind:value={veterinarioResponsavel} /></div>
+                        <div><Input label="Aplicador" bind:value={aplicador} /></div>
+                        <div><Input label="CRMV" bind:value={veterinarioCrmv} /></div>
+                        <div><Input label="UF do CRMV" maxlength={2} bind:value={veterinarioCrmvUf} /></div>
 
                         <!-- Observações -->
                         <div class="sm:col-span-2">

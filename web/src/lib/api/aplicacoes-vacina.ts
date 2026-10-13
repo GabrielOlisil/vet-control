@@ -1,4 +1,4 @@
-import { apiClient, extractErrorMessage, API_BASE_URL } from './client';
+import { apiClient, extractErrorMessage } from './client';
 import {
     hoje,
     type AplicacaoVacinaReadResponseDto,
@@ -6,6 +6,10 @@ import {
     type AplicacaoVacinaCreateDto,
     type AplicacaoVacinaPatchDto,
     type AplicacaoVacinaLoteCreateDto,
+    type AplicacaoVacinaAssinaturaDto,
+    type AssinaturaValidacaoResponseDto,
+    type ValidacaoPublicaVacinaResponseDto,
+    type ComprovanteVacinasDadosResponseDto,
 } from '../types';
 
 export interface AplicacaoVacinaListParams {
@@ -23,6 +27,9 @@ export interface AplicacaoVacinaListParams {
     Proximas?: boolean;
     CicloFinalizado?: boolean;
     StatusComprovante?: number;
+    AnimalProtocoloVacinalId?: string;
+    ProtocoloVacinalDoseId?: string;
+    ProtocoloVacinalId?: string;
 }
 
 export interface AplicacaoVacinaCountParams {
@@ -39,6 +46,9 @@ export interface AplicacaoVacinaCountParams {
     CicloFinalizado?: boolean;
     StatusComprovante?: number;
     somenteAtrasadas?: boolean;
+    AnimalProtocoloVacinalId?: string;
+    ProtocoloVacinalDoseId?: string;
+    ProtocoloVacinalId?: string;
 }
 
 export interface AplicacaoVacinaAtrasadasParams {
@@ -80,7 +90,10 @@ export const aplicacaoVacinaService = {
                     Proximas: params?.Proximas,
                     CicloFinalizado: params?.CicloFinalizado,
                     StatusComprovante: params?.StatusComprovante as any,
-                },
+                    AnimalProtocoloVacinalId: params?.AnimalProtocoloVacinalId,
+                    ProtocoloVacinalDoseId: params?.ProtocoloVacinalDoseId,
+                    ProtocoloVacinalId: params?.ProtocoloVacinalId,
+                } as any,
             },
         });
         if (error) {
@@ -105,6 +118,9 @@ export const aplicacaoVacinaService = {
                     Proximas: params?.Proximas,
                     CicloFinalizado: params?.CicloFinalizado,
                     StatusComprovante: params?.StatusComprovante as any,
+                    AnimalProtocoloVacinalId: params?.AnimalProtocoloVacinalId,
+                    ProtocoloVacinalDoseId: params?.ProtocoloVacinalDoseId,
+                    ProtocoloVacinalId: params?.ProtocoloVacinalId,
                 } as any,
             },
         });
@@ -255,7 +271,12 @@ export const aplicacaoVacinaService = {
             dataAplicacao: dto.dataAplicacao || hoje(),
             dataProximaDose: dto.dataProximaDose?.trim() ? dto.dataProximaDose.trim() : undefined,
             doseMl: dto.doseMl !== undefined && dto.doseMl !== null && String(dto.doseMl).trim() !== '' ? String(dto.doseMl).trim() : undefined,
+            dataFabricacao: dto.dataFabricacao?.trim() || undefined,
+            dataValidade: dto.dataValidade?.trim() || undefined,
+            localAplicacao: dto.localAplicacao?.trim() || undefined,
             veterinarioResponsavel: dto.veterinarioResponsavel?.trim() || undefined,
+            veterinarioCrmv: dto.veterinarioCrmv?.trim() || undefined,
+            veterinarioCrmvUf: dto.veterinarioCrmvUf?.trim().toUpperCase() || undefined,
             aplicador: dto.aplicador?.trim() || undefined,
             laboratorioFabricante: dto.laboratorioFabricante?.trim() || undefined,
             observacoes: dto.observacoes?.trim() || undefined,
@@ -276,7 +297,12 @@ export const aplicacaoVacinaService = {
             numeroLote: dto.numeroLote !== undefined ? (dto.numeroLote?.trim() || null) : undefined,
             dataProximaDose: dto.dataProximaDose !== undefined ? (dto.dataProximaDose?.trim() || null) : undefined,
             doseMl: dto.doseMl !== undefined && dto.doseMl !== null && String(dto.doseMl).trim() !== '' ? String(dto.doseMl).trim() : undefined,
+            dataFabricacao: dto.dataFabricacao?.trim() || undefined,
+            dataValidade: dto.dataValidade?.trim() || undefined,
+            localAplicacao: dto.localAplicacao?.trim() || undefined,
             veterinarioResponsavel: dto.veterinarioResponsavel !== undefined ? (dto.veterinarioResponsavel?.trim() || null) : undefined,
+            veterinarioCrmv: dto.veterinarioCrmv !== undefined ? (dto.veterinarioCrmv?.trim() || null) : undefined,
+            veterinarioCrmvUf: dto.veterinarioCrmvUf !== undefined ? (dto.veterinarioCrmvUf?.trim().toUpperCase() || null) : undefined,
             aplicador: dto.aplicador !== undefined ? (dto.aplicador?.trim() || null) : undefined,
             laboratorioFabricante: dto.laboratorioFabricante !== undefined ? (dto.laboratorioFabricante?.trim() || null) : undefined,
             observacoes: dto.observacoes !== undefined ? (dto.observacoes?.trim() || null) : undefined,
@@ -305,24 +331,53 @@ export const aplicacaoVacinaService = {
         }
     },
 
-    async uploadComprovante(id: string, file: File): Promise<void> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const { error } = await apiClient.POST('/api/v1/aplicacoes-vacina/{id}/comprovante', {
+    async assinar(id: string, dto: AplicacaoVacinaAssinaturaDto): Promise<AplicacaoVacinaDetailResponseDto> {
+        const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina/{id}/assinar', {
             params: {
                 path: { id },
             },
-            body: formData as any,
-            bodySerializer(body) {
-                return body;
-            },
+            body: dto,
         });
-        if (error) {
-            throw new Error(extractErrorMessage(error, 'Erro ao anexar comprovante PDF'));
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao assinar aplicação'));
         }
+        return data;
     },
 
-    getComprovanteUrl(id: string): string {
-        return `${API_BASE_URL}/api/v1/aplicacoes-vacina/${id}/comprovante`;
+    async validarAssinatura(id: string): Promise<AssinaturaValidacaoResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/{id}/validar-assinatura', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao validar assinatura'));
+        }
+        return data;
+    },
+
+    async consultarValidacaoPublica(id: string): Promise<ValidacaoPublicaVacinaResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/validacao-vacinacao/{id}', {
+            params: {
+                path: { id },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao consultar validação pública'));
+        }
+        return data;
+    },
+
+    async getComprovanteVacinasDados(animalId: string, incluirNaoAssinadas = true): Promise<ComprovanteVacinasDadosResponseDto> {
+        const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/animal/{animalId}/comprovante-vacinas/dados', {
+            params: {
+                path: { animalId },
+                query: { incluirNaoAssinadas },
+            },
+        });
+        if (error || !data) {
+            throw new Error(extractErrorMessage(error, 'Erro ao carregar dados do comprovante'));
+        }
+        return data;
     },
 };

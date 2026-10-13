@@ -23,6 +23,8 @@ public class Animal : IAuditedEntity
     public Raca? Raca { get; set; }
     public List<AplicacaoVacina> VacinasAplicadas { get; set; } = [];
     public List<IdentificadorAnimal> Identificadores { get; set; } = [];
+    public List<AnimalProtocoloVacinal> ProtocolosVacinais { get; set; } = [];
+    public List<MovimentacaoAnimal> Movimentacoes { get; set; } = [];
 
 
     public DateTimeOffset CreationDateTime { get; set; }

@@ -7,10 +7,10 @@ WORKDIR /source
 COPY  VetControl.slnx .
 COPY ./Api/*.csproj ./Api/
 COPY ./Api/packages.lock.json ./Api
-RUN dotnet restore --locked-mode
+RUN dotnet restore Api/Api.csproj --locked-mode
 
 COPY ./Api/. ./Api/
-RUN dotnet build --no-restore
+RUN dotnet build Api/Api.csproj --no-restore
 
 WORKDIR /source/Api
 RUN dotnet tool install --global dotnet-ef

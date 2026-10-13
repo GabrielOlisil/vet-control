@@ -5,12 +5,14 @@
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
     import VacinaSelect from "$lib/components/VacinaSelect.svelte";
+    import ProtocoloVacinalSelect from "$lib/components/ProtocoloVacinalSelect.svelte";
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
     import { animalService } from "$lib/api/animais";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
-    import { vacinaService } from "$lib/api/vacinas";
+    import { protocoloVacinalService } from "$lib/api/protocolos-vacinais";
+    import { movimentacaoAnimalService } from "$lib/api/movimentacoes-animais";
     import {
         getAnimalName,
         calcularIdade,
@@ -21,20 +23,24 @@
         type AnimalProntuarioResponseDto,
         type AplicacaoVacinaDetailResponseDto,
         type AplicacaoVacinaCreateDto,
-        type VacinaReadResponseDto,
-        type VacinaShortResponseDto,
+        type AplicacaoVacinaAssinaturaDto,
+        type AssinaturaValidacaoResponseDto,
+        type AnimalProtocoloVacinalReadResponseDto,
+        type MovimentacaoAnimalResponseDto,
+        type TipoMovimentacaoAnimal,
+        TipoMovimentacaoAnimalLabels,
+        StatusPendenciaVacinalLabels,
     } from "$lib/types";
 
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
-    import IconUpload from "@iconify-svelte/material-symbols/upload-rounded";
-    import IconDownload from "@iconify-svelte/material-symbols/download-rounded";
 
     const animalId = $page.params.id ?? "";
 
     // ── Estado ────────────────────────────────────────────────────────────────
     let prontuario = $state<AnimalProntuarioResponseDto | null>(null);
-    let vacinas = $state<VacinaReadResponseDto[]>([]);
+    let animalProtocolos = $state<AnimalProtocoloVacinalReadResponseDto[]>([]);
+    let movimentacoes = $state<MovimentacaoAnimalResponseDto[]>([]);
     let isLoading = $state(true);
     let loadError = $state("");
 
@@ -49,11 +55,29 @@
         dataProximaDose: "",
         numeroLote: "",
         doseMl: "",
+        dataFabricacao: "",
+        dataValidade: "",
+        localAplicacao: "",
         veterinarioResponsavel: "",
+        veterinarioCrmv: "",
+        veterinarioCrmvUf: "",
         aplicador: "",
         laboratorioFabricante: "",
         observacoes: "",
+        animalProtocoloVacinalId: undefined,
+        protocoloVacinalDoseId: undefined,
     });
+
+    let selectedProtocolId = $state("");
+    let selectedDoseId = $state("");
+
+    function syncProtocolDose() {
+        vacinarForm.animalProtocoloVacinalId = selectedProtocolId || undefined;
+        vacinarForm.protocoloVacinalDoseId = selectedDoseId || undefined;
+        const protocol = animalProtocolos.find((p) => p.id === selectedProtocolId);
+        const dose = protocol?.doses?.find((d) => d.protocoloVacinalDoseId === selectedDoseId);
+        if (dose?.vacina?.id) vacinarForm.vacinaId = dose.vacina.id;
+    }
 
     function openVacinarModal() {
         vacinarForm = {
@@ -63,19 +87,109 @@
             dataProximaDose: "",
             numeroLote: "",
             doseMl: "",
+            dataFabricacao: "",
+            dataValidade: "",
+            localAplicacao: "",
             veterinarioResponsavel: "",
+            veterinarioCrmv: "",
+            veterinarioCrmvUf: "",
             aplicador: "",
             laboratorioFabricante: "",
             observacoes: "",
+            animalProtocoloVacinalId: undefined,
+            protocoloVacinalDoseId: undefined,
         };
+        selectedProtocolId = "";
+        selectedDoseId = "";
         vacinarError = "";
         showVacinarModal = true;
+    }
+
+    // ── Modal: Atribuir protocolo ao animal ──────────────────────────────────
+    let showProtocolModal = $state(false);
+    let isSubmittingProtocol = $state(false);
+    let protocolError = $state("");
+    let assignmentProtocolId = $state("");
+    let assignmentStartDate = $state(hoje());
+    let assignmentNotes = $state("");
+
+    function openProtocolModal() {
+        assignmentProtocolId = "";
+        assignmentStartDate = hoje();
+        assignmentNotes = "";
+        protocolError = "";
+        showProtocolModal = true;
+    }
+
+    async function submitProtocol() {
+        if (!assignmentProtocolId) {
+            protocolError = "Selecione um protocolo.";
+            return;
+        }
+        isSubmittingProtocol = true;
+        try {
+            await protocoloVacinalService.assignToAnimal(animalId, {
+                protocoloVacinalId: assignmentProtocolId,
+                dataInicio: assignmentStartDate,
+                ativo: true,
+                observacoes: assignmentNotes.trim() || null,
+            });
+            showProtocolModal = false;
+            await load();
+        } catch (e) {
+            protocolError = e instanceof Error ? e.message : "Erro ao atribuir protocolo.";
+        } finally {
+            isSubmittingProtocol = false;
+        }
+    }
+
+    async function toggleProtocol(protocol: AnimalProtocoloVacinalReadResponseDto) {
+        if (!protocol.id) return;
+        try {
+            await protocoloVacinalService.patchAnimalProtocol(animalId, protocol.id, { ativo: !protocol.ativo });
+            await load();
+        } catch (e) {
+            alert(e instanceof Error ? e.message : "Erro ao atualizar protocolo.");
+        }
+    }
+
+    // ── Modal: Registrar movimentação ────────────────────────────────────────
+    let showMovementModal = $state(false);
+    let isSubmittingMovement = $state(false);
+    let movementError = $state("");
+    let movementForm = $state<any>({ dataMovimentacao: hoje(), tipo: "Transferencia", localOrigem: "", localDestino: "", motivo: "", observacoes: "" });
+
+    function openMovementModal() {
+        movementForm = { dataMovimentacao: hoje(), tipo: "Transferencia", localOrigem: animal?.loteOuPasto ?? "", localDestino: "", motivo: "", observacoes: "" };
+        movementError = "";
+        showMovementModal = true;
+    }
+
+    async function submitMovement() {
+        if (!movementForm.localDestino?.trim() && movementForm.tipo !== "Saida") {
+            movementError = "Informe o local de destino.";
+            return;
+        }
+        isSubmittingMovement = true;
+        try {
+            await movimentacaoAnimalService.create(animalId, { ...movementForm, localOrigem: movementForm.localOrigem.trim() || null, localDestino: movementForm.localDestino.trim() || null, motivo: movementForm.motivo.trim() || null, observacoes: movementForm.observacoes.trim() || null });
+            showMovementModal = false;
+            await load();
+        } catch (e) {
+            movementError = e instanceof Error ? e.message : "Erro ao registrar movimentação.";
+        } finally {
+            isSubmittingMovement = false;
+        }
     }
 
     async function submitVacinar() {
         vacinarError = "";
         if (!vacinarForm.vacinaId) {
             vacinarError = "Selecione a vacina.";
+            return;
+        }
+        if (selectedProtocolId && !selectedDoseId) {
+            vacinarError = "Selecione a dose prevista ou remova o vínculo com o protocolo.";
             return;
         }
         if (!vacinarForm.numeroLote?.trim()) {
@@ -99,38 +213,70 @@
         }
     }
 
-    // ── Modal: Upload Comprovante ─────────────────────────────────────────────
-    let showUploadModal = $state(false);
-    let uploadTargetAplicacao = $state<AplicacaoVacinaDetailResponseDto | null>(
-        null,
-    );
-    let uploadFile = $state<File | null>(null);
-    let isUploading = $state(false);
-    let uploadError = $state("");
+    // ── Modal: Assinatura interna auditável ──────────────────────────────────
+    let showSignatureModal = $state(false);
+    let signatureTargetAplicacao = $state<AplicacaoVacinaDetailResponseDto | null>(null);
+    let isSigning = $state(false);
+    let signatureError = $state("");
+    let signatureForm = $state<AplicacaoVacinaAssinaturaDto>({
+        nomeAssinante: "",
+        crmv: "",
+        crmvUf: "",
+        observacoes: "",
+    });
 
-    function openUpload(apl: AplicacaoVacinaDetailResponseDto) {
-        uploadTargetAplicacao = apl;
-        uploadFile = null;
-        uploadError = "";
-        showUploadModal = true;
+    // ── Validação da assinatura ─────────────────────────────────────────────
+    let showValidationModal = $state(false);
+    let isValidatingSignature = $state(false);
+    let validationError = $state("");
+    let validationResult = $state<AssinaturaValidacaoResponseDto | null>(null);
+    let validationTarget = $state<AplicacaoVacinaDetailResponseDto | null>(null);
+
+    function openSignature(apl: AplicacaoVacinaDetailResponseDto) {
+        signatureTargetAplicacao = apl;
+        signatureForm = { nomeAssinante: "", crmv: "", crmvUf: "", observacoes: "" };
+        signatureError = "";
+        showSignatureModal = true;
     }
 
-    async function submitUpload() {
-        if (!uploadFile || !uploadTargetAplicacao?.id) return;
-        uploadError = "";
-        isUploading = true;
+    async function submitSignature() {
+        if (!signatureTargetAplicacao?.id) return;
+        if (!signatureForm.nomeAssinante?.trim() || !signatureForm.crmv?.trim() || !signatureForm.crmvUf?.trim()) {
+            signatureError = "Informe nome, CRMV e UF do veterinário assinante.";
+            return;
+        }
+        signatureError = "";
+        isSigning = true;
         try {
-            await aplicacaoVacinaService.uploadComprovante(
-                uploadTargetAplicacao.id,
-                uploadFile,
-            );
-            showUploadModal = false;
+            await aplicacaoVacinaService.assinar(signatureTargetAplicacao.id, {
+                ...signatureForm,
+                nomeAssinante: signatureForm.nomeAssinante.trim(),
+                crmv: signatureForm.crmv.trim(),
+                crmvUf: signatureForm.crmvUf.trim().toUpperCase(),
+                observacoes: signatureForm.observacoes?.trim() || undefined,
+            });
+            showSignatureModal = false;
             await load();
         } catch (e: unknown) {
-            uploadError =
-                e instanceof Error ? e.message : "Erro ao fazer upload.";
+            signatureError = e instanceof Error ? e.message : "Erro ao assinar aplicação.";
         } finally {
-            isUploading = false;
+            isSigning = false;
+        }
+    }
+
+    async function validateSignature(apl: AplicacaoVacinaDetailResponseDto) {
+        if (!apl.id) return;
+        validationTarget = apl;
+        validationResult = null;
+        validationError = "";
+        showValidationModal = true;
+        isValidatingSignature = true;
+        try {
+            validationResult = await aplicacaoVacinaService.validarAssinatura(apl.id);
+        } catch (e: unknown) {
+            validationError = e instanceof Error ? e.message : "Erro ao validar assinatura.";
+        } finally {
+            isValidatingSignature = false;
         }
     }
 
@@ -162,9 +308,14 @@
     // ── Carregar ──────────────────────────────────────────────────────────────
     async function load() {
         try {
-            const pron = await animalService.getProntuario(animalId);
-
+            const [pron, protocols, movements] = await Promise.all([
+                animalService.getProntuario(animalId),
+                protocoloVacinalService.getAnimalProtocols(animalId),
+                movimentacaoAnimalService.getByAnimal(animalId),
+            ]);
             prontuario = pron;
+            animalProtocolos = protocols;
+            movimentacoes = movements;
         } catch (e: unknown) {
             loadError =
                 e instanceof Error ? e.message : "Erro ao carregar prontuário.";
@@ -282,12 +433,44 @@
             </div>
         </div>
 
+        <!-- ── Protocolos Vacinais ────────────────────────────────────────── -->
+        <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3">
+                <div><h2 class="font-semibold">Protocolos vacinais</h2><p class="text-xs text-base-content/60">Acompanhe o calendário previsto por animal.</p></div>
+                <button class="btn btn-primary btn-sm" onclick={openProtocolModal}>Atribuir protocolo</button>
+            </div>
+            {#if animalProtocolos.length === 0}
+                <div class="p-8 text-center text-base-content/50">Nenhum protocolo atribuído a este animal.</div>
+            {:else}
+                <div class="divide-y divide-base-200">{#each animalProtocolos as protocol}
+                    <div class="p-5">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div><h3 class="font-bold">{protocol.protocoloVacinal?.nome ?? "Protocolo"}</h3><p class="text-xs text-base-content/60">Início: {formatDate(protocol.dataInicio)} · {protocol.protocoloVacinal?.finalidade ?? "Sem finalidade"}</p></div>
+                            <div class="flex items-center gap-2"><span class="badge {protocol.ativo ? 'badge-success' : 'badge-ghost'}">{protocol.ativo ? "Ativo" : "Inativo"}</span><button class="btn btn-ghost btn-xs" onclick={() => toggleProtocol(protocol)}>{protocol.ativo ? "Inativar" : "Reativar"}</button></div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mt-3 text-xs"><span class="badge badge-success badge-outline">{protocol.dosesConcluidas} concluída(s)</span><span class="badge badge-warning badge-outline">{protocol.dosesPendentes} pendente(s)</span><span class="badge badge-error badge-outline">{protocol.dosesAtrasadas} atrasada(s)</span></div>
+                        <div class="overflow-x-auto mt-3"><table class="table table-xs"><thead><tr><th>Dose</th><th>Vacina</th><th>Prevista</th><th>Aplicada</th><th>Status</th></tr></thead><tbody>{#each protocol.doses ?? [] as dose}
+                            <tr><td>{dose.ordem}</td><td>{dose.vacina?.name ?? "—"}</td><td>{formatDate(dose.dataPrevista)}</td><td>{formatDate(dose.dataAplicacao)}</td><td><span class="badge badge-sm {dose.status === 'Concluida' ? 'badge-success' : dose.status === 'Atrasada' ? 'badge-error' : 'badge-warning'}">{StatusPendenciaVacinalLabels[dose.status ?? "Pendente"]}</span></td></tr>
+                        {/each}</tbody></table></div>
+                    </div>
+                {/each}</div>
+            {/if}
+        </div>
+
         <!-- ── Histórico Vacinal ──────────────────────────────────────────── -->
         <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
-            <div class="px-5 py-4 border-b border-base-200">
+            <div class="px-5 py-4 border-b border-base-200 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="font-semibold">
                     Histórico Vacinal — {aplicacoes.length} dose(s)
                 </h2>
+                <a
+                    class="btn btn-outline btn-sm"
+                    href={`/comprovante-vacinas/${animalId}?incluirNaoAssinadas=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir comprovante para impressão
+                </a>
             </div>
 
             {#if aplicacoes.length === 0}
@@ -370,41 +553,31 @@
                                         <ComprovanteStatusBadge
                                             status={apl.statusComprovante ??
                                                 "NaoEmitido"}
-                                            temComprovanteAnexo={apl.temComprovanteAnexo ??
-                                                false}
-                                            aplicacaoId={apl.id!}
                                         />
                                     </td>
                                     <td class="text-right">
                                         <div class="flex justify-end gap-1">
-                                            {#if !apl.temComprovanteAnexo}
+                                            {#if apl.statusComprovante !== "Assinado"}
                                                 <button
                                                     class="btn btn-xs btn-ghost gap-1"
-                                                    onclick={() =>
-                                                        openUpload(apl)}
-                                                    title="Anexar PDF assinado"
+                                                    onclick={() => openSignature(apl)}
+                                                    title="Assinar aplicação"
                                                 >
-                                                    <IconUpload
-                                                        width="13"
-                                                        height="13"
-                                                    />
-                                                    Anexar
+                                                    Assinar
                                                 </button>
                                             {:else}
-                                                <a
-                                                    href={aplicacaoVacinaService.getComprovanteUrl(
-                                                        apl.id!,
-                                                    )}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                <button
                                                     class="btn btn-xs btn-ghost gap-1"
+                                                    onclick={() => validateSignature(apl)}
+                                                    disabled={isValidatingSignature && validationTarget?.id === apl.id}
+                                                    title="Validar integridade da assinatura"
                                                 >
-                                                    <IconDownload
-                                                        width="13"
-                                                        height="13"
-                                                    />
-                                                    Atestado
-                                                </a>
+                                                    {#if isValidatingSignature && validationTarget?.id === apl.id}
+                                                        <span class="loading loading-spinner loading-xs"></span>
+                                                    {:else}
+                                                        Validar
+                                                    {/if}
+                                                </button>
                                             {/if}
                                             <button
                                                 class="btn btn-xs btn-ghost text-error"
@@ -434,6 +607,16 @@
                 </div>
             {/if}
         </div>
+
+        <!-- ── Histórico de Movimentação ──────────────────────────────────── -->
+        <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3"><div><h2 class="font-semibold">Histórico de movimentação</h2><p class="text-xs text-base-content/60">Entradas, transferências, saídas e ajustes de lote/pasto.</p></div><button class="btn btn-outline btn-sm" onclick={openMovementModal}>Registrar movimentação</button></div>
+            {#if movimentacoes.length === 0}<div class="p-8 text-center text-base-content/50">Nenhuma movimentação registrada.</div>{:else}
+                <div class="overflow-x-auto"><table class="table table-sm"><thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Destino</th><th>Motivo</th><th>Observações</th></tr></thead><tbody>{#each movimentacoes as movement}
+                    <tr><td>{formatDate(movement.dataMovimentacao)}</td><td><span class="badge badge-outline">{TipoMovimentacaoAnimalLabels[movement.tipo ?? "Ajuste"]}</span></td><td>{movement.localOrigem || "—"}</td><td>{movement.localDestino || "—"}</td><td>{movement.motivo || "—"}</td><td>{movement.observacoes || "—"}</td></tr>
+                {/each}</tbody></table></div>
+            {/if}
+        </div>
     </div>
 {/if}
 
@@ -452,6 +635,16 @@
         <div class="alert alert-error text-sm py-2">{vacinarError}</div>
     {/if}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+            <span class="label label-text text-xs">Vincular a protocolo (opcional)</span>
+            <select class="select select-bordered w-full" bind:value={selectedProtocolId} onchange={syncProtocolDose}>
+                <option value="">Aplicação avulsa</option>
+                {#each animalProtocolos.filter((p) => p.ativo) as protocol}<option value={protocol.id}>{protocol.protocoloVacinal?.nome}</option>{/each}
+            </select>
+        </div>
+        {#if selectedProtocolId}
+            <div class="sm:col-span-2"><span class="label label-text text-xs">Dose prevista</span><select class="select select-bordered w-full" bind:value={selectedDoseId} onchange={syncProtocolDose}><option value="">Selecione a dose</option>{#each animalProtocolos.find((p) => p.id === selectedProtocolId)?.doses ?? [] as dose}<option value={dose.protocoloVacinalDoseId}>Dose {dose.ordem} — {dose.vacina?.name}</option>{/each}</select></div>
+        {/if}
         <div class="sm:col-span-2">
             <VacinaSelect
                 label="Vacina *"
@@ -495,6 +688,12 @@
                 bind:value={vacinarForm.doseMl}
             />
         </div>
+        <div>
+            <Input label="Data de fabricação" type="date" bind:value={vacinarForm.dataFabricacao} />
+        </div>
+        <div>
+            <Input label="Data de validade" type="date" bind:value={vacinarForm.dataValidade} />
+        </div>
         <div class="sm:col-span-2">
             <Input
                 label="Veterinário Responsável *"
@@ -517,6 +716,15 @@
                 bind:value={vacinarForm.laboratorioFabricante}
             />
         </div>
+        <div>
+            <Input label="CRMV" bind:value={vacinarForm.veterinarioCrmv} />
+        </div>
+        <div>
+            <Input label="UF do CRMV" maxlength={2} bind:value={vacinarForm.veterinarioCrmvUf} />
+        </div>
+        <div class="sm:col-span-2">
+            <Input label="Local da aplicação" bind:value={vacinarForm.localAplicacao} />
+        </div>
         <div class="sm:col-span-2">
             <label class="label label-text text-xs">Observações</label>
             <textarea
@@ -528,36 +736,139 @@
     </div>
 </FormModal>
 
-<!-- ── Modal: Upload Comprovante ─────────────────────────────────────────── -->
+<FormModal isOpen={showProtocolModal} title="Atribuir protocolo ao animal" isLoading={isSubmittingProtocol} submitText="Atribuir" onClose={() => showProtocolModal = false} onSubmit={submitProtocol}>
+    {#if protocolError}<div class="alert alert-error text-sm py-2">{protocolError}</div>{/if}
+    <ProtocoloVacinalSelect
+        label="Protocolo *"
+        placeholder="Buscar protocolo..."
+        bind:value={assignmentProtocolId}
+        onlyActive
+        required
+    />
+    <Input label="Data de início *" type="date" bind:value={assignmentStartDate} required />
+    <label class="form-control"><span class="label-text">Observações</span><textarea class="textarea textarea-bordered" bind:value={assignmentNotes}></textarea></label>
+</FormModal>
+
+<FormModal isOpen={showMovementModal} title="Registrar movimentação" isLoading={isSubmittingMovement} submitText="Registrar" onClose={() => showMovementModal = false} onSubmit={submitMovement}>
+    {#if movementError}<div class="alert alert-error text-sm py-2">{movementError}</div>{/if}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Input label="Data *" type="date" bind:value={movementForm.dataMovimentacao} required />
+        <label class="form-control"><span class="label-text">Tipo *</span><select class="select select-bordered" bind:value={movementForm.tipo}>{#each Object.keys(TipoMovimentacaoAnimalLabels) as type}<option value={type}>{TipoMovimentacaoAnimalLabels[type]}</option>{/each}</select></label>
+        <Input label="Local de origem" bind:value={movementForm.localOrigem} />
+        <Input label="Local de destino" bind:value={movementForm.localDestino} />
+        <div class="sm:col-span-2"><Input label="Motivo" bind:value={movementForm.motivo} placeholder="Ex.: mudança de lote, venda, retorno" /></div>
+        <label class="form-control sm:col-span-2"><span class="label-text">Observações</span><textarea class="textarea textarea-bordered" bind:value={movementForm.observacoes}></textarea></label>
+    </div>
+</FormModal>
+
+<!-- ── Modal: Assinatura interna auditável ───────────────────────────────── -->
 <FormModal
-    isOpen={showUploadModal}
-    title="Anexar Comprovante Assinado (PDF)"
-    isLoading={isUploading}
-    submitText="Enviar PDF"
+    isOpen={showSignatureModal}
+    title="Assinar aplicação de vacina"
+    isLoading={isSigning}
+    submitText="Assinar aplicação"
     onClose={() => {
-        showUploadModal = false;
+        showSignatureModal = false;
     }}
-    onSubmit={submitUpload}
+    onSubmit={submitSignature}
 >
-    {#if uploadError}
-        <div class="alert alert-error text-sm py-2">{uploadError}</div>
+    {#if signatureError}
+        <div class="alert alert-error text-sm py-2">{signatureError}</div>
     {/if}
     <p class="text-sm text-base-content/70 mb-3">
-        Vacina: <strong>{uploadTargetAplicacao?.vacina?.name ?? "—"}</strong><br
+        Vacina: <strong>{signatureTargetAplicacao?.vacina?.name ?? "—"}</strong><br
         />
         Aplicada em:
-        <strong>{formatDate(uploadTargetAplicacao?.dataAplicacao)}</strong>
+        <strong>{formatDate(signatureTargetAplicacao?.dataAplicacao)}</strong>
     </p>
-    <input
-        type="file"
-        accept=".pdf,application/pdf"
-        class="file-input file-input-bordered w-full"
-        onchange={(e) => {
-            const input = e.currentTarget as HTMLInputElement;
-            uploadFile = input.files?.[0] ?? null;
-        }}
-    />
+    <p class="text-xs text-base-content/70 mb-3">
+        A assinatura ficará vinculada ao conteúdo atual da aplicação e será registrada no histórico de auditoria.
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2"><Input label="Nome do veterinário *" bind:value={signatureForm.nomeAssinante} required /></div>
+        <Input label="CRMV *" bind:value={signatureForm.crmv} required />
+        <Input label="UF *" maxlength={2} bind:value={signatureForm.crmvUf} required />
+        <div class="sm:col-span-2">
+            <label class="label label-text text-xs" for="assinaturaObservacoesProntuario">Observações da assinatura</label>
+            <textarea id="assinaturaObservacoesProntuario" class="textarea textarea-bordered w-full" rows="2" bind:value={signatureForm.observacoes}></textarea>
+        </div>
+    </div>
 </FormModal>
+
+{#if showValidationModal}
+    <dialog class="modal modal-open" open>
+        <div class="modal-box bg-base-100 text-base-content shadow-2xl max-w-lg">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="font-bold text-lg">Validação da assinatura</h3>
+                    <p class="text-sm text-base-content/70 mt-1">
+                        {validationTarget?.vacina?.name ?? "Aplicação de vacina"}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-circle btn-ghost"
+                    aria-label="Fechar"
+                    onclick={() => (showValidationModal = false)}
+                >
+                    ✕
+                </button>
+            </div>
+
+            {#if isValidatingSignature}
+                <div class="flex items-center gap-3 py-8 text-sm text-base-content/70">
+                    <span class="loading loading-spinner loading-md text-primary"></span>
+                    Conferindo hash e auditoria...
+                </div>
+            {:else if validationError}
+                <div class="alert alert-error mt-5 text-sm">{validationError}</div>
+            {:else if validationResult}
+                <div class="mt-5 space-y-4">
+                    <div class="alert {validationResult.integra ? 'alert-success' : validationResult.assinada ? 'alert-error' : 'alert-warning'}">
+                        <div>
+                            <p class="font-semibold">
+                                {validationResult.integra
+                                    ? "Assinatura íntegra"
+                                    : validationResult.assinada
+                                      ? "Assinatura inválida"
+                                      : "Aplicação não assinada"}
+                            </p>
+                            <p class="text-sm">{validationResult.mensagem}</p>
+                        </div>
+                    </div>
+                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <dt class="text-base-content/60">Hash do conteúdo</dt>
+                            <dd class="font-mono text-xs break-all mt-1">{validationResult.hashArmazenado ?? "—"}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-base-content/60">Hash recalculado</dt>
+                            <dd class="font-mono text-xs break-all mt-1">{validationResult.hashCalculado ?? "—"}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-base-content/60">Auditoria</dt>
+                            <dd class="mt-1">{validationResult.auditoriaIntegra ? "Conferida" : "Não conferida"}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-base-content/60">Assinada em</dt>
+                            <dd class="mt-1">{formatDate(validationResult.assinadaEm)}</dd>
+                        </div>
+                    </dl>
+                </div>
+            {/if}
+
+            <div class="modal-action">
+                <button type="button" class="btn" onclick={() => (showValidationModal = false)}>Fechar</button>
+            </div>
+        </div>
+        <button
+            type="button"
+            class="modal-backdrop bg-black/40 backdrop-blur-xs cursor-default"
+            onclick={() => (showValidationModal = false)}
+            aria-label="Fechar"
+        ></button>
+    </dialog>
+{/if}
 
 <!-- ── Modal: Excluir Aplicação ──────────────────────────────────────────── -->
 <Modal

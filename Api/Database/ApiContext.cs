@@ -11,6 +11,11 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
     public DbSet<IdentificadorAnimal> IdentificadorAnimal { get; set; }
     public DbSet<Vacina> Vacinas { get; set; }
     public DbSet<AplicacaoVacina> AplicacoesVacina { get; set; }
+    public DbSet<ProtocoloVacinal> ProtocolosVacinais { get; set; }
+    public DbSet<ProtocoloVacinalDose> ProtocoloVacinalDoses { get; set; }
+    public DbSet<AnimalProtocoloVacinal> AnimalProtocolosVacinais { get; set; }
+    public DbSet<MovimentacaoAnimal> MovimentacoesAnimais { get; set; }
+    public DbSet<AssinaturaAplicacaoVacina> AssinaturasAplicacoesVacina { get; set; }
 
 
 

@@ -11,6 +11,7 @@
         min = undefined,
         max = undefined,
         step = undefined,
+        maxlength = undefined,
         onChange = null,
         list = undefined,
     }: {
@@ -25,6 +26,7 @@
         min?: number | string;
         max?: number | string;
         step?: number | string;
+        maxlength?: number;
         onChange?: ((value: any) => void) | null;
         list?: string | undefined;
     } = $props();
@@ -67,6 +69,7 @@
         {min}
         {max}
         {step}
+        {maxlength}
         {list}
         onchange={handleChange}
         oninput={handleChange}

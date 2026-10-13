@@ -47,6 +47,12 @@ public class ErrorHandler(ILogger<ErrorHandler> logger) : IExceptionHandler
             ArgumentException argumentException => new ErrorResponse(StatusCodes.Status400BadRequest,
                 "Invalid request.",
                 argumentException.Message),
+            InvalidOperationException invalidOperationException when invalidOperationException.Message.StartsWith("IDX20803", StringComparison.Ordinal) =>
+                new ErrorResponse(StatusCodes.Status503ServiceUnavailable, "Authentication provider unavailable.",
+                    "The authentication provider is temporarily unavailable."),
+            InvalidOperationException invalidOperationException => new ErrorResponse(StatusCodes.Status409Conflict,
+                "Conflict.",
+                invalidOperationException.Message),
             ValidationException validationException => new ErrorResponse(StatusCodes.Status400BadRequest,
                 "Validation failed.",
                 validationException.Message),

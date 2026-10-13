@@ -54,6 +54,19 @@ export const StatusComprovanteLabels: Record<
     Assinado: 'badge-success',
 };
 
+export const StatusPendenciaVacinalLabels: Record<string, string> = {
+    Pendente: 'Pendente',
+    Atrasada: 'Atrasada',
+    Concluida: 'Concluída',
+};
+
+export const TipoMovimentacaoAnimalLabels: Record<string, string> = {
+    Entrada: 'Entrada',
+    Transferencia: 'Transferência',
+    Saida: 'Saída',
+    Ajuste: 'Ajuste',
+};
+
 /**
  * Calcula a idade em anos/meses a partir de uma data ISO (YYYY-MM-DD).
  */

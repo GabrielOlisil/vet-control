@@ -17,6 +17,7 @@ public class Vacina : IAuditedEntity
 
 
     public List<AplicacaoVacina> Aplicacoes { get; set; } = [];
+    public List<ProtocoloVacinalDose> DosesProtocolos { get; set; } = [];
 
     public Especie? Especie { get; set; }
     public DateTimeOffset CreationDateTime { get; set; }

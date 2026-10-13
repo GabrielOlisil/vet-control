@@ -30,6 +30,17 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return Ok(response);
     }
 
+    [HttpGet("{id:guid}/validar-assinatura")]
+    public async Task<ActionResult<AssinaturaValidacaoResponseDto>> ValidarAssinatura(Guid id,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await aplicacaoVacinaService.ValidarAssinaturaAsync(id, cancellationToken);
+        if (resultado is null)
+            return NotFound();
+
+        return Ok(resultado);
+    }
+
     [HttpGet("count")]
     public async Task<ActionResult<int>> Count(
         [FromQuery] AplicacaoVacinaSearchDto? search = null,
@@ -147,6 +158,21 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return Ok(response);
     }
 
+    [HttpPost("{id:guid}/assinar")]
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Assinar(Guid id,
+        AplicacaoVacinaAssinaturaDto dto, CancellationToken cancellationToken)
+    {
+        var aplicacao = await aplicacaoVacinaService.AssinarAsync(id, dto, cancellationToken);
+        if (aplicacao is null)
+            return NotFound();
+
+        var fullAplicacao = await aplicacaoVacinaService.GetByIdAsync(id, cancellationToken);
+        if (fullAplicacao is null)
+            return BadRequest();
+
+        return Ok(AplicacaoVacinaMapper.MapToResponse(fullAplicacao));
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -154,22 +180,15 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return deleted ? NoContent() : NotFound();
     }
 
-    [HttpPost("{id:guid}/comprovante")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadComprovante(Guid id, IFormFile file, CancellationToken ct)
+    [HttpGet("animal/{animalId:guid}/comprovante-vacinas/dados")]
+    public async Task<ActionResult<ComprovanteVacinasDadosResponseDto>> GetComprovanteVacinasDados(Guid animalId,
+        [FromQuery] bool incluirNaoAssinadas = true, CancellationToken cancellationToken = default)
     {
-        if (file == null || file.Length == 0) return BadRequest("Arquivo inválido.");
-        if (file.ContentType != "application/pdf") return BadRequest("Apenas arquivos PDF são aceitos.");
-        using var stream = file.OpenReadStream();
-        var ok = await aplicacaoVacinaService.UploadComprovanteAsync(id, stream, file.ContentType, ct);
-        return ok ? NoContent() : NotFound();
-    }
+        var result = await aplicacaoVacinaService.GetComprovanteVacinasDadosAsync(animalId, incluirNaoAssinadas,
+            cancellationToken);
+        if (result is null)
+            return NotFound();
 
-    [HttpGet("{id:guid}/comprovante")]
-    public async Task<IActionResult> DownloadComprovante(Guid id, CancellationToken ct)
-    {
-        var result = await aplicacaoVacinaService.GetComprovanteAsync(id, ct);
-        if (result == null) return NotFound();
-        return File(result.Value.Bytes, result.Value.ContentType, $"comprovante-{id}.pdf");
+        return Ok(result);
     }
 }
