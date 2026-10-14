@@ -1,6 +1,7 @@
 using Api.Database;
 using Api.DTOs;
 using Api.Models;
+using Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.MovimentacoesAnimais;
@@ -41,17 +42,33 @@ public sealed class MovimentacaoAnimalService(ApiContext context) : IMovimentaca
         if (animal is null)
             throw new KeyNotFoundException($"Animal com Id '{animalId}' não encontrado.");
 
+        var localOrigem = Normalize(dto.LocalOrigem) ?? Normalize(animal.LoteOuPasto);
+        var localDestino = Normalize(dto.LocalDestino);
+
+        if ((dto.Tipo is TipoMovimentacaoAnimal.Entrada or TipoMovimentacaoAnimal.Transferencia) &&
+            string.IsNullOrWhiteSpace(localDestino))
+        {
+            throw new ArgumentException("Movimentações de entrada e transferência exigem um local de destino.");
+        }
+
         var movimentacao = new MovimentacaoAnimal
         {
             Id = Guid.NewGuid(),
             AnimalId = animalId,
             DataMovimentacao = dto.DataMovimentacao,
             Tipo = dto.Tipo,
-            LocalOrigem = Normalize(dto.LocalOrigem),
-            LocalDestino = Normalize(dto.LocalDestino),
+            LocalOrigem = localOrigem,
+            LocalDestino = localDestino,
             Motivo = Normalize(dto.Motivo),
             Observacoes = Normalize(dto.Observacoes)
         };
+
+        // O histórico é append-only: uma correção deve gerar um novo ajuste.
+        // O estado atual do animal acompanha o último evento operacional.
+        if (dto.Tipo == TipoMovimentacaoAnimal.Saida)
+            animal.LoteOuPasto = null;
+        else if (!string.IsNullOrWhiteSpace(localDestino))
+            animal.LoteOuPasto = localDestino;
 
         context.MovimentacoesAnimais.Add(movimentacao);
         await context.SaveChangesAsync(cancellationToken);

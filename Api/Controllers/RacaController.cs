@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.Racas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers;
@@ -54,6 +56,7 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult<RacaDetailResponseDto>> Create(RacaCreateDto dto, CancellationToken cancellationToken)
     {
         var raca = await racaService.CreateAsync(dto, cancellationToken);
@@ -74,6 +77,7 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult<RacaDetailResponseDto>> Patch(Guid id, RacaPatchDto dto,
         CancellationToken cancellationToken)
     {
@@ -97,6 +101,7 @@ public class RacaController(IRacaService racaService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await racaService.DeleteAsync(id, cancellationToken);

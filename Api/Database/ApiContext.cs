@@ -1,9 +1,11 @@
 using Api.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Database;
 
-public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(options)
+public class ApiContext(DbContextOptions<ApiContext> options, IHttpContextAccessor httpContextAccessor) : DbContext(options)
 {
     public DbSet<Especie> Especies { get; set; }
     public DbSet<Raca> Racas { get; set; }
@@ -39,6 +41,9 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
 
     private void SetAuditedColumns()
     {
+        var now = DateTimeOffset.UtcNow;
+        var currentUserId = GetCurrentUserId();
+
         var entitiesCreated = ChangeTracker
             .Entries()
             .Where(e => e is { Entity: IAuditedEntity, State: EntityState.Added })
@@ -52,12 +57,32 @@ public class ApiContext(DbContextOptions<ApiContext> options) : DbContext(option
 
         foreach (var entity in entitiesCreated)
         {
-            entity.CreationDateTime = DateTimeOffset.UtcNow;
+            entity.CreationDateTime = now;
+            entity.CreatedByUser = currentUserId;
+            entity.UpdatedByUser = currentUserId;
         }
 
         foreach (var entity in entitiesModified)
         {
-            entity.LastModificationDateTime = DateTimeOffset.UtcNow;
+            entity.LastModificationDateTime = now;
+            if (currentUserId.HasValue)
+            {
+                entity.UpdatedByUser = currentUserId;
+            }
         }
+    }
+
+    private Guid? GetCurrentUserId()
+    {
+        var principal = httpContextAccessor.HttpContext?.User;
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        var subject = principal.FindFirst("sub")?.Value ??
+                      principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        return Guid.TryParse(subject, out var userId) ? userId : null;
     }
 }

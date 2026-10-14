@@ -1,7 +1,9 @@
 using Api.DTOs;
 using Api.Mappers;
 using Api.Models.Enums;
+using Api.Security;
 using Api.Services.AplicacoesVacina;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -120,6 +122,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpPost("lote")]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccineApplications)]
     public async Task<ActionResult<List<AplicacaoVacinaReadResponseDto>>> VacinarLote(
         [FromBody] AplicacaoVacinaLoteCreateDto dto,
         CancellationToken cancellationToken)
@@ -130,6 +133,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpPost]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccineApplications)]
     public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Create(AplicacaoVacinaCreateDto dto,
         CancellationToken cancellationToken)
     {
@@ -143,6 +147,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccineApplications)]
     public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Patch(Guid id, AplicacaoVacinaPatchDto dto,
         CancellationToken cancellationToken)
     {
@@ -159,6 +164,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpPost("{id:guid}/assinar")]
+    [Authorize(Policy = ClinicalPolicies.SignVaccineApplications)]
     public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Assinar(Guid id,
         AplicacaoVacinaAssinaturaDto dto, CancellationToken cancellationToken)
     {
@@ -174,6 +180,7 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.DeleteVaccineApplications)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await aplicacaoVacinaService.DeleteAsync(id, cancellationToken);

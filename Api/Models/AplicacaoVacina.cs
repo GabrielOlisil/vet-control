@@ -49,4 +49,6 @@ public class AplicacaoVacina : IAuditedEntity
     public List<AssinaturaAplicacaoVacina> Assinaturas { get; set; } = [];
     public DateTimeOffset CreationDateTime { get; set; }
     public DateTimeOffset? LastModificationDateTime { get; set; }
+    public Guid? CreatedByUser { get; set; }
+    public Guid? UpdatedByUser { get; set; }
 }

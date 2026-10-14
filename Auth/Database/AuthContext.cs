@@ -19,6 +19,8 @@ public sealed class AuthContext(DbContextOptions<AuthContext> options)
         builder.Entity<ApplicationUser>().HasIndex(x => x.UserName).HasDatabaseName("IX_AspNetUsers_UserNameSearch").HasMethod("gin").HasOperators("gin_trgm_ops");
         builder.Entity<ApplicationUser>().HasIndex(x => x.Email).HasDatabaseName("IX_AspNetUsers_EmailSearch").HasMethod("gin").HasOperators("gin_trgm_ops");
         builder.Entity<ApplicationUser>().Property(x => x.FullName).HasMaxLength(200);
+        builder.Entity<ApplicationUser>().Property(x => x.Crmv).HasMaxLength(50);
+        builder.Entity<ApplicationUser>().Property(x => x.CrmvUf).HasMaxLength(2);
         builder.Entity<ApplicationUser>().Property(x => x.SessionVersion).HasMaxLength(32);
         builder.Entity<ApplicationRole>().Property(x => x.Description).HasMaxLength(500);
         builder.Entity<UserAuditEvent>(entity =>

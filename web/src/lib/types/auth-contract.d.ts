@@ -531,6 +531,8 @@ export interface components {
             isActive: boolean;
             /** @default true */
             mustChangePassword: boolean;
+            crmv?: null | string;
+            crmvUf?: null | string;
         };
         InitialSetupRequest: {
             fullName: string;
@@ -574,6 +576,8 @@ export interface components {
             roles: string[];
             isActive: boolean;
             concurrencyStamp: string;
+            crmv?: null | string;
+            crmvUf?: null | string;
         };
         UserPageResponse: {
             items: components["schemas"]["UserResponse"][];
@@ -604,6 +608,8 @@ export interface components {
             concurrencyStamp: string;
             roles: string[];
             effectiveRoles: string[];
+            crmv: null | string;
+            crmvUf: null | string;
         };
         VersionRequest: {
             concurrencyStamp: string;

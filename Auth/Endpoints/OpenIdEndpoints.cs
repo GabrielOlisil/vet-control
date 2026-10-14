@@ -67,6 +67,8 @@ public static class OpenIdEndpoints
         identity.SetClaim(Claims.Name, user.FullName);
         identity.SetClaim(Claims.PreferredUsername, user.UserName);
         identity.SetClaim(Claims.Email, user.Email);
+        identity.SetClaim("crmv", user.Crmv);
+        identity.SetClaim("crmv_uf", user.CrmvUf);
         identity.SetClaim("session_version", user.SessionVersion);
         foreach (var role in RoleCatalog.Expand(await users.GetRolesAsync(user))) identity.AddClaim(new Claim(Claims.Role, role));
         var principal = new ClaimsPrincipal(identity);
@@ -75,6 +77,7 @@ public static class OpenIdEndpoints
         {
             Claims.Name or Claims.PreferredUsername when principal.HasScope(Scopes.Profile) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Email when principal.HasScope(Scopes.Email) => [Destinations.AccessToken, Destinations.IdentityToken],
+            "crmv" or "crmv_uf" => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Role when principal.HasScope(Scopes.Roles) => [Destinations.AccessToken, Destinations.IdentityToken],
             "session_version" => [Destinations.AccessToken],
             _ => []
@@ -93,6 +96,8 @@ public static class OpenIdEndpoints
         if (auth.Principal.HasScope(Scopes.Profile))
         { claims[Claims.Name] = user.FullName; claims[Claims.PreferredUsername] = user.UserName; }
         if (auth.Principal.HasScope(Scopes.Email)) claims[Claims.Email] = user.Email;
+        claims["crmv"] = user.Crmv;
+        claims["crmv_uf"] = user.CrmvUf;
         if (auth.Principal.HasScope(Scopes.Roles)) claims[Claims.Role] = RoleCatalog.Expand(await users.GetRolesAsync(user));
         return Results.Ok(claims);
     }

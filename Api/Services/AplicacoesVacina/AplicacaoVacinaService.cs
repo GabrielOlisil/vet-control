@@ -4,16 +4,18 @@ using Api.Mappers;
 using Api.Models;
 using Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Api.Services.AplicacoesVacina;
 
-public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacinaService
+public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAccessor httpContextAccessor) : IAplicacaoVacinaService
 {
     public async Task<AplicacaoVacina> CreateAsync(AplicacaoVacinaCreateDto dto,
         CancellationToken cancellationToken = default)
     {
+        var currentUser = GetAuthenticatedUser();
         var animal = await context.Animals.FindAsync([dto.AnimalId], cancellationToken);
         if (animal is null)
             throw new KeyNotFoundException($"Animal com Id '{dto.AnimalId}' não encontrado.");
@@ -64,10 +66,10 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
             DataValidade = dto.DataValidade,
             LocalAplicacao = dto.LocalAplicacao,
             Observacoes = dto.Observacoes,
-            VeterinarioResponsavel = dto.VeterinarioResponsavel,
-            VeterinarioCrmv = dto.VeterinarioCrmv,
-            VeterinarioCrmvUf = NormalizeUf(dto.VeterinarioCrmvUf),
-            Aplicador = dto.Aplicador,
+            VeterinarioResponsavel = currentUser.Name,
+            VeterinarioCrmv = currentUser.Crmv,
+            VeterinarioCrmvUf = currentUser.CrmvUf,
+            Aplicador = currentUser.Name,
             LaboratorioFabricante = dto.LaboratorioFabricante
         };
 
@@ -169,26 +171,6 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
         if (dto.ObservacoesWasProvided)
         {
             aplicacao.Observacoes = dto.Observacoes;
-        }
-
-        if (dto.VeterinarioResponsavelWasProvided)
-        {
-            aplicacao.VeterinarioResponsavel = dto.VeterinarioResponsavel;
-        }
-
-        if (dto.VeterinarioCrmvWasProvided)
-        {
-            aplicacao.VeterinarioCrmv = dto.VeterinarioCrmv;
-        }
-
-        if (dto.VeterinarioCrmvUfWasProvided)
-        {
-            aplicacao.VeterinarioCrmvUf = NormalizeUf(dto.VeterinarioCrmvUf);
-        }
-
-        if (dto.AplicadorWasProvided)
-        {
-            aplicacao.Aplicador = dto.Aplicador;
         }
 
         if (dto.LaboratorioFabricanteWasProvided)
@@ -748,6 +730,7 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
     public async Task<List<AplicacaoVacina>> VacinarLoteAsync(AplicacaoVacinaLoteCreateDto dto,
         CancellationToken cancellationToken = default)
     {
+        var currentUser = GetAuthenticatedUser();
         var vacina = await context.Vacinas.FindAsync([dto.VacinaId], cancellationToken);
         if (vacina is null)
             throw new KeyNotFoundException($"Vacina com Id '{dto.VacinaId}' não encontrada.");
@@ -786,10 +769,10 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
                     DataValidade = dto.DataValidade,
                     LocalAplicacao = dto.LocalAplicacao,
                     Observacoes = dto.Observacoes,
-                    VeterinarioResponsavel = dto.VeterinarioResponsavel,
-                    VeterinarioCrmv = dto.VeterinarioCrmv,
-                    VeterinarioCrmvUf = NormalizeUf(dto.VeterinarioCrmvUf),
-                    Aplicador = dto.Aplicador,
+                    VeterinarioResponsavel = currentUser.Name,
+                    VeterinarioCrmv = currentUser.Crmv,
+                    VeterinarioCrmvUf = currentUser.CrmvUf,
+                    Aplicador = currentUser.Name,
                     LaboratorioFabricante = dto.LaboratorioFabricante
                 };
 
@@ -850,6 +833,30 @@ public sealed class AplicacaoVacinaService(ApiContext context) : IAplicacaoVacin
         if (aplicacao.StatusComprovante == StatusComprovanteVacina.Assinado)
             throw new InvalidOperationException("Aplicações assinadas não podem ser alteradas. Registre uma nova aplicação para corrigir o histórico.");
     }
+
+    private CurrentUser GetAuthenticatedUser()
+    {
+        var principal = httpContextAccessor.HttpContext?.User;
+        var name = principal?.FindFirstValue("name")
+            ?? principal?.FindFirstValue("display_name")
+            ?? principal?.FindFirstValue(ClaimTypes.Name)
+            ?? principal?.FindFirstValue("preferred_username");
+
+        if (principal?.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Não foi possível identificar o usuário autenticado.");
+
+        var crmv = principal.FindFirstValue("crmv")?.Trim();
+        var crmvUf = NormalizeUf(principal.FindFirstValue("crmv_uf"));
+        if (principal.IsInRole("medico_veterinario") &&
+            (string.IsNullOrWhiteSpace(crmv) || string.IsNullOrWhiteSpace(crmvUf)))
+        {
+            throw new ArgumentException("Cadastre o CRMV e a UF do CRMV do usuário antes de registrar uma vacinação.");
+        }
+
+        return new CurrentUser(name.Trim(), string.IsNullOrWhiteSpace(crmv) ? null : crmv, crmvUf);
+    }
+
+    private sealed record CurrentUser(string Name, string? Crmv, string? CrmvUf);
 
     private static string? NormalizeUf(string? uf)
     {

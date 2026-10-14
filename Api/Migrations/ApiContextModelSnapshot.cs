@@ -31,6 +31,9 @@ namespace Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -59,6 +62,9 @@ namespace Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name");
@@ -83,6 +89,9 @@ namespace Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -96,6 +105,9 @@ namespace Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<Guid>("ProtocoloVacinalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UpdatedByUser")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -140,6 +152,9 @@ namespace Api.Migrations
 
                     b.Property<bool>("CicloFinalizado")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
@@ -188,6 +203,9 @@ namespace Api.Migrations
 
                     b.Property<int>("StatusComprovante")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("VacinaId")
                         .HasColumnType("uuid");
@@ -285,6 +303,9 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -304,6 +325,9 @@ namespace Api.Migrations
 
                     b.Property<int>("PortePadrao")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -329,6 +353,9 @@ namespace Api.Migrations
                     b.Property<Guid>("AnimalId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -340,6 +367,9 @@ namespace Api.Migrations
 
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Valor")
                         .IsRequired()
@@ -369,6 +399,9 @@ namespace Api.Migrations
                     b.Property<Guid>("AnimalId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -393,6 +426,9 @@ namespace Api.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("LocalDestino");
@@ -413,6 +449,9 @@ namespace Api.Migrations
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
@@ -439,6 +478,9 @@ namespace Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Nome");
@@ -455,6 +497,9 @@ namespace Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedByUser")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreationDateTime")
@@ -481,6 +526,9 @@ namespace Api.Migrations
                     b.Property<Guid>("ProtocoloVacinalId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("VacinaId")
                         .HasColumnType("uuid");
 
@@ -500,6 +548,9 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -512,6 +563,9 @@ namespace Api.Migrations
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -529,6 +583,9 @@ namespace Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedByUser")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreationDateTime")
@@ -552,6 +609,9 @@ namespace Api.Migrations
 
                     b.Property<long>("ReaplicarEmXDias")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 

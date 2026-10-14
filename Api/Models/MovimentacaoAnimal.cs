@@ -18,4 +18,6 @@ public class MovimentacaoAnimal : IAuditedEntity
 
     public DateTimeOffset CreationDateTime { get; set; }
     public DateTimeOffset? LastModificationDateTime { get; set; }
+    public Guid? CreatedByUser { get; set; }
+    public Guid? UpdatedByUser { get; set; }
 }

@@ -11,10 +11,19 @@
     import IconBiotech from "@iconify-svelte/material-symbols/biotech-rounded";
     import IconLabel from "@iconify-svelte/material-symbols/label-rounded";
     import IconSettings from "@iconify-svelte/material-symbols/settings-rounded";
+    import { canManageAnimals, canManageProtocols, canManageVaccines } from "$lib/auth/permissions";
+    import type { PageData } from "./$types";
+
+    let { data }: { data: PageData } = $props();
+    const roles = $derived(data.session.roles);
 
     type TabKey = "vacinas" | "protocolos" | "animais" | "especies" | "racas";
 
-    const validTabs: TabKey[] = ["vacinas", "protocolos", "animais", "especies", "racas"];
+    const validTabs = $derived.by((): TabKey[] => [
+        ...(canManageVaccines(roles) ? ["vacinas" as const] : []),
+        ...(canManageProtocols(roles) ? ["protocolos" as const] : []),
+        ...(canManageAnimals(roles) ? ["animais" as const, "especies" as const, "racas" as const] : []),
+    ]);
 
     // Default tab is "vacinas" (1ª aba)
     let activeTab = $state<TabKey>("vacinas");
@@ -24,6 +33,8 @@
         const queryTab = $page.url.searchParams.get("tab") as TabKey;
         if (queryTab && validTabs.includes(queryTab)) {
             activeTab = queryTab;
+        } else if (!validTabs.includes(activeTab)) {
+            activeTab = validTabs[0] ?? "vacinas";
         }
     });
 
@@ -66,6 +77,7 @@
             class="tabs tabs-box bg-base-200/50 p-1.5 border-b border-base-200"
             role="tablist"
         >
+            {#if canManageVaccines(roles)}
             <button
                 type="button"
                 role="tab"
@@ -79,11 +91,15 @@
                 <IconVaccines width="18" height="18" />
                 <span>Vacinas</span>
             </button>
+            {/if}
 
+            {#if canManageProtocols(roles)}
             <button type="button" role="tab" class="tab gap-2 pb-3 pt-2 text-sm font-semibold transition-all {activeTab === 'protocolos' ? 'tab-active font-black text-primary bg-base-100 shadow-xs font-bold' : 'text-base-content/60 hover:text-base-content'}" onclick={() => selectTab("protocolos")} aria-selected={activeTab === "protocolos"}>
                 <IconVaccines width="18" height="18" /><span>Protocolos</span>
             </button>
+            {/if}
 
+            {#if canManageAnimals(roles)}
             <button
                 type="button"
                 role="tab"
@@ -125,19 +141,25 @@
                 <IconLabel width="18" height="18" />
                 <span>Raças</span>
             </button>
+            {/if}
         </div>
     </div>
 
     <!-- Tab Contents (State is preserved, on-demand loaded) -->
     <div class="mt-4">
+        {#if canManageVaccines(roles)}
         <div class:hidden={activeTab !== "vacinas"}>
             <VacinasTab isActive={activeTab === "vacinas"} />
         </div>
+        {/if}
 
+        {#if canManageProtocols(roles)}
         <div class:hidden={activeTab !== "protocolos"}>
             <ProtocolosTab isActive={activeTab === "protocolos"} />
         </div>
+        {/if}
 
+        {#if canManageAnimals(roles)}
         <div class:hidden={activeTab !== "animais"}>
             <AnimaisTab isActive={activeTab === "animais"} />
         </div>
@@ -149,5 +171,6 @@
         <div class:hidden={activeTab !== "racas"}>
             <RacasTab isActive={activeTab === "racas"} />
         </div>
+        {/if}
     </div>
 </div>

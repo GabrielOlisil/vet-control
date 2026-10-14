@@ -12,6 +12,8 @@ public interface IAuditedEntity
 public sealed class ApplicationUser : IdentityUser<Guid>, IAuditedEntity
 {
     public string FullName { get; set; } = "";
+    public string? Crmv { get; set; }
+    public string? CrmvUf { get; set; }
     public bool IsActive { get; set; } = true;
     public bool MustChangePassword { get; set; }
     public string SessionVersion { get; set; } = Guid.NewGuid().ToString("N");

@@ -22,7 +22,7 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
         var roles = (await users.GetRolesAsync(user)).Order().ToArray();
         return new(user.Id, user.FullName, user.UserName!, user.Email!, user.IsActive, user.MustChangePassword,
             await users.IsLockedOutAsync(user), user.LockoutEnd, user.LastLoginAt, user.CreationDateTime,
-            user.LastModificationDateTime, user.ConcurrencyStamp!, roles, RoleCatalog.Expand(roles));
+            user.LastModificationDateTime, user.ConcurrencyStamp!, roles, RoleCatalog.Expand(roles), user.Crmv, user.CrmvUf);
     }
 
     public async Task<UserPageResponse> List(string? search, bool? active, string? role, int page, int pageSize)
@@ -87,15 +87,17 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
     private static object AuditSnapshot(object value) => value is UserResponse user ? new
     {
         user.Id, user.FullName, user.UserName, user.Email, user.IsActive, user.MustChangePassword,
-        user.IsLockedOut, user.LockoutEnd, user.Roles, user.EffectiveRoles
+        user.IsLockedOut, user.LockoutEnd, user.Roles, user.EffectiveRoles, user.Crmv, user.CrmvUf
     } : value;
 
     public async Task<UserResponse> Create(CreateUserRequest request)
     {
         var roles = ValidateRoles(request.Roles);
+        var (crmv, crmvUf) = NormalizeProfessionalRegistration(roles, request.Crmv, request.CrmvUf);
         await using var transaction = await db.Database.BeginTransactionAsync();
         var user = new ApplicationUser { Id = Guid.NewGuid(), FullName = request.FullName.Trim(), UserName = request.UserName.Trim(),
-            Email = request.Email.Trim(), EmailConfirmed = true, IsActive = request.IsActive, MustChangePassword = request.MustChangePassword };
+            Email = request.Email.Trim(), EmailConfirmed = true, IsActive = request.IsActive, MustChangePassword = request.MustChangePassword,
+            Crmv = crmv, CrmvUf = crmvUf };
         Check(await users.CreateAsync(user, request.Password));
         Check(await users.AddToRolesAsync(user, roles));
         var response = await Describe(user);
@@ -107,6 +109,7 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
     public async Task<UserResponse> Update(Guid id, UpdateUserRequest request)
     {
         var roles = ValidateRoles(request.Roles);
+        var (crmv, crmvUf) = NormalizeProfessionalRegistration(roles, request.Crmv, request.CrmvUf);
         // Serialize changes that might remove the last active administrator.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var user = await Find(id); CheckVersion(user, request.ConcurrencyStamp);
@@ -121,6 +124,7 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
         }
         user.FullName = request.FullName.Trim(); user.UserName = request.UserName.Trim();
         user.Email = request.Email.Trim(); user.EmailConfirmed = true; user.IsActive = request.IsActive;
+        user.Crmv = crmv; user.CrmvUf = crmvUf;
         user.SessionVersion = Guid.NewGuid().ToString("N");
         Check(await users.UpdateAsync(user));
         Check(await users.RemoveFromRolesAsync(user, currentRoles.Except(roles)));
@@ -129,6 +133,24 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
         var after = await Describe(user); Record(user.Id, "user.updated", before, after);
         await db.SaveChangesAsync(); await transaction.CommitAsync();
         return after;
+    }
+
+    private static (string? Crmv, string? CrmvUf) NormalizeProfessionalRegistration(
+        IReadOnlyCollection<string> roles, string? crmv, string? crmvUf)
+    {
+        var normalizedCrmv = string.IsNullOrWhiteSpace(crmv) ? null : crmv.Trim();
+        var normalizedUf = string.IsNullOrWhiteSpace(crmvUf) ? null : crmvUf.Trim().ToUpperInvariant();
+
+        if (normalizedUf is not null && normalizedUf.Length != 2)
+            throw new UserOperationException("A UF do CRMV deve possuir exatamente 2 caracteres.");
+
+        if (roles.Contains(RoleCatalog.Veterinarian) &&
+            (string.IsNullOrWhiteSpace(normalizedCrmv) || string.IsNullOrWhiteSpace(normalizedUf)))
+        {
+            throw new UserOperationException("Usuários com a role medico_veterinario precisam possuir CRMV e UF do CRMV cadastrados.");
+        }
+
+        return (normalizedCrmv, normalizedUf);
     }
 
     public async Task<UserResponse> ResetPassword(Guid id, ResetPasswordRequest request)

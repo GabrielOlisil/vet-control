@@ -1,7 +1,9 @@
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.Vacinas;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers;
 
@@ -49,6 +51,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccines)]
     public async Task<ActionResult<VacinaDetailResponseDto>> Create(VacinaCreateDto dto,
         CancellationToken cancellationToken)
     {
@@ -62,6 +65,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccines)]
     public async Task<ActionResult<VacinaDetailResponseDto>> Patch(Guid id, VacinaPatchDto dto,
         CancellationToken cancellationToken)
     {
@@ -84,6 +88,7 @@ public class VacinaController(IVacinaService vacinaService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageVaccines)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await vacinaService.DeleteAsync(id, cancellationToken);

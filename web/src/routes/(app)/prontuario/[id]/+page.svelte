@@ -13,6 +13,8 @@
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
     import { protocoloVacinalService } from "$lib/api/protocolos-vacinais";
     import { movimentacaoAnimalService } from "$lib/api/movimentacoes-animais";
+    import { canDeleteVaccineApplications, canManageMovements, canManageProtocols, canManageVaccineApplications, canSignVaccineApplications } from "$lib/auth/permissions";
+    import type { PageData } from "./$types";
     import {
         getAnimalName,
         calcularIdade,
@@ -34,6 +36,14 @@
 
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconDelete from "@iconify-svelte/material-symbols/delete-rounded";
+
+    let { data }: { data: PageData } = $props();
+    const roles = $derived(data.session.roles);
+    const canManageApplications = $derived(canManageVaccineApplications(roles));
+    const canDeleteApplications = $derived(canDeleteVaccineApplications(roles));
+    const canManageClinicalProtocols = $derived(canManageProtocols(roles));
+    const canManageAnimalMovements = $derived(canManageMovements(roles));
+    const canSignApplications = $derived(canSignVaccineApplications(roles));
 
     const animalId = $page.params.id ?? "";
 
@@ -58,10 +68,6 @@
         dataFabricacao: "",
         dataValidade: "",
         localAplicacao: "",
-        veterinarioResponsavel: "",
-        veterinarioCrmv: "",
-        veterinarioCrmvUf: "",
-        aplicador: "",
         laboratorioFabricante: "",
         observacoes: "",
         animalProtocoloVacinalId: undefined,
@@ -90,10 +96,6 @@
             dataFabricacao: "",
             dataValidade: "",
             localAplicacao: "",
-            veterinarioResponsavel: "",
-            veterinarioCrmv: "",
-            veterinarioCrmvUf: "",
-            aplicador: "",
             laboratorioFabricante: "",
             observacoes: "",
             animalProtocoloVacinalId: undefined,
@@ -194,10 +196,6 @@
         }
         if (!vacinarForm.numeroLote?.trim()) {
             vacinarError = "Informe o número do lote.";
-            return;
-        }
-        if (!vacinarForm.veterinarioResponsavel?.trim()) {
-            vacinarError = "Informe o veterinário responsável.";
             return;
         }
         isSubmittingVacina = true;
@@ -423,13 +421,13 @@
                     {/if}
                 </div>
 
-                <button
+                {#if canManageApplications}<button
                     class="btn btn-primary btn-sm gap-1 shrink-0"
                     onclick={openVacinarModal}
                 >
                     <IconVaccines width="16" height="16" />
                     Registrar Vacina
-                </button>
+                </button>{/if}
             </div>
         </div>
 
@@ -437,7 +435,7 @@
         <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
             <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3">
                 <div><h2 class="font-semibold">Protocolos vacinais</h2><p class="text-xs text-base-content/60">Acompanhe o calendário previsto por animal.</p></div>
-                <button class="btn btn-primary btn-sm" onclick={openProtocolModal}>Atribuir protocolo</button>
+                {#if canManageClinicalProtocols}<button class="btn btn-primary btn-sm" onclick={openProtocolModal}>Atribuir protocolo</button>{/if}
             </div>
             {#if animalProtocolos.length === 0}
                 <div class="p-8 text-center text-base-content/50">Nenhum protocolo atribuído a este animal.</div>
@@ -446,7 +444,7 @@
                     <div class="p-5">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div><h3 class="font-bold">{protocol.protocoloVacinal?.nome ?? "Protocolo"}</h3><p class="text-xs text-base-content/60">Início: {formatDate(protocol.dataInicio)} · {protocol.protocoloVacinal?.finalidade ?? "Sem finalidade"}</p></div>
-                            <div class="flex items-center gap-2"><span class="badge {protocol.ativo ? 'badge-success' : 'badge-ghost'}">{protocol.ativo ? "Ativo" : "Inativo"}</span><button class="btn btn-ghost btn-xs" onclick={() => toggleProtocol(protocol)}>{protocol.ativo ? "Inativar" : "Reativar"}</button></div>
+                            <div class="flex items-center gap-2"><span class="badge {protocol.ativo ? 'badge-success' : 'badge-ghost'}">{protocol.ativo ? "Ativo" : "Inativo"}</span>{#if canManageClinicalProtocols}<button class="btn btn-ghost btn-xs" onclick={() => toggleProtocol(protocol)}>{protocol.ativo ? "Inativar" : "Reativar"}</button>{/if}</div>
                         </div>
                         <div class="flex flex-wrap gap-2 mt-3 text-xs"><span class="badge badge-success badge-outline">{protocol.dosesConcluidas} concluída(s)</span><span class="badge badge-warning badge-outline">{protocol.dosesPendentes} pendente(s)</span><span class="badge badge-error badge-outline">{protocol.dosesAtrasadas} atrasada(s)</span></div>
                         <div class="overflow-x-auto mt-3"><table class="table table-xs"><thead><tr><th>Dose</th><th>Vacina</th><th>Prevista</th><th>Aplicada</th><th>Status</th></tr></thead><tbody>{#each protocol.doses ?? [] as dose}
@@ -557,15 +555,7 @@
                                     </td>
                                     <td class="text-right">
                                         <div class="flex justify-end gap-1">
-                                            {#if apl.statusComprovante !== "Assinado"}
-                                                <button
-                                                    class="btn btn-xs btn-ghost gap-1"
-                                                    onclick={() => openSignature(apl)}
-                                                    title="Assinar aplicação"
-                                                >
-                                                    Assinar
-                                                </button>
-                                            {:else}
+                                            {#if apl.statusComprovante === "Assinado"}
                                                 <button
                                                     class="btn btn-xs btn-ghost gap-1"
                                                     onclick={() => validateSignature(apl)}
@@ -578,8 +568,16 @@
                                                         Validar
                                                     {/if}
                                                 </button>
+                                            {:else if canSignApplications}
+                                                <button
+                                                    class="btn btn-xs btn-ghost gap-1"
+                                                    onclick={() => openSignature(apl)}
+                                                    title="Assinar aplicação"
+                                                >
+                                                    Assinar
+                                                </button>
                                             {/if}
-                                            <button
+                                            {#if canDeleteApplications}<button
                                                 class="btn btn-xs btn-ghost text-error"
                                                 onclick={() => openDelete(apl)}
                                             >
@@ -587,7 +585,7 @@
                                                     width="13"
                                                     height="13"
                                                 />
-                                            </button>
+                                            </button>{/if}
                                         </div>
                                     </td>
                                 </tr>
@@ -610,7 +608,7 @@
 
         <!-- ── Histórico de Movimentação ──────────────────────────────────── -->
         <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
-            <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3"><div><h2 class="font-semibold">Histórico de movimentação</h2><p class="text-xs text-base-content/60">Entradas, transferências, saídas e ajustes de lote/pasto.</p></div><button class="btn btn-outline btn-sm" onclick={openMovementModal}>Registrar movimentação</button></div>
+            <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3"><div><h2 class="font-semibold">Histórico de movimentação</h2><p class="text-xs text-base-content/60">Entradas, transferências, saídas e ajustes de lote/pasto.</p></div>{#if canManageAnimalMovements}<button class="btn btn-outline btn-sm" onclick={openMovementModal}>Registrar movimentação</button>{/if}</div>
             {#if movimentacoes.length === 0}<div class="p-8 text-center text-base-content/50">Nenhuma movimentação registrada.</div>{:else}
                 <div class="overflow-x-auto"><table class="table table-sm"><thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Destino</th><th>Motivo</th><th>Observações</th></tr></thead><tbody>{#each movimentacoes as movement}
                     <tr><td>{formatDate(movement.dataMovimentacao)}</td><td><span class="badge badge-outline">{TipoMovimentacaoAnimalLabels[movement.tipo ?? "Ajuste"]}</span></td><td>{movement.localOrigem || "—"}</td><td>{movement.localDestino || "—"}</td><td>{movement.motivo || "—"}</td><td>{movement.observacoes || "—"}</td></tr>
@@ -694,33 +692,15 @@
         <div>
             <Input label="Data de validade" type="date" bind:value={vacinarForm.dataValidade} />
         </div>
-        <div class="sm:col-span-2">
-            <Input
-                label="Veterinário Responsável *"
-                placeholder="Dr. João Silva – CRMV-SP 12345"
-                bind:value={vacinarForm.veterinarioResponsavel}
-                required
-            />
-        </div>
-        <div>
-            <Input
-                label="Aplicador"
-                placeholder="Residente, técnico…"
-                bind:value={vacinarForm.aplicador}
-            />
-        </div>
+        <p class="sm:col-span-2 text-sm opacity-70">
+            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+        </p>
         <div>
             <Input
                 label="Laboratório Fabricante"
                 placeholder="Ex: Zoetis, MSD…"
                 bind:value={vacinarForm.laboratorioFabricante}
             />
-        </div>
-        <div>
-            <Input label="CRMV" bind:value={vacinarForm.veterinarioCrmv} />
-        </div>
-        <div>
-            <Input label="UF do CRMV" maxlength={2} bind:value={vacinarForm.veterinarioCrmvUf} />
         </div>
         <div class="sm:col-span-2">
             <Input label="Local da aplicação" bind:value={vacinarForm.localAplicacao} />

@@ -77,6 +77,14 @@ namespace Auth.Migrations
                     b.Property<DateTimeOffset>("CreationDateTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Crmv")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CrmvUf")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");

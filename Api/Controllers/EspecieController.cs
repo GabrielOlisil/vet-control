@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.Especies;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers;
 
@@ -59,6 +61,7 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult<EspecieDetailResponseDto>> Create(EspecieCreateDto dto,
         CancellationToken cancellationToken)
     {
@@ -72,6 +75,7 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult<EspecieDetailResponseDto>> Patch(Guid id, EspeciePatchDto dto,
         CancellationToken cancellationToken)
     {
@@ -88,6 +92,7 @@ public class EspecieController(IEspecieService especieService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageSpeciesAndBreeds)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await especieService.DeleteAsync(id, cancellationToken);

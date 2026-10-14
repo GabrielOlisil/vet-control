@@ -1,6 +1,8 @@
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.MovimentacoesAnimais;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -42,6 +44,7 @@ public class MovimentacaoAnimalController(IMovimentacaoAnimalService service) : 
     }
 
     [HttpPost("~/api/v1/animais/{animalId:guid}/movimentacoes")]
+    [Authorize(Policy = ClinicalPolicies.ManageMovements)]
     public async Task<ActionResult<MovimentacaoAnimalResponseDto>> Create(Guid animalId,
         MovimentacaoAnimalCreateDto dto, CancellationToken cancellationToken)
     {

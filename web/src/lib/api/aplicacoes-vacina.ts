@@ -274,10 +274,6 @@ export const aplicacaoVacinaService = {
             dataFabricacao: dto.dataFabricacao?.trim() || undefined,
             dataValidade: dto.dataValidade?.trim() || undefined,
             localAplicacao: dto.localAplicacao?.trim() || undefined,
-            veterinarioResponsavel: dto.veterinarioResponsavel?.trim() || undefined,
-            veterinarioCrmv: dto.veterinarioCrmv?.trim() || undefined,
-            veterinarioCrmvUf: dto.veterinarioCrmvUf?.trim().toUpperCase() || undefined,
-            aplicador: dto.aplicador?.trim() || undefined,
             laboratorioFabricante: dto.laboratorioFabricante?.trim() || undefined,
             observacoes: dto.observacoes?.trim() || undefined,
         };
@@ -300,10 +296,6 @@ export const aplicacaoVacinaService = {
             dataFabricacao: dto.dataFabricacao?.trim() || undefined,
             dataValidade: dto.dataValidade?.trim() || undefined,
             localAplicacao: dto.localAplicacao?.trim() || undefined,
-            veterinarioResponsavel: dto.veterinarioResponsavel !== undefined ? (dto.veterinarioResponsavel?.trim() || null) : undefined,
-            veterinarioCrmv: dto.veterinarioCrmv !== undefined ? (dto.veterinarioCrmv?.trim() || null) : undefined,
-            veterinarioCrmvUf: dto.veterinarioCrmvUf !== undefined ? (dto.veterinarioCrmvUf?.trim().toUpperCase() || null) : undefined,
-            aplicador: dto.aplicador !== undefined ? (dto.aplicador?.trim() || null) : undefined,
             laboratorioFabricante: dto.laboratorioFabricante !== undefined ? (dto.laboratorioFabricante?.trim() || null) : undefined,
             observacoes: dto.observacoes !== undefined ? (dto.observacoes?.trim() || null) : undefined,
         };

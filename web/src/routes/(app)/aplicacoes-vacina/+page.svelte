@@ -7,6 +7,8 @@
     import AnimalSelect from "$lib/components/AnimalSelect.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
+    import { canDeleteVaccineApplications, canManageVaccineApplications } from "$lib/auth/permissions";
+    import type { PageData } from "./$types";
     import { vacinaService } from "$lib/api/vacinas";
     import { animalService } from "$lib/api/animais";
     import { protocoloVacinalService } from "$lib/api/protocolos-vacinais";
@@ -26,6 +28,11 @@
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconRefresh from "@iconify-svelte/material-symbols/refresh-rounded";
+
+    let { data }: { data: PageData } = $props();
+    const roles = $derived(data.session.roles);
+    const canManageApplications = $derived(canManageVaccineApplications(roles));
+    const canDeleteApplications = $derived(canDeleteVaccineApplications(roles));
 
     // ── Estado ────────────────────────────────────────────────────────────────
     let aplicacoes = $state<AplicacaoVacinaReadResponseDto[]>([]);
@@ -63,8 +70,6 @@
         dataProximaDose: "",
         numeroLote: "",
         doseMl: "",
-        veterinarioResponsavel: "",
-        aplicador: "",
         laboratorioFabricante: "",
         observacoes: "",
     });
@@ -77,8 +82,6 @@
             dataProximaDose: "",
             numeroLote: "",
             doseMl: "",
-            veterinarioResponsavel: "",
-            aplicador: "",
             laboratorioFabricante: "",
             observacoes: "",
         };
@@ -98,10 +101,6 @@
         }
         if (!form.numeroLote?.trim()) {
             formError = "Informe o número do lote.";
-            return;
-        }
-        if (!form.veterinarioResponsavel?.trim()) {
-            formError = "Informe o veterinário responsável.";
             return;
         }
         isSubmitting = true;
@@ -230,17 +229,17 @@
             <p class="text-sm text-base-content/60">{total} registro(s)</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <a
+            {#if canManageApplications}<a
                 href="/aplicacoes-vacina/lote"
                 class="btn btn-outline btn-primary btn-sm gap-1"
             >
                 <IconVaccines width="16" height="16" />
                 Vacinação em Lote
-            </a>
-            <button class="btn btn-primary btn-sm gap-1" onclick={openModal}>
+            </a>{/if}
+            {#if canManageApplications}<button class="btn btn-primary btn-sm gap-1" onclick={openModal}>
                 <IconAdd width="16" height="16" />
                 Registrar Vacinação
-            </button>
+            </button>{/if}
         </div>
     </div>
 
@@ -460,7 +459,7 @@
                                             class="btn btn-xs btn-ghost"
                                             >Prontuário</a
                                         >
-                                        <button
+                                        {#if canDeleteApplications}<button
                                             class="btn btn-xs btn-ghost text-error"
                                             onclick={() => {
                                                 deletingApl = apl;
@@ -471,7 +470,7 @@
                                                 width="13"
                                                 height="13"
                                             />
-                                        </button>
+                                        </button>{/if}
                                     </div>
                                 </td>
                             </tr>
@@ -570,21 +569,9 @@
                 bind:value={form.doseMl}
             />
         </div>
-        <div class="sm:col-span-2">
-            <Input
-                label="Veterinário Responsável *"
-                placeholder="Dr. João Silva – CRMV-SP 12345"
-                bind:value={form.veterinarioResponsavel}
-                required
-            />
-        </div>
-        <div>
-            <Input
-                label="Aplicador"
-                placeholder="Residente, técnico…"
-                bind:value={form.aplicador}
-            />
-        </div>
+        <p class="sm:col-span-2 text-sm opacity-70">
+            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+        </p>
         <div>
             <Input
                 label="Laboratório Fabricante"

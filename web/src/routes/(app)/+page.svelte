@@ -216,10 +216,6 @@
         dataFabricacao: "",
         dataValidade: "",
         localAplicacao: "",
-        veterinarioResponsavel: "",
-        veterinarioCrmv: "",
-        veterinarioCrmvUf: "",
-        aplicador: "",
         laboratorioFabricante: "",
         observacoes: "",
     });
@@ -235,10 +231,6 @@
             dataFabricacao: "",
             dataValidade: "",
             localAplicacao: "",
-            veterinarioResponsavel: "",
-            veterinarioCrmv: "",
-            veterinarioCrmvUf: "",
-            aplicador: "",
             laboratorioFabricante: "",
             observacoes: "",
         };
@@ -1526,12 +1518,9 @@
         <div>
             <Input label="Local da aplicação" bind:value={aplicacaoForm.localAplicacao} />
         </div>
-        <div class="sm:col-span-2">
-            <Input label="Veterinário responsável" bind:value={aplicacaoForm.veterinarioResponsavel} />
-        </div>
-        <div><Input label="CRMV" bind:value={aplicacaoForm.veterinarioCrmv} /></div>
-        <div><Input label="UF do CRMV" maxlength={2} bind:value={aplicacaoForm.veterinarioCrmvUf} /></div>
-        <div><Input label="Aplicador" bind:value={aplicacaoForm.aplicador} /></div>
+        <p class="sm:col-span-2 text-sm opacity-70">
+            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+        </p>
 
         <div class="sm:col-span-2">
             <label class="label label-text text-xs font-medium" for="modalObs"

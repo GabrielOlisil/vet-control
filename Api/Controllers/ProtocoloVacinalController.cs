@@ -1,6 +1,8 @@
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.ProtocolosVacinais;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -49,6 +51,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     }
 
     [HttpPost]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<ActionResult<ProtocoloVacinalDetailResponseDto>> Create(
         ProtocoloVacinalCreateDto dto, CancellationToken cancellationToken)
     {
@@ -58,6 +61,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<ActionResult<ProtocoloVacinalDetailResponseDto>> Patch(Guid id,
         ProtocoloVacinalPatchDto dto, CancellationToken cancellationToken)
     {
@@ -70,6 +74,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         return await service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
@@ -84,6 +89,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     }
 
     [HttpPost("~/api/v1/animais/{animalId:guid}/protocolos-vacinais")]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<ActionResult<AnimalProtocoloVacinalReadResponseDto>> AssignToAnimal(Guid animalId,
         AnimalProtocoloVacinalCreateDto dto, CancellationToken cancellationToken)
     {
@@ -104,6 +110,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     }
 
     [HttpPatch("~/api/v1/animais/{animalId:guid}/protocolos-vacinais/{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<ActionResult<AnimalProtocoloVacinalReadResponseDto>> PatchAnimalProtocol(Guid animalId,
         Guid id, AnimalProtocoloVacinalPatchDto dto, CancellationToken cancellationToken)
     {

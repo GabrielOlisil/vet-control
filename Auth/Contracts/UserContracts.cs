@@ -14,12 +14,16 @@ public sealed record CreateUserRequest(
     [property: Required, StringLength(256), RegularExpression(@"^[a-zA-Z0-9_.-]+$", ErrorMessage = "Use letras, números, ponto, hífen ou sublinhado no usuário.")] string UserName,
     [property: Required, EmailAddress, StringLength(256)] string Email,
     [property: Required, StringLength(128, MinimumLength = 10)] string Password,
-    string[] Roles, bool IsActive = true, bool MustChangePassword = true);
+    string[] Roles, bool IsActive = true, bool MustChangePassword = true,
+    [property: StringLength(50)] string? Crmv = null,
+    [property: StringLength(2, MinimumLength = 2)] string? CrmvUf = null);
 public sealed record UpdateUserRequest(
     [property: Required, StringLength(200)] string FullName,
     [property: Required, StringLength(256), RegularExpression(@"^[a-zA-Z0-9_.-]+$", ErrorMessage = "Use letras, números, ponto, hífen ou sublinhado no usuário.")] string UserName,
     [property: Required, EmailAddress, StringLength(256)] string Email,
-    string[] Roles, bool IsActive, [property: Required] string ConcurrencyStamp);
+    string[] Roles, bool IsActive, [property: Required] string ConcurrencyStamp,
+    [property: StringLength(50)] string? Crmv = null,
+    [property: StringLength(2, MinimumLength = 2)] string? CrmvUf = null);
 public sealed record ResetPasswordRequest(
     [property: Required, StringLength(128, MinimumLength = 10)] string NewPassword,
     [property: Required] string ConcurrencyStamp, bool MustChangePassword = true);
@@ -27,7 +31,7 @@ public sealed record VersionRequest([property: Required] string ConcurrencyStamp
 public sealed record UserResponse(Guid Id, string FullName, string UserName, string Email, bool IsActive,
     bool MustChangePassword, bool IsLockedOut, DateTimeOffset? LockoutEnd, DateTimeOffset? LastLoginAt,
     DateTimeOffset CreationDateTime, DateTimeOffset? LastModificationDateTime,
-    string ConcurrencyStamp, string[] Roles, string[] EffectiveRoles);
+    string ConcurrencyStamp, string[] Roles, string[] EffectiveRoles, string? Crmv, string? CrmvUf);
 public sealed record UserPageResponse(UserResponse[] Items, int Total, int Page, int PageSize);
 public sealed record AuthSessionResponse(bool Authenticated, Guid? Id, string? FullName, string? UserName,
     string? Email, string[] Roles, bool MustChangePassword, string CsrfToken);

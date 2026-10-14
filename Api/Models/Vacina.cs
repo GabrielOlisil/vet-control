@@ -22,4 +22,6 @@ public class Vacina : IAuditedEntity
     public Especie? Especie { get; set; }
     public DateTimeOffset CreationDateTime { get; set; }
     public DateTimeOffset? LastModificationDateTime { get; set; }
+    public Guid? CreatedByUser { get; set; }
+    public Guid? UpdatedByUser { get; set; }
 }

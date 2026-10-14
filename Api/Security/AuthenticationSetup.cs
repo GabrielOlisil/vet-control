@@ -65,6 +65,23 @@ public static class AuthenticationSetup
         builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
             .Configure<ServerTicketStore>((options, store) => options.SessionStore = store);
         builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "VetControl.Session.Csrf"; });
-        builder.Services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+        builder.Services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+            AddPolicy(options, ClinicalPolicies.ManageAnimals, "admin", "medico_veterinario", "manejador_animal", "estagiario_medvet");
+            AddPolicy(options, ClinicalPolicies.ManageSpeciesAndBreeds, "admin", "medico_veterinario", "manejador_animal", "estagiario_medvet");
+            AddPolicy(options, ClinicalPolicies.ManageVaccines, "admin", "medico_veterinario", "estagiario_medvet");
+            AddPolicy(options, ClinicalPolicies.ManageProtocols, "admin", "medico_veterinario");
+            AddPolicy(options, ClinicalPolicies.ManageMovements, "admin", "medico_veterinario", "manejador_animal", "estagiario_medvet");
+            AddPolicy(options, ClinicalPolicies.ManageVaccineApplications, "admin", "medico_veterinario", "aplicador", "estagiario_medvet");
+            AddPolicy(options, ClinicalPolicies.DeleteVaccineApplications, "admin", "medico_veterinario");
+            AddPolicy(options, ClinicalPolicies.SignVaccineApplications, "medico_veterinario");
+        });
+    }
+
+    private static void AddPolicy(AuthorizationOptions options, string name, params string[] roles)
+    {
+        options.AddPolicy(name, policy => policy.RequireAuthenticatedUser().RequireRole(roles));
     }
 }

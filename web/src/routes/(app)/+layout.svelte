@@ -12,20 +12,20 @@
     import IconMenu from "@iconify-svelte/material-symbols/menu-rounded";
     import { VET_API_URL } from "$lib/auth/session";
     import type { VetSession } from "$lib/auth/types";
+    import { canManageVaccineApplications } from "$lib/auth/permissions";
 
     let { children, data }: { children?: Snippet; data: { session: VetSession } } = $props();
     let drawerOpen = $state(false);
+    const canManageApplications = $derived(canManageVaccineApplications(data.session.roles));
     afterNavigate(() => { drawerOpen = false; });
 
-    const usabilityLinks = [
+    const usabilityLinks = $derived.by(() => [
         { href: "/", label: "Dashboard", icon: IconDashboard },
         { href: "/aplicacoes-vacina", label: "Aplicações", icon: IconCalendar },
-        {
-            href: "/aplicacoes-vacina/lote",
-            label: "Vacinação em Lote",
-            icon: IconVaccines,
-        },
-    ];
+        ...(canManageApplications
+            ? [{ href: "/aplicacoes-vacina/lote", label: "Vacinação em Lote", icon: IconVaccines }]
+            : []),
+    ]);
 
     const configLinks = [
         {
@@ -82,15 +82,19 @@
             </div>
 
             <!-- Ações rápidas no Header -->
-                <a
-                    href="/aplicacoes-vacina/lote"
-                    class="btn btn-primary btn-sm hidden shrink-0 gap-1.5 rounded-lg shadow-xs md:inline-flex"
-                >
-                    <IconVaccines width="16" height="16" />
-                    <span>Vacinar em Lote</span>
-                </a>
+                {#if canManageApplications}
+                    <a
+                        href="/aplicacoes-vacina/lote"
+                        class="btn btn-primary btn-sm hidden shrink-0 gap-1.5 rounded-lg shadow-xs md:inline-flex"
+                    >
+                        <IconVaccines width="16" height="16" />
+                        <span>Vacinar em Lote</span>
+                    </a>
+                {/if}
                 <AccountMenu name={data.session.name} email={data.session.email}>
-                    <a href="/aplicacoes-vacina/lote" class="btn btn-ghost justify-start md:hidden">Vacinar em lote</a>
+                    {#if canManageApplications}
+                        <a href="/aplicacoes-vacina/lote" class="btn btn-ghost justify-start md:hidden">Vacinar em lote</a>
+                    {/if}
                     {#if data.session.roles.includes("admin")}
                         <a href="/auth" class="btn btn-ghost justify-start">Gerenciar usuários</a>
                     {/if}

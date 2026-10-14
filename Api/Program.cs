@@ -16,6 +16,7 @@ const string webPolicy = "AllowWeb";
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddVetAuthentication();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContextPool<ApiContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("ApiContext") ??

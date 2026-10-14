@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Mappers;
+using Api.Security;
 using Api.Services.Animals;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers;
 
@@ -65,7 +67,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpPost]
-
+    [Authorize(Policy = ClinicalPolicies.ManageAnimals)]
     public async Task<ActionResult<AnimalDetailResponseDto>> Create(AnimalCreateDto dto, CancellationToken cancellationToken)
     {
         var animal = await service.CreateAsync(dto, cancellationToken);
@@ -78,6 +80,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageAnimals)]
     public async Task<ActionResult<AnimalDetailResponseDto>> Patch(Guid id, AnimalPatchDto dto,
         CancellationToken cancellationToken)
     {
@@ -94,6 +97,7 @@ public class AnimalController(IAnimalService service) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ClinicalPolicies.ManageAnimals)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await service.DeleteAsync(id, cancellationToken);

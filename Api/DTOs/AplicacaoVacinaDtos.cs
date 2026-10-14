@@ -69,12 +69,6 @@ public sealed record AplicacaoVacinaCreateDto
 
     public string? Observacoes { get; init; }
 
-    public string? VeterinarioResponsavel { get; init; }
-    public string? VeterinarioCrmv { get; init; }
-    public string? VeterinarioCrmvUf { get; init; }
-
-    public string? Aplicador { get; init; }
-
     public string? LaboratorioFabricante { get; init; }
 }
 
@@ -88,10 +82,6 @@ public sealed record AplicacaoVacinaPatchDto
     private string? _doseMl;
     private string? _localAplicacao;
     private string? _observacoes;
-    private string? _veterinarioResponsavel;
-    private string? _veterinarioCrmv;
-    private string? _veterinarioCrmvUf;
-    private string? _aplicador;
     private string? _laboratorioFabricante;
 
     public Guid? AnimalId { get; init; }
@@ -211,58 +201,6 @@ public sealed record AplicacaoVacinaPatchDto
 
     [JsonIgnore]
     public bool ObservacoesWasProvided { get; private set; }
-
-    public string? VeterinarioResponsavel
-    {
-        get => _veterinarioResponsavel;
-        init
-        {
-            _veterinarioResponsavel = value;
-            VeterinarioResponsavelWasProvided = true;
-        }
-    }
-
-    [JsonIgnore]
-    public bool VeterinarioResponsavelWasProvided { get; private set; }
-
-    public string? VeterinarioCrmv
-    {
-        get => _veterinarioCrmv;
-        init
-        {
-            _veterinarioCrmv = value;
-            VeterinarioCrmvWasProvided = true;
-        }
-    }
-
-    [JsonIgnore]
-    public bool VeterinarioCrmvWasProvided { get; private set; }
-
-    public string? VeterinarioCrmvUf
-    {
-        get => _veterinarioCrmvUf;
-        init
-        {
-            _veterinarioCrmvUf = value;
-            VeterinarioCrmvUfWasProvided = true;
-        }
-    }
-
-    [JsonIgnore]
-    public bool VeterinarioCrmvUfWasProvided { get; private set; }
-
-    public string? Aplicador
-    {
-        get => _aplicador;
-        init
-        {
-            _aplicador = value;
-            AplicadorWasProvided = true;
-        }
-    }
-
-    [JsonIgnore]
-    public bool AplicadorWasProvided { get; private set; }
 
     public string? LaboratorioFabricante
     {

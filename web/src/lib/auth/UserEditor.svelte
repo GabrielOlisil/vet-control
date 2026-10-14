@@ -6,12 +6,15 @@
     let { id = '' }: { id?: string } = $props();
     let user = $state<ManagedUser | null>(null); let roles = $state<Role[]>([]); let audit = $state<AuditPage | null>(null);
     let fullName = $state(''); let userName = $state(''); let email = $state('');
+    let crmv = $state(''); let crmvUf = $state('');
     let password = $state(''); let selectedRoles = $state<string[]>([]); let active = $state(true); let mustChange = $state(true);
     let resetPassword = $state(''); let resetConfirmation = $state(''); let resetMustChange = $state(true);
     let loading = $state(true); let busy = $state(false); let error = $state(''); let message = $state('');
     const effective = $derived([...new Set(selectedRoles.flatMap(name => [name, ...(roles.find(x => x.name === name)?.includes ?? [])]))]);
+    const veterinarianSelected = $derived(effective.includes('medico_veterinario'));
     function fill(value: ManagedUser) {
         user = value; fullName = value.fullName; userName = value.userName; email = value.email;
+        crmv = value.crmv ?? ''; crmvUf = value.crmvUf ?? '';
         selectedRoles = [...value.roles]; active = value.isActive;
     }
     async function loadAudit(page = 1) { if (id) audit = await identity.audit(id, page); }
@@ -23,7 +26,15 @@
     async function save() {
         busy = true; error = ''; message = '';
         try {
-            const data = { fullName, userName, email, roles: selectedRoles, isActive: active };
+            const data = {
+                fullName,
+                userName,
+                email,
+                roles: selectedRoles,
+                isActive: active,
+                crmv: crmv.trim() || null,
+                crmvUf: crmvUf.trim().toUpperCase() || null,
+            };
             if (id && user) {
                 fill(await identity.update(id, { ...data, concurrencyStamp: user.concurrencyStamp }));
                 message = 'Usuário atualizado. As sessões anteriores foram encerradas.';
@@ -79,6 +90,17 @@
                     <div><label for="user-name" class="label">Usuário</label><input id="user-name" class="input input-bordered w-full" bind:value={userName} maxlength="256" required autocomplete="off" /></div>
                     <div><label for="user-email" class="label">E-mail</label><input id="user-email" class="input input-bordered w-full" type="email" bind:value={email} maxlength="256" required autocomplete="off" /></div>
                 </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="user-crmv" class="label">CRMV{veterinarianSelected ? ' *' : ''}</label>
+                        <input id="user-crmv" class="input input-bordered w-full" bind:value={crmv} maxlength="50" required={veterinarianSelected} />
+                    </div>
+                    <div>
+                        <label for="user-crmv-uf" class="label">UF do CRMV{veterinarianSelected ? ' *' : ''}</label>
+                        <input id="user-crmv-uf" class="input input-bordered w-full uppercase" bind:value={crmvUf} maxlength="2" minlength="2" required={veterinarianSelected} />
+                    </div>
+                </div>
+                {#if veterinarianSelected}<p class="text-xs opacity-65">CRMV e UF do CRMV são obrigatórios para usuários com a role medico_veterinario.</p>{/if}
                 {#if !id}
                     <label for="initial-password">Senha inicial</label><input id="initial-password" type="password" class="input input-bordered w-full" bind:value={password} autocomplete="new-password" minlength="10" maxlength="128" required />
                     <p class="text-xs opacity-65">Pelo menos 10 caracteres, com maiúscula, minúscula, número e símbolo.</p>

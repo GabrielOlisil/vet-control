@@ -2627,10 +2627,6 @@ export interface components {
             dataValidade?: null | string;
             localAplicacao?: null | string;
             observacoes?: null | string;
-            veterinarioResponsavel?: null | string;
-            veterinarioCrmv?: null | string;
-            veterinarioCrmvUf?: null | string;
-            aplicador?: null | string;
             laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaDetailResponseDto: {
@@ -2726,10 +2722,6 @@ export interface components {
             doseMl?: unknown;
             localAplicacao?: null | string;
             observacoes?: null | string;
-            veterinarioResponsavel?: null | string;
-            veterinarioCrmv?: null | string;
-            veterinarioCrmvUf?: null | string;
-            aplicador?: null | string;
             laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaReadResponseDto: {
