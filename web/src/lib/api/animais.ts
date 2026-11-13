@@ -20,6 +20,7 @@ export interface AnimalListParams {
     OrigemAnimal?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
+    AmbienteId?: string;
     DataNascimento?: string;
     DataNascimentoFrom?: string;
     DataNascimentoTo?: string;
@@ -37,6 +38,7 @@ export interface AnimalCountParams {
     OrigemAnimal?: OrigemAnimal;
     Ativo?: boolean;
     LoteOuPasto?: string;
+    AmbienteId?: string;
     DataNascimento?: string;
     DataNascimentoFrom?: string;
     DataNascimentoTo?: string;
@@ -59,6 +61,7 @@ export const animalService = {
                     OrigemAnimal: params?.OrigemAnimal ?? params?.Origem,
                     Ativo: params?.Ativo,
                     LoteOuPasto: params?.LoteOuPasto,
+                    AmbienteId: params?.AmbienteId,
                     DataNascimento: params?.DataNascimento,
                     DataNascimentoFrom: params?.DataNascimentoFrom,
                     DataNascimentoTo: params?.DataNascimentoTo,
@@ -89,6 +92,7 @@ export const animalService = {
                     OrigemAnimal: filters?.OrigemAnimal ?? filters?.Origem,
                     Ativo: filters?.Ativo,
                     LoteOuPasto: filters?.LoteOuPasto,
+                    AmbienteId: filters?.AmbienteId,
                     DataNascimento: filters?.DataNascimento,
                     DataNascimentoFrom: filters?.DataNascimentoFrom,
                     DataNascimentoTo: filters?.DataNascimentoTo,
@@ -116,6 +120,7 @@ export const animalService = {
                     OrigemAnimal: params?.OrigemAnimal ?? params?.Origem,
                     Ativo: params?.Ativo,
                     LoteOuPasto: params?.LoteOuPasto,
+                    AmbienteId: params?.AmbienteId,
                     DataNascimento: params?.DataNascimento,
                     DataNascimentoFrom: params?.DataNascimentoFrom,
                     DataNascimentoTo: params?.DataNascimentoTo,

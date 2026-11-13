@@ -10,9 +10,18 @@
 --  - 2 Identificadores por Animal (Principal + Secundário: SISBOV, Brinco, Microchip, Registro, Tatuagem)
 --  - 20 Vacinas Imunobiológicas
 --  - 3 Protocolos Vacinais e 7 doses de protocolo
+--  - Regras de próxima dose mantidas nas doses dos protocolos (não na vacina)
 --  - 6 Atribuições de protocolos a animais
 --  - Histórico inicial de movimentação para todo o plantel
 --  - Aplicações de vacina avulsas e vinculadas a doses de protocolos
+--  - Vacinas ativas; protocolos na versão 1, cada um com sua própria família
+--  - Assinatura legada v1 verificável, sem inventar snapshot ou usuário Identity
+-- Uso exclusivo do ambiente de demonstração (vet_control_dev) e bases temporárias de testes.
+-- Aplicar após migrations. Primeira execução exige base clínica vazia; execuções
+-- posteriores preservam integralmente os dados e edições feitos na demonstração.
+-- As datas clínicas são relativas ao dia da primeira carga (America/Manaus).
+-- Em testes, SET vet_control.seed_today = '2026-11-10' fixa o relógio da carga.
+-- xmin é mantido pelo PostgreSQL; ServerSessions fica vazio; AppUsers não é alterado.
 --
 -- Padrão de GUIDs Incrementais:
 --  - Espécies:        00000001-0000-0000-0000-000000000001 .. 00000001-0000-0000-0000-000000000005
@@ -25,7 +34,35 @@
 --  - Atribuições:     00000009-0000-0000-0000-000000000001 .. 00000009-0000-0000-0000-000000000006
 -- =============================================================================
 
-START TRANSACTION;
+DO $vet_control_seed$
+DECLARE
+    seed_today date := coalesce(nullif(current_setting('vet_control.seed_today', true), '')::date,
+        (now() AT TIME ZONE 'America/Manaus')::date);
+    clinical_shift integer := seed_today - DATE '2025-05-20';
+BEGIN
+    IF current_database() <> 'vet_control_dev'
+        AND current_database() !~ '^vet_api_tests_[a-f0-9]{32}$' THEN
+        RAISE EXCEPTION 'Seed permitido somente no ambiente de demonstração vet_control_dev ou em base temporária de testes.';
+    END IF;
+
+    -- Serializa duas inicializações simultâneas e mantém dados + marcador atômicos.
+    PERFORM pg_advisory_xact_lock(7636054495378100);
+    CREATE TABLE IF NOT EXISTS "__VetControlDevSeed" (
+        "Id" text PRIMARY KEY,
+        "AppliedAt" timestamptz NOT NULL DEFAULT now()
+    );
+    IF EXISTS (SELECT 1 FROM "__VetControlDevSeed" WHERE "Id" = 'demo-v1') THEN
+        RAISE NOTICE 'Seed de demonstração já aplicado; dados preservados.';
+        RETURN;
+    END IF;
+    IF EXISTS (SELECT 1 FROM "Especies") OR EXISTS (SELECT 1 FROM "Racas")
+        OR EXISTS (SELECT 1 FROM "Animals") OR EXISTS (SELECT 1 FROM "IdentificadorAnimal")
+        OR EXISTS (SELECT 1 FROM "Vacinas") OR EXISTS (SELECT 1 FROM "ProtocolosVacinais")
+        OR EXISTS (SELECT 1 FROM "ProtocoloVacinalDoses") OR EXISTS (SELECT 1 FROM "AnimalProtocolosVacinais")
+        OR EXISTS (SELECT 1 FROM "MovimentacoesAnimais") OR EXISTS (SELECT 1 FROM "AplicacoesVacina")
+        OR EXISTS (SELECT 1 FROM "AssinaturasAplicacoesVacina") OR EXISTS (SELECT 1 FROM "ServerSessions") THEN
+        RAISE EXCEPTION 'Base clínica ocupada e sem marcador do seed; nenhum cadastro será alterado.';
+    END IF;
 
 -- -----------------------------------------------------------------------------
 -- 1. ESPÉCIES (5 Espécies de Grande Porte - PortePadrao = 2)
@@ -68,77 +105,77 @@ VALUES
 -- OrigemAnimal: 0 = Interno, 1 = Externo
 -- Sexo: 'Macho' / 'Femea'
 -- -----------------------------------------------------------------------------
-INSERT INTO "Animals" ("Id", "Name", "RacaId", "DataNascimento", "OrigemAnimal", "LoteOuPasto", "Ativo", "CreationDateTime", "LastModificationDateTime", "Sexo")
+INSERT INTO "Animals" ("Id", "Name", "RacaId", "DataNascimento", "DataNascimentoAproximada", "OrigemAnimal", "LoteOuPasto", "Ativo", "CreationDateTime", "LastModificationDateTime", "Sexo")
 VALUES
     -- Raça 1: Nelore (Bovino)
-    ('00000003-0000-0000-0000-000000000001', 'Touro Soberano', '00000002-0000-0000-0000-000000000001', '2021-03-15', 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000002', 'Vaca Estrela', '00000002-0000-0000-0000-000000000001', '2022-05-10', 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000003', 'Bezerro Alvorada', '00000002-0000-0000-0000-000000000001', '2024-01-20', 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000004', 'Novilha Cristal', '00000002-0000-0000-0000-000000000001', '2023-08-14', 1, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000005', 'Touro Guardião', '00000002-0000-0000-0000-000000000001', '2021-11-02', 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000001', 'Touro Soberano', '00000002-0000-0000-0000-000000000001', '2021-03-15', false, 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000002', 'Vaca Estrela', '00000002-0000-0000-0000-000000000001', '2022-05-10', false, 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000003', 'Bezerro Alvorada', '00000002-0000-0000-0000-000000000001', '2024-01-20', true, 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000004', 'Novilha Cristal', '00000002-0000-0000-0000-000000000001', '2023-08-14', false, 1, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000005', 'Touro Guardião', '00000002-0000-0000-0000-000000000001', '2021-11-02', false, 0, 'Pasto 01 - Nelore Corte', true, NOW(), NULL, 'Macho'),
 
     -- Raça 2: Holandês (Bovino)
-    ('00000003-0000-0000-0000-000000000006', 'Vaca Mimosa', '00000002-0000-0000-0000-000000000002', '2020-04-12', 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000007', 'Vaca Malhada', '00000002-0000-0000-0000-000000000002', '2021-07-25', 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000008', 'Novilha Princesa', '00000002-0000-0000-0000-000000000002', '2023-02-18', 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000009', 'Touro Barão Holandês', '00000002-0000-0000-0000-000000000002', '2022-09-30', 1, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000010', 'Bezerra Formosa', '00000002-0000-0000-0000-000000000002', '2024-03-05', 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000006', 'Vaca Mimosa', '00000002-0000-0000-0000-000000000002', '2020-04-12', false, 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000007', 'Vaca Malhada', '00000002-0000-0000-0000-000000000002', '2021-07-25', false, 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000008', 'Novilha Princesa', '00000002-0000-0000-0000-000000000002', '2023-02-18', false, 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000009', 'Touro Barão Holandês', '00000002-0000-0000-0000-000000000002', '2022-09-30', false, 1, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000010', 'Bezerra Formosa', '00000002-0000-0000-0000-000000000002', '2024-03-05', false, 0, 'Pasto 02 - Leiteiro', true, NOW(), NULL, 'Femea'),
 
     -- Raça 3: Mangalarga Marchador (Equino)
-    ('00000003-0000-0000-0000-000000000011', 'Garanhão Relâmpago', '00000002-0000-0000-0000-000000000003', '2019-10-10', 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000012', 'Égua Morena', '00000002-0000-0000-0000-000000000003', '2020-11-15', 0, 'Haras Piquete 01', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000013', 'Potro Tempestade', '00000002-0000-0000-0000-000000000003', '2023-12-01', 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000014', 'Égua Bailarina', '00000002-0000-0000-0000-000000000003', '2021-06-20', 1, 'Haras Piquete 01', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000015', 'Cavalo Faraó', '00000002-0000-0000-0000-000000000003', '2022-01-08', 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000011', 'Garanhão Relâmpago', '00000002-0000-0000-0000-000000000003', '2019-10-10', false, 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000012', 'Égua Morena', '00000002-0000-0000-0000-000000000003', '2020-11-15', false, 0, 'Haras Piquete 01', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000013', 'Potro Tempestade', '00000002-0000-0000-0000-000000000003', '2023-12-01', true, 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000014', 'Égua Bailarina', '00000002-0000-0000-0000-000000000003', '2021-06-20', false, 1, 'Haras Piquete 01', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000015', 'Cavalo Faraó', '00000002-0000-0000-0000-000000000003', '2022-01-08', false, 0, 'Haras Piquete 01', true, NOW(), NULL, 'Macho'),
 
     -- Raça 4: Quarto de Milha (Equino)
-    ('00000003-0000-0000-0000-000000000016', 'Garanhão Trovão Negro', '00000002-0000-0000-0000-000000000004', '2018-08-22', 1, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000017', 'Égua Dourada', '00000002-0000-0000-0000-000000000004', '2020-03-14', 0, 'Haras Piquete 02', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000018', 'Potra Serena', '00000002-0000-0000-0000-000000000004', '2023-09-09', 0, 'Haras Piquete 02', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000019', 'Cavalo Ventania', '00000002-0000-0000-0000-000000000004', '2021-05-19', 0, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000020', 'Cavalo Comanche', '00000002-0000-0000-0000-000000000004', '2022-04-03', 1, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000016', 'Garanhão Trovão Negro', '00000002-0000-0000-0000-000000000004', '2018-08-22', false, 1, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000017', 'Égua Dourada', '00000002-0000-0000-0000-000000000004', '2020-03-14', false, 0, 'Haras Piquete 02', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000018', 'Potra Serena', '00000002-0000-0000-0000-000000000004', '2023-09-09', false, 0, 'Haras Piquete 02', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000019', 'Cavalo Ventania', '00000002-0000-0000-0000-000000000004', '2021-05-19', false, 0, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000020', 'Cavalo Comanche', '00000002-0000-0000-0000-000000000004', '2022-04-03', false, 1, 'Haras Piquete 02', true, NOW(), NULL, 'Macho'),
 
     -- Raça 5: Murrah (Bubalino)
-    ('00000003-0000-0000-0000-000000000021', 'Búfalo Nero', '00000002-0000-0000-0000-000000000005', '2021-02-17', 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000022', 'Búfala Pandora', '00000002-0000-0000-0000-000000000005', '2022-06-21', 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000023', 'Búfalo Sansão', '00000002-0000-0000-0000-000000000005', '2020-12-05', 1, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000024', 'Bezerro Titan', '00000002-0000-0000-0000-000000000005', '2024-02-11', 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000025', 'Búfala Pérola', '00000002-0000-0000-0000-000000000005', '2023-01-30', 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000021', 'Búfalo Nero', '00000002-0000-0000-0000-000000000005', '2021-02-17', false, 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000022', 'Búfala Pandora', '00000002-0000-0000-0000-000000000005', '2022-06-21', false, 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000023', 'Búfalo Sansão', '00000002-0000-0000-0000-000000000005', '2020-12-05', false, 1, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000024', 'Bezerro Titan', '00000002-0000-0000-0000-000000000005', '2024-02-11', true, 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000025', 'Búfala Pérola', '00000002-0000-0000-0000-000000000005', '2023-01-30', false, 0, 'Pasto 03 - Várzea dos Búfalos', true, NOW(), NULL, 'Femea'),
 
     -- Raça 6: Mediterrâneo (Bubalino)
-    ('00000003-0000-0000-0000-000000000026', 'Búfalo Sultão', '00000002-0000-0000-0000-000000000006', '2021-08-14', 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000027', 'Búfala Atena', '00000002-0000-0000-0000-000000000006', '2022-04-18', 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000028', 'Búfala Diana', '00000002-0000-0000-0000-000000000006', '2023-05-22', 1, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000029', 'Búfalo Zeus', '00000002-0000-0000-0000-000000000006', '2020-10-09', 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000030', 'Bezerra Safira', '00000002-0000-0000-0000-000000000006', '2024-04-01', 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000026', 'Búfalo Sultão', '00000002-0000-0000-0000-000000000006', '2021-08-14', false, 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000027', 'Búfala Atena', '00000002-0000-0000-0000-000000000006', '2022-04-18', false, 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000028', 'Búfala Diana', '00000002-0000-0000-0000-000000000006', '2023-05-22', false, 1, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000029', 'Búfalo Zeus', '00000002-0000-0000-0000-000000000006', '2020-10-09', false, 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000030', 'Bezerra Safira', '00000002-0000-0000-0000-000000000006', '2024-04-01', false, 0, 'Pasto 04 - Búfalos Sul', true, NOW(), NULL, 'Femea'),
 
     -- Raça 7: Pêga (Asinino)
-    ('00000003-0000-0000-0000-000000000031', 'Jumento Imperial Pêga', '00000002-0000-0000-0000-000000000007', '2019-09-12', 0, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000032', 'Jumenta Graciosa', '00000002-0000-0000-0000-000000000007', '2021-01-25', 0, 'Piquete Asininos', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000033', 'Jumento Campeão', '00000002-0000-0000-0000-000000000007', '2022-07-07', 1, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000034', 'Jumenta Boneca', '00000002-0000-0000-0000-000000000007', '2023-03-19', 0, 'Piquete Asininos', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000035', 'Jumentinho Fagulha', '00000002-0000-0000-0000-000000000007', '2024-01-15', 0, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000031', 'Jumento Imperial Pêga', '00000002-0000-0000-0000-000000000007', '2019-09-12', false, 0, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000032', 'Jumenta Graciosa', '00000002-0000-0000-0000-000000000007', '2021-01-25', false, 0, 'Piquete Asininos', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000033', 'Jumento Campeão', '00000002-0000-0000-0000-000000000007', '2022-07-07', false, 1, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000034', 'Jumenta Boneca', '00000002-0000-0000-0000-000000000007', '2023-03-19', false, 0, 'Piquete Asininos', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000035', 'Jumentinho Fagulha', '00000002-0000-0000-0000-000000000007', '2024-01-15', true, 0, 'Piquete Asininos', true, NOW(), NULL, 'Macho'),
 
     -- Raça 8: Paulista (Asinino)
-    ('00000003-0000-0000-0000-000000000036', 'Jumento Bandeirante', '00000002-0000-0000-0000-000000000008', '2020-05-30', 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000037', 'Jumenta Paulistana', '00000002-0000-0000-0000-000000000008', '2021-08-11', 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000038', 'Jumento Sertanejo', '00000002-0000-0000-0000-000000000008', '2022-11-20', 1, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000039', 'Jumenta Moça', '00000002-0000-0000-0000-000000000008', '2023-06-04', 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000040', 'Jumentinho Piratininga', '00000002-0000-0000-0000-000000000008', '2024-02-28', 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000036', 'Jumento Bandeirante', '00000002-0000-0000-0000-000000000008', '2020-05-30', false, 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000037', 'Jumenta Paulistana', '00000002-0000-0000-0000-000000000008', '2021-08-11', false, 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000038', 'Jumento Sertanejo', '00000002-0000-0000-0000-000000000008', '2022-11-20', false, 1, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000039', 'Jumenta Moça', '00000002-0000-0000-0000-000000000008', '2023-06-04', false, 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000040', 'Jumentinho Piratininga', '00000002-0000-0000-0000-000000000008', '2024-02-28', false, 0, 'Piquete Asininos 02', true, NOW(), NULL, 'Macho'),
 
     -- Raça 9: Mula Marchadeira (Muar)
-    ('00000003-0000-0000-0000-000000000041', 'Mula Dengosa', '00000002-0000-0000-0000-000000000009', '2020-03-08', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000042', 'Mula Serenata', '00000002-0000-0000-0000-000000000009', '2021-09-17', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000043', 'Mula Pretinha', '00000002-0000-0000-0000-000000000009', '2022-04-29', 1, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000044', 'Mula Feiticeira', '00000002-0000-0000-0000-000000000009', '2023-07-13', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
-    ('00000003-0000-0000-0000-000000000045', 'Mula Querência', '00000002-0000-0000-0000-000000000009', '2023-11-05', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000041', 'Mula Dengosa', '00000002-0000-0000-0000-000000000009', '2020-03-08', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000042', 'Mula Serenata', '00000002-0000-0000-0000-000000000009', '2021-09-17', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000043', 'Mula Pretinha', '00000002-0000-0000-0000-000000000009', '2022-04-29', false, 1, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000044', 'Mula Feiticeira', '00000002-0000-0000-0000-000000000009', '2023-07-13', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
+    ('00000003-0000-0000-0000-000000000045', 'Mula Querência', '00000002-0000-0000-0000-000000000009', '2023-11-05', true, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Femea'),
 
     -- Raça 10: Burro de Carga (Muar)
-    ('00000003-0000-0000-0000-000000000046', 'Burro Hércules', '00000002-0000-0000-0000-000000000010', '2019-12-02', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000047', 'Burro Pagador', '00000002-0000-0000-0000-000000000010', '2021-06-16', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000048', 'Burro Diamante', '00000002-0000-0000-0000-000000000010', '2022-08-23', 1, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000049', 'Burro Valente', '00000002-0000-0000-0000-000000000010', '2023-01-11', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
-    ('00000003-0000-0000-0000-000000000050', 'Burro Guerreiro', '00000002-0000-0000-0000-000000000010', '2023-10-27', 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho');
+    ('00000003-0000-0000-0000-000000000046', 'Burro Hércules', '00000002-0000-0000-0000-000000000010', '2019-12-02', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000047', 'Burro Pagador', '00000002-0000-0000-0000-000000000010', '2021-06-16', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000048', 'Burro Diamante', '00000002-0000-0000-0000-000000000010', '2022-08-23', false, 1, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000049', 'Burro Valente', '00000002-0000-0000-0000-000000000010', '2023-01-11', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho'),
+    ('00000003-0000-0000-0000-000000000050', 'Burro Guerreiro', '00000002-0000-0000-0000-000000000010', '2023-10-27', false, 0, 'Pasto dos Muares', true, NOW(), NULL, 'Macho');
 
 -- -----------------------------------------------------------------------------
 -- 4. IDENTIFICADORES DOS ANIMAIS (100 Identificadores - 2 para cada um dos 50 Animais)
@@ -313,39 +350,39 @@ VALUES
     ('00000005-0000-0000-0000-000000000100', '00000003-0000-0000-0000-000000000050', 5, 'TAT-BUR-050', false, NOW(), NULL);
 
 -- -----------------------------------------------------------------------------
--- 5. VACINAS (20 Vacinas)
+-- 5. VACINAS (20 Vacinas; sem regra de reaplicação)
 -- -----------------------------------------------------------------------------
-INSERT INTO "Vacinas" ("Id", "EspecieId", "Name", "Descricao", "ReaplicarEmXDias", "ObrigatorioOrgaoSanitario", "CreationDateTime", "LastModificationDateTime")
+INSERT INTO "Vacinas" ("Id", "EspecieId", "Name", "Descricao", "ObrigatorioOrgaoSanitario", "CreationDateTime", "LastModificationDateTime")
 VALUES
     -- Vacinas Bovinas
-    ('00000004-0000-0000-0000-000000000001', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Febre Aftosa (Bivalente O e A)', 'Imunização obrigatória contra o vírus da febre aftosa para rebanhos bovinos.', 180, true, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000002', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Brucelose B19', 'Vacina viva atenuada obrigatória para bezerras entre 3 e 8 meses de idade.', 365, true, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000003', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Brucelose RB51', 'Vacina não aglutinogênica indicada para fêmeas adultas não vacinadas com B19.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000004', '00000001-0000-0000-0000-000000000001', 'Vacina Polivalente contra Clostridioses (10 vias)', 'Proteção contra carbúnculo sintomático, gangrena gasosa, enterotoxemia e tétano.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000005', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Raiva dos Herbívoros', 'Profilaxia da raiva transmitida por morcegos hematófagos em bovinos.', 365, true, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000006', '00000001-0000-0000-0000-000000000001', 'Vacina Reprodutiva contra IBR e BVD', 'Prevenção de Rinotraqueíte Infecciosa Bovina e Diarreia Viral Bovina.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000007', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Leptospirose Bovina', 'Prevenção contra os principais sorovares de Leptospira interrogans em bovinos.', 180, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000008', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Carbúnculo Hemático (Antrax)', 'Imunização contra Bacillus anthracis em áreas com histórico da doença.', 365, true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000001', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Febre Aftosa (Bivalente O e A)', 'Imunização obrigatória contra o vírus da febre aftosa para rebanhos bovinos.', true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000002', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Brucelose B19', 'Vacina viva atenuada obrigatória para bezerras entre 3 e 8 meses de idade.', true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000003', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Brucelose RB51', 'Vacina não aglutinogênica indicada para fêmeas adultas não vacinadas com B19.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000004', '00000001-0000-0000-0000-000000000001', 'Vacina Polivalente contra Clostridioses (10 vias)', 'Proteção contra carbúnculo sintomático, gangrena gasosa, enterotoxemia e tétano.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000005', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Raiva dos Herbívoros', 'Profilaxia da raiva transmitida por morcegos hematófagos em bovinos.', true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000006', '00000001-0000-0000-0000-000000000001', 'Vacina Reprodutiva contra IBR e BVD', 'Prevenção de Rinotraqueíte Infecciosa Bovina e Diarreia Viral Bovina.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000007', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Leptospirose Bovina', 'Prevenção contra os principais sorovares de Leptospira interrogans em bovinos.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000008', '00000001-0000-0000-0000-000000000001', 'Vacina Contra Carbúnculo Hemático (Antrax)', 'Imunização contra Bacillus anthracis em áreas com histórico da doença.', true, NOW(), NULL),
 
     -- Vacinas Equinas
-    ('00000004-0000-0000-0000-000000000009', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Encefalomielite Equina (Leste e Oeste)', 'Prevenção contra o alphavirus causador da encefalomielite viral em equinos.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000010', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Influenza Equina (Gripe Equina)', 'Proteção contra cepas de Myxovirus influenzae A/equi 1 e A/equi 2.', 180, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000011', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Tétano Equino (Toxóide Tetânico)', 'Imunização ativa contra Clostridium tetani em cavalos de esporte e trabalho.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000012', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Rinopneumonite Equina (EHV-1 e EHV-4)', 'Prevenção de aborto viral e distúrbios respiratórios agudos em equinos.', 180, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000013', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Raiva dos Equinos', 'Imunização contra o vírus rábico indicada para equinos em áreas rurais.', 365, true, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000014', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Garrotilho Equino', 'Prevenção da adenite equina (Streptococcus equi) em potros e adultos.', 365, false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000009', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Encefalomielite Equina (Leste e Oeste)', 'Prevenção contra o alphavirus causador da encefalomielite viral em equinos.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000010', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Influenza Equina (Gripe Equina)', 'Proteção contra cepas de Myxovirus influenzae A/equi 1 e A/equi 2.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000011', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Tétano Equino (Toxóide Tetânico)', 'Imunização ativa contra Clostridium tetani em cavalos de esporte e trabalho.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000012', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Rinopneumonite Equina (EHV-1 e EHV-4)', 'Prevenção de aborto viral e distúrbios respiratórios agudos em equinos.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000013', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Raiva dos Equinos', 'Imunização contra o vírus rábico indicada para equinos em áreas rurais.', true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000014', '00000001-0000-0000-0000-000000000002', 'Vacina Contra Garrotilho Equino', 'Prevenção da adenite equina (Streptococcus equi) em potros e adultos.', false, NOW(), NULL),
 
     -- Vacinas Bubalinas
-    ('00000004-0000-0000-0000-000000000015', '00000001-0000-0000-0000-000000000003', 'Vacina Contra Clostridiose Bubalina', 'Prevenção específica de enterotoxemias e carbúnculo em rebanhos bubalinos.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000016', '00000001-0000-0000-0000-000000000003', 'Vacina Contra Botulismo Bubalino (C e D)', 'Proteção contra intoxicação botulínica em búfalos em áreas alagadas.', 365, false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000015', '00000001-0000-0000-0000-000000000003', 'Vacina Contra Clostridiose Bubalina', 'Prevenção específica de enterotoxemias e carbúnculo em rebanhos bubalinos.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000016', '00000001-0000-0000-0000-000000000003', 'Vacina Contra Botulismo Bubalino (C e D)', 'Proteção contra intoxicação botulínica em búfalos em áreas alagadas.', false, NOW(), NULL),
 
     -- Vacinas Asininas e Muares
-    ('00000004-0000-0000-0000-000000000017', '00000001-0000-0000-0000-000000000004', 'Vacina Contra Raiva para Asininos', 'Profilaxia contra raiva em jumentos e asininos reprodutores.', 365, true, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000018', '00000001-0000-0000-0000-000000000005', 'Vacina Contra Tétano e Clostridioses para Muares', 'Toxóide tetânico e bacterina clostridial purificada para mulas e burros de carga.', 365, false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000017', '00000001-0000-0000-0000-000000000004', 'Vacina Contra Raiva para Asininos', 'Profilaxia contra raiva em jumentos e asininos reprodutores.', true, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000018', '00000001-0000-0000-0000-000000000005', 'Vacina Contra Tétano e Clostridioses para Muares', 'Toxóide tetânico e bacterina clostridial purificada para mulas e burros de carga.', false, NOW(), NULL),
 
     -- Vacinas Gerais / Multiespécie (EspecieId = NULL)
-    ('00000004-0000-0000-0000-000000000019', NULL, 'Vacina Polivalente de Grande Porte (Multiespécie)', 'Formulação imunoprofilática ampla aplicável a bovinos, bubalinos e equídeos.', 365, false, NOW(), NULL),
-    ('00000004-0000-0000-0000-000000000020', NULL, 'Vacina Imunoprofilática Amplo Espectro', 'Reforço imunitário geral contra patógenos oportunistas em animais de grande porte.', 365, false, NOW(), NULL);
+    ('00000004-0000-0000-0000-000000000019', NULL, 'Vacina Polivalente de Grande Porte (Multiespécie)', 'Formulação imunoprofilática ampla aplicável a bovinos, bubalinos e equídeos.', false, NOW(), NULL),
+    ('00000004-0000-0000-0000-000000000020', NULL, 'Vacina Imunoprofilática Amplo Espectro', 'Reforço imunitário geral contra patógenos oportunistas em animais de grande porte.', false, NOW(), NULL);
 
 -- -----------------------------------------------------------------------------
 -- 6. DATAS DE NASCIMENTO APROXIMADAS
@@ -399,11 +436,12 @@ VALUES
 -- O UUID é determinístico para manter a relação estável em ambientes de teste.
 -- TipoMovimentacaoAnimal: 0 = Entrada, 1 = Transferencia, 2 = Saida, 3 = Ajuste
 -- -----------------------------------------------------------------------------
-INSERT INTO "MovimentacoesAnimais" ("Id", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+INSERT INTO "MovimentacoesAnimais" ("Id", "GrupoId", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
 SELECT
     md5('movimentacao-entrada-' || a."Id"::text)::uuid,
+    md5('movimentacao-entrada-inicial')::uuid,
     a."Id",
-    a."CreationDateTime"::date,
+    seed_today - 160,
     0,
     NULL,
     a."LoteOuPasto",
@@ -413,27 +451,97 @@ SELECT
     NULL
 FROM "Animals" a;
 
-INSERT INTO "MovimentacoesAnimais" ("Id", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
+INSERT INTO "MovimentacoesAnimais" ("Id", "GrupoId", "AnimalId", "DataMovimentacao", "Tipo", "LocalOrigem", "LocalDestino", "Motivo", "Observacoes", "CreationDateTime", "LastModificationDateTime")
 VALUES
-    ('00000006-0000-0000-0000-000000000001', '00000003-0000-0000-0000-000000000001', '2025-06-15', 1, 'Pasto 01 - Nelore Corte', 'Pasto de Manejo Sanitário', 'Manejo sanitário', 'Transferência temporária para vacinação.', NOW(), NULL),
-    ('00000006-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000011', '2025-07-02', 1, 'Haras Piquete 01', 'Baia de Observação', 'Observação clínica', NULL, NOW(), NULL),
-    ('00000006-0000-0000-0000-000000000003', '00000003-0000-0000-0000-000000000021', '2025-08-10', 3, 'Pasto 03 - Várzea dos Búfalos', 'Pasto 03 - Várzea dos Búfalos', 'Ajuste cadastral', 'Correção do local atual.', NOW(), NULL);
+    ('00000006-0000-0000-0000-000000000001', '00000006-0000-0000-0000-000000000001', '00000003-0000-0000-0000-000000000001', seed_today - 20, 1, 'Pasto 01 - Nelore Corte', 'Pasto de Manejo Sanitário', 'Manejo sanitário', 'Transferência temporária para vacinação.', NOW(), NULL),
+    ('00000006-0000-0000-0000-000000000002', '00000006-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000011', seed_today - 15, 1, 'Haras Piquete 01', 'Baia de Observação', 'Observação clínica', NULL, NOW(), NULL),
+    ('00000006-0000-0000-0000-000000000003', '00000006-0000-0000-0000-000000000003', '00000003-0000-0000-0000-000000000021', seed_today - 10, 3, 'Pasto 03 - Várzea dos Búfalos', 'Pasto 03 - Várzea dos Búfalos', 'Ajuste cadastral', 'Correção do local atual.', NOW(), NULL);
 
 -- -----------------------------------------------------------------------------
 -- 10. APLICAÇÕES DE VACINA
 -- StatusComprovanteVacina: 0 = NaoEmitido, 1 = PendenteAssinatura, 2 = Assinado
 -- -----------------------------------------------------------------------------
-INSERT INTO "AplicacoesVacina" ("Id", "VacinaId", "AnimalId", "AnimalProtocoloVacinalId", "ProtocoloVacinalDoseId", "DataAplicacao", "DataProximaDose", "CicloFinalizado", "StatusComprovante", "NumeroLote", "DoseMl", "DataFabricacao", "DataValidade", "LocalAplicacao", "Observacoes", "VeterinarioResponsavel", "VeterinarioCrmv", "VeterinarioCrmvUf", "Aplicador", "LaboratorioFabricante", "AssinadaEm", "Assinante", "AssinanteCrmv", "AssinanteCrmvUf", "HashAssinatura", "MetodoAssinatura", "CreationDateTime", "LastModificationDateTime")
+INSERT INTO "AplicacoesVacina" ("Id", "VacinaId", "AnimalId", "AnimalProtocoloVacinalId", "ProtocoloVacinalDoseId", "DataAplicacao", "DataProximaDose", "StatusComprovante", "NumeroLote", "DoseMl", "DataFabricacao", "DataValidade", "LocalAplicacao", "Observacoes", "VeterinarioResponsavel", "VeterinarioCrmv", "VeterinarioCrmvUf", "Aplicador", "LaboratorioFabricante", "AssinadaEm", "Assinante", "AssinanteCrmv", "AssinanteCrmvUf", "HashAssinatura", "MetodoAssinatura", "CreationDateTime", "LastModificationDateTime")
 VALUES
-    ('0000000a-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000004', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000001', '2025-01-10', '2026-01-10', false, 1, 'LOT-SEED-BOV-001', '5.0', '2024-08-01', '2026-08-01', 'Pasto de Manejo Sanitário', 'Dose inicial do protocolo bovino.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
-    ('0000000a-0000-0000-0000-000000000002', '00000004-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000002', '2025-04-10', NULL, true, 2, 'LOT-SEED-BRU-001', '2.0', '2024-09-10', '2026-09-10', 'Pasto de Manejo Sanitário', 'Dose de acordo com a idade do animal.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', '2025-04-10 14:30:00+00', 'Dra. Ana Ribeiro', '10001', 'AM', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', NOW(), NULL),
-    ('0000000a-0000-0000-0000-000000000003', '00000004-0000-0000-0000-000000000009', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000004', '2025-03-20', '2026-03-20', false, 1, 'LOT-SEED-EQU-001', '3.0', '2024-12-20', '2026-12-20', 'Haras Piquete 01', 'Primeira dose equina.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
-    ('0000000a-0000-0000-0000-000000000004', '00000004-0000-0000-0000-000000000010', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000005', '2025-04-19', '2025-10-16', false, 1, 'LOT-SEED-INF-001', '2.5', '2024-11-19', '2026-11-19', 'Haras Piquete 01', 'Reforço de influenza pendente de assinatura.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
-    ('0000000a-0000-0000-0000-000000000005', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000021', '00000009-0000-0000-0000-000000000005', '00000008-0000-0000-0000-000000000006', '2025-01-25', '2026-01-25', false, 1, 'LOT-SEED-MUL-001', '4.0', '2024-07-25', '2026-07-25', 'Pasto 03 - Várzea dos Búfalos', 'Cobertura multiespécie.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
-    ('0000000a-0000-0000-0000-000000000006', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000031', NULL, NULL, '2025-05-12', '2026-05-12', false, 1, 'LOT-SEED-AVU-001', '4.0', '2024-10-12', '2026-10-12', 'Pasto 02', 'Aplicação avulsa para demonstração.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL);
+    ('0000000a-0000-0000-0000-000000000001', '00000004-0000-0000-0000-000000000004', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000001', '2025-01-10', '2026-01-10', 1, 'LOT-SEED-BOV-001', '5.0', '2024-08-01', '2026-08-01', 'Pasto de Manejo Sanitário', 'Dose inicial do protocolo bovino.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000002', '00000004-0000-0000-0000-000000000002', '00000003-0000-0000-0000-000000000001', '00000009-0000-0000-0000-000000000001', '00000008-0000-0000-0000-000000000002', '2025-04-10', NULL, 2, 'LOT-SEED-BRU-001', '2.0', '2024-09-10', '2026-09-10', 'Pasto de Manejo Sanitário', 'Dose de acordo com a idade do animal.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', '2025-04-10 14:30:00+00', 'Dra. Ana Ribeiro', '10001', 'AM', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000003', '00000004-0000-0000-0000-000000000009', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000004', '2025-03-20', '2026-03-20', 1, 'LOT-SEED-EQU-001', '3.0', '2024-12-20', '2026-12-20', 'Haras Piquete 01', 'Primeira dose equina.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000004', '00000004-0000-0000-0000-000000000010', '00000003-0000-0000-0000-000000000011', '00000009-0000-0000-0000-000000000003', '00000008-0000-0000-0000-000000000005', '2025-04-19', '2025-10-16', 1, 'LOT-SEED-INF-001', '2.5', '2024-11-19', '2026-11-19', 'Haras Piquete 01', 'Reforço de influenza pendente de assinatura.', 'Dr. Carlos Menezes', '10002', 'AM', 'Equipe de Campo', 'Laboratório EquiVet', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000005', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000021', '00000009-0000-0000-0000-000000000005', '00000008-0000-0000-0000-000000000006', '2025-01-25', '2026-01-25', 1, 'LOT-SEED-MUL-001', '4.0', '2024-07-25', '2026-07-25', 'Pasto 03 - Várzea dos Búfalos', 'Cobertura multiespécie.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL),
+    ('0000000a-0000-0000-0000-000000000006', '00000004-0000-0000-0000-000000000019', '00000003-0000-0000-0000-000000000031', NULL, NULL, '2025-05-12', '2026-05-12', 1, 'LOT-SEED-AVU-001', '4.0', '2024-10-12', '2026-10-12', 'Pasto 02', 'Aplicação avulsa para demonstração.', 'Dra. Ana Ribeiro', '10001', 'AM', 'Equipe de Campo', 'Laboratório VetBio', NULL, NULL, NULL, NULL, NULL, NULL, NOW(), NULL);
 
-INSERT INTO "AssinaturasAplicacoesVacina" ("Id", "AplicacaoVacinaId", "TipoEvento", "NomeAssinante", "Crmv", "CrmvUf", "DataHora", "HashConteudo", "Metodo", "Observacoes")
+-- Mantém a demonstração útil em qualquer data: histórico passado, reforços
+-- atrasados e primeiras doses a vencer nos próximos cinco dias.
+UPDATE "AnimalProtocolosVacinais" SET "DataInicio" = "DataInicio" + clinical_shift;
+UPDATE "AnimalProtocolosVacinais" SET "DataInicio" = seed_today - 85
+WHERE "Id" = '00000009-0000-0000-0000-000000000002';
+UPDATE "AnimalProtocolosVacinais" SET "DataInicio" = seed_today - 25
+WHERE "Id" = '00000009-0000-0000-0000-000000000006';
+UPDATE "AplicacoesVacina" SET
+    "DataAplicacao" = "DataAplicacao" + clinical_shift,
+    "DataProximaDose" = "DataProximaDose" + clinical_shift,
+    "DataFabricacao" = "DataFabricacao" + clinical_shift,
+    "DataValidade" = "DataValidade" + clinical_shift,
+    "AssinadaEm" = "AssinadaEm" + clinical_shift * INTERVAL '1 day';
+UPDATE "Animals" SET "LoteOuPasto" = 'Pasto de Manejo Sanitário'
+WHERE "Id" = '00000003-0000-0000-0000-000000000001';
+UPDATE "Animals" SET "LoteOuPasto" = 'Baia de Observação'
+WHERE "Id" = '00000003-0000-0000-0000-000000000011';
+
+-- Formato canônico legado v1, idêntico ao validador anterior. Não contém snapshot.
+UPDATE "AplicacoesVacina" a SET "HashAssinatura" = encode(sha256(convert_to(concat_ws('|',
+    replace(a."Id"::text, '-', ''), replace(a."AnimalId"::text, '-', ''), replace(a."VacinaId"::text, '-', ''),
+    to_char(a."DataAplicacao", 'YYYY-MM-DD'), coalesce(to_char(a."DataProximaDose", 'YYYY-MM-DD'), ''),
+    trim(a."NumeroLote"), coalesce(trim(a."DoseMl"), ''), coalesce(to_char(a."DataFabricacao", 'YYYY-MM-DD'), ''),
+    coalesce(to_char(a."DataValidade", 'YYYY-MM-DD'), ''), coalesce(trim(a."LocalAplicacao"), ''),
+    coalesce(trim(a."LaboratorioFabricante"), ''), coalesce(trim(a."VeterinarioResponsavel"), ''),
+    coalesce(trim(a."VeterinarioCrmv"), ''), coalesce(trim(a."VeterinarioCrmvUf"), ''),
+    coalesce(trim(a."Aplicador"), ''), coalesce(trim(a."Observacoes"), ''),
+    trim(a."Assinante"), trim(a."AssinanteCrmv"), upper(trim(a."AssinanteCrmvUf")),
+    to_char(a."AssinadaEm" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.0000000+00:00'
+), 'UTF8')), 'hex') WHERE a."StatusComprovante" = 2;
+
+UPDATE "ProtocolosVacinais" SET "FamiliaId" = "Id", "Versao" = 1, "VersaoAtual" = true;
+
+INSERT INTO "AssinaturasAplicacoesVacina" ("Id", "AplicacaoVacinaId", "AssinanteUserId", "TipoEvento", "NomeAssinante", "Crmv", "CrmvUf", "DataHora", "HashConteudo", "Metodo", "Observacoes")
 VALUES
-    ('0000000b-0000-0000-0000-000000000001', '0000000a-0000-0000-0000-000000000002', 'Assinatura', 'Dra. Ana Ribeiro', '10001', 'AM', '2025-04-10 14:30:00+00', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', 'Assinatura interna criada pelo seed.');
+    ('0000000b-0000-0000-0000-000000000001', '0000000a-0000-0000-0000-000000000002', NULL, 'Assinatura', 'Dra. Ana Ribeiro', '10001', 'AM', '2025-04-10 14:30:00+00', '1111111111111111111111111111111111111111111111111111111111111111', 'InternaAuditavel', 'Assinatura histórica do seed; novas assinaturas registram o ID do usuário autenticado.');
 
-COMMIT;
+UPDATE "AssinaturasAplicacoesVacina" s SET "HashConteudo" = a."HashAssinatura", "DataHora" = a."AssinadaEm"
+FROM "AplicacoesVacina" a WHERE s."AplicacaoVacinaId" = a."Id" AND s."TipoEvento" = 'Assinatura';
+
+INSERT INTO "__VetControlDevSeed" ("Id") VALUES ('demo-v1');
+-- Um catálogo vazio também recebe os locais do plantel e do histórico do seed.
+IF to_regclass('public."Ambientes"') IS NOT NULL THEN
+    WITH locais AS (
+        SELECT "LoteOuPasto" AS nome FROM "Animals"
+        UNION ALL SELECT "LocalOrigem" FROM "MovimentacoesAnimais"
+        UNION ALL SELECT "LocalDestino" FROM "MovimentacoesAnimais"
+    ), catalogo AS (
+        SELECT min(btrim(nome)) AS nome, lower(btrim(nome)) AS chave
+        FROM locais WHERE nullif(btrim(nome), '') IS NOT NULL
+        GROUP BY lower(btrim(nome))
+    )
+    INSERT INTO "Ambientes" ("Id", "Nome", "Tipo", "CreationDateTime")
+    SELECT gen_random_uuid(), nome,
+        CASE
+            WHEN chave ~ '^pasto([[:space:]]|$)' THEN 'Pasto'
+            WHEN chave ~ '^piquete([[:space:]]|$)' THEN 'Piquete'
+            WHEN chave ~ '^ba[ií]a([[:space:]]|$)' THEN 'Baia'
+            WHEN chave ~ '^curral([[:space:]]|$)' THEN 'Curral'
+            ELSE 'Outro'
+        END, now()
+    FROM catalogo
+    ON CONFLICT ("NomeNormalizado") DO NOTHING;
+
+    UPDATE "Animals" animal SET "AmbienteId" = ambiente."Id"
+    FROM "Ambientes" ambiente WHERE ambiente."NomeNormalizado" = lower(btrim(animal."LoteOuPasto"));
+
+    UPDATE "MovimentacoesAnimais" movimento SET "AmbienteOrigemId" = ambiente."Id"
+    FROM "Ambientes" ambiente WHERE ambiente."NomeNormalizado" = lower(btrim(movimento."LocalOrigem"));
+
+    UPDATE "MovimentacoesAnimais" movimento SET "AmbienteDestinoId" = ambiente."Id"
+    FROM "Ambientes" ambiente WHERE ambiente."NomeNormalizado" = lower(btrim(movimento."LocalDestino"));
+END IF;
+END
+$vet_control_seed$;

@@ -1,6 +1,7 @@
 using Api.Database;
 using Api.DTOs;
 using Api.Models;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.Especies;
@@ -19,7 +20,7 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
 
         if (page.HasValue)
         {
-            query = query.Skip((page.Value - 1) * 10).Take(10);
+            query = query.Skip(Pagination.Offset(page, 10)).Take(10);
         }
 
         return query.ToListAsync(cancellationToken);
@@ -123,10 +124,11 @@ public sealed class EspecieService(ApiContext context) : IEspecieService
 
         query = ApplyFilters(query, search);
 
+        var currentPage = Pagination.NormalizePage(page);
         return query
             .OrderBy(e => e.Nome)
             .ThenBy(e => e.NomeCientifico)
-            .Skip((page - 1) * 10)
+            .Skip(Pagination.Offset(currentPage, 10))
             .Take(10)
             .ToListAsync(cancellationToken);
     }

@@ -8,18 +8,16 @@ import type {
 } from '../types';
 
 export interface VacinaListParams {
+    Ativo?: boolean;
     page?: number | string;
     EspecieId?: string;
     ObrigatorioOrgaoSanitario?: boolean;
-    ReaplicarEmXDiasMin?: number | string;
-    ReaplicarEmXDiasMax?: number | string;
 }
 
 export interface VacinaCountParams {
+    Ativo?: boolean;
     EspecieId?: string;
     ObrigatorioOrgaoSanitario?: boolean;
-    ReaplicarEmXDiasMin?: number | string;
-    ReaplicarEmXDiasMax?: number | string;
 }
 
 export const vacinaService = {
@@ -28,10 +26,9 @@ export const vacinaService = {
             params: {
                 query: {
                     page: params?.page,
+                    Ativo: params?.Ativo,
                     EspecieId: params?.EspecieId,
                     ObrigatorioOrgaoSanitario: params?.ObrigatorioOrgaoSanitario,
-                    ReaplicarEmXDiasMin: params?.ReaplicarEmXDiasMin,
-                    ReaplicarEmXDiasMax: params?.ReaplicarEmXDiasMax,
                 },
             },
         });
@@ -47,11 +44,10 @@ export const vacinaService = {
             params: {
                 query: {
                     name: search,
+                    Ativo: filters?.Ativo,
                     page,
                     EspecieId: filters?.EspecieId,
                     ObrigatorioOrgaoSanitario: filters?.ObrigatorioOrgaoSanitario,
-                    ReaplicarEmXDiasMin: filters?.ReaplicarEmXDiasMin,
-                    ReaplicarEmXDiasMax: filters?.ReaplicarEmXDiasMax,
                 },
             },
         });
@@ -66,10 +62,9 @@ export const vacinaService = {
             params: {
                 query: params
                     ? {
+                        Ativo: params.Ativo,
                         EspecieId: params.EspecieId,
                         ObrigatorioOrgaoSanitario: params.ObrigatorioOrgaoSanitario,
-                        ReaplicarEmXDiasMin: params.ReaplicarEmXDiasMin,
-                        ReaplicarEmXDiasMax: params.ReaplicarEmXDiasMax,
                     }
                     : undefined,
             },

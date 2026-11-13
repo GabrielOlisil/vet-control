@@ -1,4 +1,6 @@
 <script lang="ts">
+    import AmbienteSelect from '$lib/components/AmbienteSelect.svelte';
+    import { formatDateOnly } from '$lib/utils/dates';
     import { onMount } from "svelte";
     import { page } from "$app/stores";
     import FormModal from "$lib/components/FormModal.svelte";
@@ -9,6 +11,8 @@
     import EspecieAvatar from "$lib/components/EspecieAvatar.svelte";
     import StatusVacinaBadge from "$lib/components/StatusVacinaBadge.svelte";
     import ComprovanteStatusBadge from "$lib/components/ComprovanteStatusBadge.svelte";
+    import VaccinationCorrectionActions from "$lib/components/VaccinationCorrectionActions.svelte";
+    import ProtocolMigrationAction from "$lib/components/ProtocolMigrationAction.svelte";
     import { animalService } from "$lib/api/animais";
     import { aplicacaoVacinaService } from "$lib/api/aplicacoes-vacina";
     import { protocoloVacinalService } from "$lib/api/protocolos-vacinais";
@@ -31,7 +35,7 @@
         type MovimentacaoAnimalResponseDto,
         type TipoMovimentacaoAnimal,
         TipoMovimentacaoAnimalLabels,
-        StatusPendenciaVacinalLabels,
+        rotuloStatusDoseVacinal,
     } from "$lib/types";
 
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
@@ -159,22 +163,38 @@
     let showMovementModal = $state(false);
     let isSubmittingMovement = $state(false);
     let movementError = $state("");
-    let movementForm = $state<any>({ dataMovimentacao: hoje(), tipo: "Transferencia", localOrigem: "", localDestino: "", motivo: "", observacoes: "" });
+    function emptyMovementForm() {
+        return {
+            dataMovimentacao: hoje(),
+            tipo: "Transferencia" as TipoMovimentacaoAnimal,
+            ambienteOrigemId: "",
+            ambienteDestinoId: "",
+            motivo: "",
+            observacoes: "",
+        };
+    }
+    let movementForm = $state(emptyMovementForm());
 
     function openMovementModal() {
-        movementForm = { dataMovimentacao: hoje(), tipo: "Transferencia", localOrigem: animal?.loteOuPasto ?? "", localDestino: "", motivo: "", observacoes: "" };
+        movementForm = emptyMovementForm();
         movementError = "";
         showMovementModal = true;
     }
 
     async function submitMovement() {
-        if (!movementForm.localDestino?.trim() && movementForm.tipo !== "Saida") {
-            movementError = "Informe o local de destino.";
+        if (["Entrada", "Transferencia"].includes(movementForm.tipo) && !movementForm.ambienteDestinoId) {
+            movementError = "Selecione o ambiente de destino.";
             return;
         }
         isSubmittingMovement = true;
         try {
-            await movimentacaoAnimalService.create(animalId, { ...movementForm, localOrigem: movementForm.localOrigem.trim() || null, localDestino: movementForm.localDestino.trim() || null, motivo: movementForm.motivo.trim() || null, observacoes: movementForm.observacoes.trim() || null });
+            await movimentacaoAnimalService.create(animalId, {
+                ...movementForm,
+                ambienteOrigemId: movementForm.ambienteOrigemId || undefined,
+                ambienteDestinoId: movementForm.tipo === "Saida" ? undefined : movementForm.ambienteDestinoId || undefined,
+                motivo: movementForm.motivo.trim() || null,
+                observacoes: movementForm.observacoes.trim() || null,
+            });
             showMovementModal = false;
             await load();
         } catch (e) {
@@ -217,9 +237,6 @@
     let isSigning = $state(false);
     let signatureError = $state("");
     let signatureForm = $state<AplicacaoVacinaAssinaturaDto>({
-        nomeAssinante: "",
-        crmv: "",
-        crmvUf: "",
         observacoes: "",
     });
 
@@ -232,25 +249,17 @@
 
     function openSignature(apl: AplicacaoVacinaDetailResponseDto) {
         signatureTargetAplicacao = apl;
-        signatureForm = { nomeAssinante: "", crmv: "", crmvUf: "", observacoes: "" };
+        signatureForm = { observacoes: "" };
         signatureError = "";
         showSignatureModal = true;
     }
 
     async function submitSignature() {
         if (!signatureTargetAplicacao?.id) return;
-        if (!signatureForm.nomeAssinante?.trim() || !signatureForm.crmv?.trim() || !signatureForm.crmvUf?.trim()) {
-            signatureError = "Informe nome, CRMV e UF do veterinário assinante.";
-            return;
-        }
         signatureError = "";
         isSigning = true;
         try {
             await aplicacaoVacinaService.assinar(signatureTargetAplicacao.id, {
-                ...signatureForm,
-                nomeAssinante: signatureForm.nomeAssinante.trim(),
-                crmv: signatureForm.crmv.trim(),
-                crmvUf: signatureForm.crmvUf.trim().toUpperCase(),
                 observacoes: signatureForm.observacoes?.trim() || undefined,
             });
             showSignatureModal = false;
@@ -331,7 +340,7 @@
 
     function formatDate(d?: string | null): string {
         if (!d) return "—";
-        return new Date(d).toLocaleDateString("pt-BR");
+        return /^\d{4}-\d{2}-\d{2}$/.test(d) ? formatDateOnly(d) : new Date(d).toLocaleDateString("pt-BR");
     }
 
     $inspect(animal);
@@ -443,12 +452,16 @@
                 <div class="divide-y divide-base-200">{#each animalProtocolos as protocol}
                     <div class="p-5">
                         <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div><h3 class="font-bold">{protocol.protocoloVacinal?.nome ?? "Protocolo"}</h3><p class="text-xs text-base-content/60">Início: {formatDate(protocol.dataInicio)} · {protocol.protocoloVacinal?.finalidade ?? "Sem finalidade"}</p></div>
-                            <div class="flex items-center gap-2"><span class="badge {protocol.ativo ? 'badge-success' : 'badge-ghost'}">{protocol.ativo ? "Ativo" : "Inativo"}</span>{#if canManageClinicalProtocols}<button class="btn btn-ghost btn-xs" onclick={() => toggleProtocol(protocol)}>{protocol.ativo ? "Inativar" : "Reativar"}</button>{/if}</div>
+                            <div><h3 class="font-bold">{protocol.protocoloVacinal?.nome ?? "Protocolo"} · v{protocol.protocoloVacinal?.versao ?? 1}</h3><p class="text-xs text-base-content/60">Início: {formatDate(protocol.dataInicio)} · {protocol.protocoloVacinal?.finalidade ?? "Sem finalidade"}</p></div>
+                            <div class="flex flex-wrap items-center gap-2"><span class="badge {protocol.ativo ? 'badge-success' : 'badge-ghost'}">{protocol.ativo ? "Ativo" : "Inativo"}</span>{#if canManageClinicalProtocols}<ProtocolMigrationAction {animalId} assignment={protocol} onchanged={load} /><button class="btn btn-ghost btn-xs" onclick={() => toggleProtocol(protocol)}>{protocol.ativo ? "Inativar" : "Reativar"}</button>{/if}</div>
                         </div>
                         <div class="flex flex-wrap gap-2 mt-3 text-xs"><span class="badge badge-success badge-outline">{protocol.dosesConcluidas} concluída(s)</span><span class="badge badge-warning badge-outline">{protocol.dosesPendentes} pendente(s)</span><span class="badge badge-error badge-outline">{protocol.dosesAtrasadas} atrasada(s)</span></div>
-                        <div class="overflow-x-auto mt-3"><table class="table table-xs"><thead><tr><th>Dose</th><th>Vacina</th><th>Prevista</th><th>Aplicada</th><th>Status</th></tr></thead><tbody>{#each protocol.doses ?? [] as dose}
-                            <tr><td>{dose.ordem}</td><td>{dose.vacina?.name ?? "—"}</td><td>{formatDate(dose.dataPrevista)}</td><td>{formatDate(dose.dataAplicacao)}</td><td><span class="badge badge-sm {dose.status === 'Concluida' ? 'badge-success' : dose.status === 'Atrasada' ? 'badge-error' : 'badge-warning'}">{StatusPendenciaVacinalLabels[dose.status ?? "Pendente"]}</span></td></tr>
+                        <div class="overflow-x-auto mt-3"><table class="table table-xs"><thead><tr><th>Dose</th><th>Vacina</th><th>Prevista</th><th>Última aplicação</th><th>Status</th></tr></thead><tbody>{#each protocol.doses ?? [] as dose}
+                            <tr>
+                                <td>{dose.ordem}</td><td>{dose.vacina?.name ?? "—"}</td>
+                                <td>{formatDate(dose.dataPrevista)}</td><td>{formatDate(dose.dataAplicacao)}</td>
+                                <td><span class="badge badge-sm {dose.status === 'Concluida' ? 'badge-success' : dose.status === 'Atrasada' ? 'badge-error' : 'badge-warning'}">{rotuloStatusDoseVacinal(dose.status, Boolean(dose.dataAplicacao))}</span></td>
+                            </tr>
                         {/each}</tbody></table></div>
                     </div>
                 {/each}</div>
@@ -459,7 +472,7 @@
         <div class="card bg-base-100 shadow-xs rounded-2xl overflow-hidden">
             <div class="px-5 py-4 border-b border-base-200 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="font-semibold">
-                    Histórico Vacinal — {aplicacoes.length} dose(s)
+                    Histórico Vacinal — {aplicacoes.filter(a => (a.situacaoRegistro ?? 'Ativo') === 'Ativo').length} dose(s) vigente(s) · {aplicacoes.length} registro(s)
                 </h2>
                 <a
                     class="btn btn-outline btn-sm"
@@ -555,6 +568,7 @@
                                     </td>
                                     <td class="text-right">
                                         <div class="flex justify-end gap-1">
+                                            <VaccinationCorrectionActions application={apl} roles={roles} onchanged={load} />
                                             {#if apl.statusComprovante === "Assinado"}
                                                 <button
                                                     class="btn btn-xs btn-ghost gap-1"
@@ -568,7 +582,7 @@
                                                         Validar
                                                     {/if}
                                                 </button>
-                                            {:else if canSignApplications}
+                                            {:else if canSignApplications && (apl.situacaoRegistro ?? 'Ativo') === 'Ativo'}
                                                 <button
                                                     class="btn btn-xs btn-ghost gap-1"
                                                     onclick={() => openSignature(apl)}
@@ -577,7 +591,7 @@
                                                     Assinar
                                                 </button>
                                             {/if}
-                                            {#if canDeleteApplications}<button
+                                            {#if canDeleteApplications && apl.statusComprovante !== 'Assinado' && (apl.situacaoRegistro ?? 'Ativo') === 'Ativo'}<button
                                                 class="btn btn-xs btn-ghost text-error"
                                                 onclick={() => openDelete(apl)}
                                             >
@@ -645,6 +659,7 @@
         {/if}
         <div class="sm:col-span-2">
             <VacinaSelect
+                onlyActive
                 label="Vacina *"
                 bind:value={vacinarForm.vacinaId}
                 required
@@ -677,8 +692,9 @@
             />
         </div>
         <div>
-            <label class="label label-text text-xs">Dose (mL)</label>
+            <label for="doseVacinaProntuario" class="label label-text text-xs">Dose (mL)</label>
             <input
+                id="doseVacinaProntuario"
                 type="number"
                 step="0.1"
                 min="0"
@@ -693,7 +709,7 @@
             <Input label="Data de validade" type="date" bind:value={vacinarForm.dataValidade} />
         </div>
         <p class="sm:col-span-2 text-sm opacity-70">
-            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+            Quem lança fica identificado como aplicador. O veterinário responsável será identificado ao assinar.
         </p>
         <div>
             <Input
@@ -706,8 +722,9 @@
             <Input label="Local da aplicação" bind:value={vacinarForm.localAplicacao} />
         </div>
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs">Observações</label>
+            <label for="observacoesVacinaProntuario" class="label label-text text-xs">Observações</label>
             <textarea
+                id="observacoesVacinaProntuario"
                 class="textarea textarea-bordered w-full"
                 rows="2"
                 bind:value={vacinarForm.observacoes}
@@ -734,8 +751,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input label="Data *" type="date" bind:value={movementForm.dataMovimentacao} required />
         <label class="form-control"><span class="label-text">Tipo *</span><select class="select select-bordered" bind:value={movementForm.tipo}>{#each Object.keys(TipoMovimentacaoAnimalLabels) as type}<option value={type}>{TipoMovimentacaoAnimalLabels[type]}</option>{/each}</select></label>
-        <Input label="Local de origem" bind:value={movementForm.localOrigem} />
-        <Input label="Local de destino" bind:value={movementForm.localDestino} />
+        <AmbienteSelect label="Ambiente de origem" bind:value={movementForm.ambienteOrigemId} placeholder="Origem automática se vazio" />
+        {#if movementForm.tipo !== "Saida"}<AmbienteSelect label="Ambiente de destino" bind:value={movementForm.ambienteDestinoId} />{/if}
         <div class="sm:col-span-2"><Input label="Motivo" bind:value={movementForm.motivo} placeholder="Ex.: mudança de lote, venda, retorno" /></div>
         <label class="form-control sm:col-span-2"><span class="label-text">Observações</span><textarea class="textarea textarea-bordered" bind:value={movementForm.observacoes}></textarea></label>
     </div>
@@ -762,12 +779,9 @@
         <strong>{formatDate(signatureTargetAplicacao?.dataAplicacao)}</strong>
     </p>
     <p class="text-xs text-base-content/70 mb-3">
-        A assinatura ficará vinculada ao conteúdo atual da aplicação e será registrada no histórico de auditoria.
+        A assinatura usará automaticamente seu nome e CRMV cadastrados no perfil e ficará vinculada ao conteúdo atual da aplicação.
     </p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div class="sm:col-span-2"><Input label="Nome do veterinário *" bind:value={signatureForm.nomeAssinante} required /></div>
-        <Input label="CRMV *" bind:value={signatureForm.crmv} required />
-        <Input label="UF *" maxlength={2} bind:value={signatureForm.crmvUf} required />
         <div class="sm:col-span-2">
             <label class="label label-text text-xs" for="assinaturaObservacoesProntuario">Observações da assinatura</label>
             <textarea id="assinaturaObservacoesProntuario" class="textarea textarea-bordered w-full" rows="2" bind:value={signatureForm.observacoes}></textarea>

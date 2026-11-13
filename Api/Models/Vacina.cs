@@ -6,10 +6,9 @@ public class Vacina : IAuditedEntity
 
     public Guid? EspecieId { get; set; }
     public required string Name { get; set; }
+    public bool Ativo { get; set; } = true;
 
     public string? Descricao { get; set; }
-
-    public uint ReaplicarEmXDias { get; set; }
 
     public bool ObrigatorioOrgaoSanitario { get; set; } = false;
 

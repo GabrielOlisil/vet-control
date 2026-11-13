@@ -3,11 +3,13 @@ using Api.DTOs;
 using Api.Mappers;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services;
+using Api.Services.Ambientes;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.Animals;
 
-public sealed class AnimalService(ApiContext context) : IAnimalService
+public sealed class AnimalService(ApiContext context, ClinicalCalendar calendar, AmbienteService ambientes) : IAnimalService
 {
     public Task<Animal?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -35,7 +37,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         if (page.HasValue)
         {
-            query = query.Skip((page.Value - 1) * 10).Take(10);
+            query = query.Skip(Pagination.Offset(page, 10)).Take(10);
         }
 
         return query.ToListAsync(cancellationToken);
@@ -43,14 +45,9 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
     public async Task<Animal> CreateAsync(AnimalCreateDto dto, CancellationToken cancellationToken = default)
     {
-        if (dto.Identificadores.Count == 0)
-            throw new ArgumentException("Ao menos um identificador é obrigatório.");
-
-        // Se nenhum identificador vier marcado como principal, marcar o primeiro
-        if (!dto.Identificadores.Any(i => i.EhPrincipal))
-        {
-            dto.Identificadores[0] = dto.Identificadores[0] with { EhPrincipal = true };
-        }
+        ValidateBirthDate(dto.DataNascimento);
+        var principalIndex = ValidateIdentifiers(dto.Identificadores);
+        var ambiente = await ambientes.ResolveAsync(dto.AmbienteId, dto.LoteOuPasto, cancellationToken);
 
         var animal = new Animal
         {
@@ -61,25 +58,27 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             DataNascimentoAproximada = dto.DataNascimentoAproximada,
             Sexo = dto.Sexo,
             OrigemAnimal = dto.Origem,
-            LoteOuPasto = dto.LoteOuPasto,
+            LoteOuPasto = ambiente?.Nome,
+            AmbienteId = ambiente?.Id,
             Ativo = dto.Ativo,
-            Identificadores = dto.Identificadores.Select(i => new IdentificadorAnimal
+            Identificadores = dto.Identificadores.Select((i, index) => new IdentificadorAnimal
             {
                 Id = Guid.NewGuid(),
                 Tipo = i.Tipo,
                 Valor = i.Valor,
-                IsPrincipal = i.EhPrincipal
+                IsPrincipal = index == principalIndex
             }).ToList()
         };
 
-        if (!string.IsNullOrWhiteSpace(dto.LoteOuPasto))
+        if (ambiente is not null)
         {
             animal.Movimentacoes.Add(new MovimentacaoAnimal
             {
                 Id = Guid.NewGuid(),
-                DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
+                DataMovimentacao = calendar.Today,
                 Tipo = TipoMovimentacaoAnimal.Entrada,
-                LocalDestino = dto.LoteOuPasto.Trim(),
+                LocalDestino = ambiente.Nome,
+                AmbienteDestinoId = ambiente.Id,
                 Motivo = "Cadastro do animal"
             });
         }
@@ -108,6 +107,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         if (dto.DataNascimento.HasValue)
         {
+            ValidateBirthDate(dto.DataNascimento.Value);
             animal.DataNascimento = dto.DataNascimento.Value;
         }
 
@@ -131,38 +131,28 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
             animal.OrigemAnimal = dto.Origem.Value;
         }
 
-        var loteOuPastoAnterior = animal.LoteOuPasto;
-        if (dto.LoteOuPastoWasProvided)
+        if (dto.LoteOuPastoWasProvided || dto.AmbienteIdWasProvided)
         {
-            animal.LoteOuPasto = dto.LoteOuPasto;
-
-            if (!string.Equals(loteOuPastoAnterior?.Trim(), dto.LoteOuPasto?.Trim(), StringComparison.OrdinalIgnoreCase))
+            var destino = await ambientes.ResolveAsync(dto.AmbienteId, dto.LoteOuPasto, cancellationToken);
+            if (animal.AmbienteId != destino?.Id || (destino is null && animal.LoteOuPasto is not null))
             {
-                if (!string.IsNullOrWhiteSpace(dto.LoteOuPasto))
+                if (!animal.Ativo && dto.Ativo != true)
+                    throw new ArgumentException("Para corrigir a localização de um animal inativo, registre um ajuste com motivo no histórico de movimentação.");
+                context.MovimentacoesAnimais.Add(new MovimentacaoAnimal
                 {
-                    animal.Movimentacoes.Add(new MovimentacaoAnimal
-                    {
-                        Id = Guid.NewGuid(),
-                        DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
-                        Tipo = string.IsNullOrWhiteSpace(loteOuPastoAnterior)
-                            ? TipoMovimentacaoAnimal.Entrada
-                            : TipoMovimentacaoAnimal.Transferencia,
-                        LocalOrigem = loteOuPastoAnterior,
-                        LocalDestino = dto.LoteOuPasto.Trim(),
-                        Motivo = "Alteração de lote/pasto"
-                    });
-                }
-                else if (!string.IsNullOrWhiteSpace(loteOuPastoAnterior))
-                {
-                    animal.Movimentacoes.Add(new MovimentacaoAnimal
-                    {
-                        Id = Guid.NewGuid(),
-                        DataMovimentacao = DateOnly.FromDateTime(DateTime.UtcNow),
-                        Tipo = TipoMovimentacaoAnimal.Saida,
-                        LocalOrigem = loteOuPastoAnterior,
-                        Motivo = "Remoção do lote/pasto atual"
-                    });
-                }
+                    Id = Guid.NewGuid(),
+                    AnimalId = animal.Id,
+                    DataMovimentacao = calendar.Today,
+                    Tipo = destino is null ? TipoMovimentacaoAnimal.Saida
+                        : string.IsNullOrWhiteSpace(animal.LoteOuPasto) ? TipoMovimentacaoAnimal.Entrada : TipoMovimentacaoAnimal.Transferencia,
+                    LocalOrigem = animal.LoteOuPasto,
+                    AmbienteOrigemId = animal.AmbienteId,
+                    LocalDestino = destino?.Nome,
+                    AmbienteDestinoId = destino?.Id,
+                    Motivo = "Alteração de ambiente no cadastro"
+                });
+                animal.LoteOuPasto = destino?.Nome;
+                animal.AmbienteId = destino?.Id;
             }
         }
 
@@ -172,28 +162,53 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         }
 
         if (dto.Identificadores is not null)
-        {
-            // Replace all identificadores
-            context.IdentificadorAnimal.RemoveRange(animal.Identificadores);
-
-            if (!dto.Identificadores.Any(i => i.EhPrincipal) && dto.Identificadores.Count > 0)
-            {
-                dto.Identificadores[0] = dto.Identificadores[0] with { EhPrincipal = true };
-            }
-
-            animal.Identificadores = dto.Identificadores.Select(i => new IdentificadorAnimal
-            {
-                Id = Guid.NewGuid(),
-                AnimalId = animal.Id,
-                Tipo = i.Tipo,
-                Valor = i.Valor,
-                IsPrincipal = i.EhPrincipal
-            }).ToList();
-        }
+            UpdateIdentifiers(animal, dto.Identificadores);
 
         await context.SaveChangesAsync(cancellationToken);
 
         return animal;
+    }
+
+    private void ValidateBirthDate(DateOnly date)
+    {
+        if (date == default || date > calendar.Today)
+            throw new ArgumentException("Informe uma data de nascimento válida, até o dia de hoje na clínica.");
+    }
+
+    private void UpdateIdentifiers(Animal animal, List<IdentificadorCreateDto> identifiers)
+    {
+        var principalIndex = ValidateIdentifiers(identifiers);
+        var removed = animal.Identificadores.ToDictionary(i => (i.Tipo, i.Valor));
+        for (var index = 0; index < identifiers.Count; index++)
+        {
+            var input = identifiers[index];
+            if (removed.Remove((input.Tipo, input.Valor), out var identifier))
+            {
+                identifier.IsPrincipal = index == principalIndex;
+                continue;
+            }
+
+            context.IdentificadorAnimal.Add(new IdentificadorAnimal
+            {
+                Id = Guid.NewGuid(),
+                AnimalId = animal.Id,
+                Tipo = input.Tipo,
+                Valor = input.Valor,
+                IsPrincipal = index == principalIndex
+            });
+        }
+        context.IdentificadorAnimal.RemoveRange(removed.Values);
+    }
+
+    private static int ValidateIdentifiers(List<IdentificadorCreateDto> identifiers)
+    {
+        if (identifiers.Count == 0)
+            throw new ArgumentException("Ao menos um identificador é obrigatório.");
+        if (identifiers.Any(i => string.IsNullOrWhiteSpace(i.Valor)))
+            throw new ArgumentException("Informe o valor de cada identificador.");
+        if (identifiers.Count(i => i.EhPrincipal) > 1)
+            throw new ArgumentException("Selecione somente um identificador principal.");
+        return Math.Max(0, identifiers.FindIndex(i => i.EhPrincipal));
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -203,6 +218,11 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         {
             return false;
         }
+
+        if (await context.AplicacoesVacina.AnyAsync(a => a.AnimalId == id, cancellationToken) ||
+            await context.MovimentacoesAnimais.AnyAsync(m => m.AnimalId == id, cancellationToken) ||
+            await context.AnimalProtocolosVacinais.AnyAsync(p => p.AnimalId == id, cancellationToken))
+            throw new InvalidOperationException("Este animal possui histórico. Inative o cadastro para preservá-lo.");
 
         context.Animals.Remove(animal);
         await context.SaveChangesAsync(cancellationToken);
@@ -239,6 +259,8 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         if (!string.IsNullOrWhiteSpace(search.LoteOuPasto))
             query = query.Where(animal => animal.LoteOuPasto == search.LoteOuPasto);
+        if (search.AmbienteId.HasValue)
+            query = query.Where(animal => animal.AmbienteId == search.AmbienteId);
 
         if (search.DataNascimento.HasValue)
             query = query.Where(animal => animal.DataNascimento == search.DataNascimento.Value);
@@ -281,9 +303,10 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
 
         query = ApplyFilters(query, search);
 
+        var currentPage = Pagination.NormalizePage(page);
         return query
             .OrderBy(e => e.Name)
-            .Skip((page - 1) * 10)
+            .Skip(Pagination.Offset(currentPage, 10))
             .Take(10)
             .ToListAsync(cancellationToken);
     }
@@ -303,6 +326,7 @@ public sealed class AnimalService(ApiContext context) : IAnimalService
         var aplicacoes = await context.AplicacoesVacina
             .AsNoTracking()
             .Include(av => av.Vacina)
+            .Include(av => av.SubstituidaPor)
             .Where(av => av.AnimalId == animalId)
             .OrderByDescending(av => av.DataAplicacao)
             .ToListAsync(ct);

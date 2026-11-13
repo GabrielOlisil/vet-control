@@ -1,13 +1,17 @@
 using Api.DTOs;
 using Api.Mappers;
+using Api.Models.Enums;
 using Api.Services.AplicacoesVacina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
+[EnableRateLimiting("public-validation")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [Route("api/v1/validacao-vacinacao")]
 public sealed class ValidacaoPublicaVacinaController(IAplicacaoVacinaService aplicacaoVacinaService) : ControllerBase
 {
@@ -21,7 +25,6 @@ public sealed class ValidacaoPublicaVacinaController(IAplicacaoVacinaService apl
             return Ok(new ValidacaoPublicaVacinaResponseDto
             {
                 Encontrado = false,
-                CodigoValidacao = id,
                 Mensagem = "Nenhuma vacinação foi encontrada para o código informado."
             });
         }
@@ -30,16 +33,29 @@ public sealed class ValidacaoPublicaVacinaController(IAplicacaoVacinaService apl
         if (validacao is null)
             return NotFound();
 
+        var registro = AplicacaoVacinaMapper.MapToResponse(aplicacao);
         return Ok(new ValidacaoPublicaVacinaResponseDto
         {
+            SituacaoRegistro = aplicacao.SituacaoRegistro,
+            RegistroVigente = aplicacao.SituacaoRegistro == SituacaoRegistroVacina.Ativo,
+            DadosHistoricosPreservados = registro.DadosHistoricosPreservados,
+            SubstituidaPorId = registro.SubstituidaPorId, RetificaAplicacaoVacinaId = registro.RetificaAplicacaoVacinaId,
+            MotivoAlteracao = aplicacao.MotivoAlteracao,
             Encontrado = true,
-            CodigoValidacao = id,
             Mensagem = validacao.Mensagem,
             Assinada = validacao.Assinada,
             AssinaturaIntegra = validacao.Integra,
-            AuditoriaIntegra = validacao.AuditoriaIntegra,
-            Validacao = validacao,
-            Registro = AplicacaoVacinaMapper.MapToResponse(aplicacao)
+            VacinaNome = registro.Vacina?.Name,
+            AnimalIdentificacao = registro.Animal?.Name ?? registro.Animal?.IdentificadorPrincipal?.Valor,
+            DataAplicacao = aplicacao.DataAplicacao,
+            NumeroLote = aplicacao.NumeroLote,
+            VeterinarioResponsavel = aplicacao.VeterinarioResponsavel,
+            VeterinarioCrmv = aplicacao.VeterinarioCrmv,
+            VeterinarioCrmvUf = aplicacao.VeterinarioCrmvUf,
+            Assinante = aplicacao.Assinante,
+            AssinanteCrmv = aplicacao.AssinanteCrmv,
+            AssinanteCrmvUf = aplicacao.AssinanteCrmvUf,
+            AssinadaEm = aplicacao.AssinadaEm
         });
     }
 }

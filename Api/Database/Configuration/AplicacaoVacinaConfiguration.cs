@@ -9,26 +9,36 @@ public class AplicacaoVacinaConfiguration : IEntityTypeConfiguration<AplicacaoVa
 {
     public void Configure(EntityTypeBuilder<AplicacaoVacina> builder)
     {
+        builder.Property(a => a.Version).IsRowVersion();
+        builder.Property(a => a.VersaoAssinatura).HasDefaultValue(1);
+        builder.Property(a => a.SituacaoRegistro).HasConversion<string>().HasDefaultValue(Api.Models.Enums.SituacaoRegistroVacina.Ativo);
+        builder.Property(a => a.SnapshotAssinado).HasColumnType("text");
+        builder.Property(a => a.MotivoAlteracao).HasMaxLength(1000);
+        builder.HasOne(a => a.AplicacaoOriginal).WithOne(a => a.SubstituidaPor)
+            .HasForeignKey<AplicacaoVacina>(a => a.RetificaAplicacaoVacinaId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(a => a.SituacaoRegistro);
+        builder.HasIndex(a => new { a.AnimalId, a.VacinaId, a.SituacaoRegistro, a.DataAplicacao });
+        builder.HasIndex(a => new { a.AnimalProtocoloVacinalId, a.ProtocoloVacinalDoseId, a.SituacaoRegistro, a.DataAplicacao });
         builder
             .HasOne(e => e.Animal)
             .WithMany(e => e.VacinasAplicadas)
             .HasForeignKey(animal => animal.AnimalId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Vacina)
             .WithMany(e => e.Aplicacoes)
             .HasForeignKey(e => e.VacinaId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.AnimalProtocoloVacinal)
             .WithMany(e => e.Aplicacoes)
             .HasForeignKey(e => e.AnimalProtocoloVacinalId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.ProtocoloVacinalDose)
             .WithMany(e => e.Aplicacoes)
             .HasForeignKey(e => e.ProtocoloVacinalDoseId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(a => a.DataAplicacao);
         builder.HasIndex(a => a.DataProximaDose);

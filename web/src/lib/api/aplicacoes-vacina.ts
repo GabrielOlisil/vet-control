@@ -10,9 +10,13 @@ import {
     type AssinaturaValidacaoResponseDto,
     type ValidacaoPublicaVacinaResponseDto,
     type ComprovanteVacinasDadosResponseDto,
+    type CancelamentoVacinaDto,
+    type RetificacaoVacinaDto,
+    type SituacaoRegistroVacina,
 } from '../types';
 
 export interface AplicacaoVacinaListParams {
+    SituacaoRegistro?: SituacaoRegistroVacina;
     page?: number | string;
     VacinaId?: string;
     AnimalId?: string;
@@ -25,7 +29,6 @@ export interface AplicacaoVacinaListParams {
     somenteAtrasadas?: boolean;
     PendenteAssinatura?: boolean;
     Proximas?: boolean;
-    CicloFinalizado?: boolean;
     StatusComprovante?: number;
     AnimalProtocoloVacinalId?: string;
     ProtocoloVacinalDoseId?: string;
@@ -33,6 +36,7 @@ export interface AplicacaoVacinaListParams {
 }
 
 export interface AplicacaoVacinaCountParams {
+    SituacaoRegistro?: SituacaoRegistroVacina;
     VacinaId?: string;
     AnimalId?: string;
     DataAplicacaoFrom?: string;
@@ -43,7 +47,6 @@ export interface AplicacaoVacinaCountParams {
     SomenteAtrasadas?: boolean;
     PendenteAssinatura?: boolean;
     Proximas?: boolean;
-    CicloFinalizado?: boolean;
     StatusComprovante?: number;
     somenteAtrasadas?: boolean;
     AnimalProtocoloVacinalId?: string;
@@ -73,11 +76,22 @@ export interface AplicacaoVacinaProximasParams {
 }
 
 export const aplicacaoVacinaService = {
+    async cancelar(id: string, body: CancelamentoVacinaDto) {
+        const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina/{id}/cancelar', { params: { path: { id } }, body });
+        if (error || !data) throw new Error(extractErrorMessage(error, 'Não foi possível cancelar o registro.'));
+        return data;
+    },
+    async retificar(id: string, body: RetificacaoVacinaDto) {
+        const { data, error } = await apiClient.POST('/api/v1/aplicacoes-vacina/{id}/retificar', { params: { path: { id } }, body });
+        if (error || !data) throw new Error(extractErrorMessage(error, 'Não foi possível retificar o registro.'));
+        return data;
+    },
     async getList(params?: AplicacaoVacinaListParams): Promise<AplicacaoVacinaReadResponseDto[]> {
         const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina', {
             params: {
                 query: {
                     page: params?.page,
+                    SituacaoRegistro: params?.SituacaoRegistro,
                     VacinaId: params?.VacinaId,
                     AnimalId: params?.AnimalId,
                     DataAplicacaoFrom: params?.DataAplicacaoFrom,
@@ -88,7 +102,6 @@ export const aplicacaoVacinaService = {
                     SomenteAtrasadas: params?.SomenteAtrasadas ?? params?.somenteAtrasadas,
                     PendenteAssinatura: params?.PendenteAssinatura,
                     Proximas: params?.Proximas,
-                    CicloFinalizado: params?.CicloFinalizado,
                     StatusComprovante: params?.StatusComprovante as any,
                     AnimalProtocoloVacinalId: params?.AnimalProtocoloVacinalId,
                     ProtocoloVacinalDoseId: params?.ProtocoloVacinalDoseId,
@@ -106,6 +119,7 @@ export const aplicacaoVacinaService = {
         const { data, error } = await apiClient.GET('/api/v1/aplicacoes-vacina/count', {
             params: {
                 query: {
+                    SituacaoRegistro: params?.SituacaoRegistro,
                     VacinaId: params?.VacinaId,
                     AnimalId: params?.AnimalId,
                     DataAplicacaoFrom: params?.DataAplicacaoFrom,
@@ -116,7 +130,6 @@ export const aplicacaoVacinaService = {
                     SomenteAtrasadas: params?.SomenteAtrasadas ?? params?.somenteAtrasadas,
                     PendenteAssinatura: params?.PendenteAssinatura,
                     Proximas: params?.Proximas,
-                    CicloFinalizado: params?.CicloFinalizado,
                     StatusComprovante: params?.StatusComprovante as any,
                     AnimalProtocoloVacinalId: params?.AnimalProtocoloVacinalId,
                     ProtocoloVacinalDoseId: params?.ProtocoloVacinalDoseId,

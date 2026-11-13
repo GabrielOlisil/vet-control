@@ -54,10 +54,11 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
     private async Task<ApplicationUser> FindCore(Guid id) => await users.FindByIdAsync(id.ToString())
         ?? throw new UserOperationException("Usuário não encontrado.", 404);
 
-    private static string[] ValidateRoles(string[]? roles)
+    private static string[] ValidateRoles(string[]? roles, bool isActive)
     {
         var values = roles?.Distinct(StringComparer.Ordinal).ToArray() ?? [];
         if (values.Any(x => !RoleCatalog.Descriptions.ContainsKey(x))) throw new UserOperationException("Uma das roles é inválida.");
+        if (isActive && values.Length == 0) throw new UserOperationException("Selecione pelo menos um papel para manter a conta ativa.");
         return values;
     }
 
@@ -92,7 +93,7 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
 
     public async Task<UserResponse> Create(CreateUserRequest request)
     {
-        var roles = ValidateRoles(request.Roles);
+        var roles = ValidateRoles(request.Roles, request.IsActive);
         var (crmv, crmvUf) = NormalizeProfessionalRegistration(roles, request.Crmv, request.CrmvUf);
         await using var transaction = await db.Database.BeginTransactionAsync();
         var user = new ApplicationUser { Id = Guid.NewGuid(), FullName = request.FullName.Trim(), UserName = request.UserName.Trim(),
@@ -108,7 +109,7 @@ public sealed class UserAdministration(AuthContext db, UserManager<ApplicationUs
 
     public async Task<UserResponse> Update(Guid id, UpdateUserRequest request)
     {
-        var roles = ValidateRoles(request.Roles);
+        var roles = ValidateRoles(request.Roles, request.IsActive);
         var (crmv, crmvUf) = NormalizeProfessionalRegistration(roles, request.Crmv, request.CrmvUf);
         // Serialize changes that might remove the last active administrator.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);

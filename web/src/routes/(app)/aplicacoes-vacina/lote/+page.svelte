@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AmbienteSelect from '$lib/components/AmbienteSelect.svelte';
     import { onMount } from "svelte";
     import { vacinaService } from "$lib/api/vacinas";
     import { animalService, type AnimalListParams } from "$lib/api/animais";
@@ -39,7 +40,6 @@
 
     interface BucketItem {
         animal: AnimalReadResponseDto | AnimalShortResponseDto;
-        cicloFinalizado: boolean;
     }
 
     // ── Dados Comuns da Dose ──────────────────────────────────────────────────
@@ -74,7 +74,7 @@
     let filterSexo = $state("");
     let filterOrigem = $state("");
     let filterAtivo = $state("");
-    let filterLotePasto = $state("");
+    let filterAmbiente = $state("");
     let filterIdentificador = $state("");
     let filterTipoIdentificador = $state("");
     let filterDataFrom = $state("");
@@ -99,7 +99,7 @@
             Sexo: (filterSexo as SexoAnimal) || undefined,
             Origem: (filterOrigem as OrigemAnimal) || undefined,
             Ativo: filterAtivo === "" ? undefined : filterAtivo === "true",
-            LoteOuPasto: filterLotePasto.trim() || undefined,
+            AmbienteId: filterAmbiente || undefined,
             Identificador: filterIdentificador.trim() || undefined,
             TipoIdentificador:
                 (filterTipoIdentificador as TipoIdentificador) || undefined,
@@ -171,7 +171,7 @@
         filterSexo = "";
         filterOrigem = "";
         filterAtivo = "";
-        filterLotePasto = "";
+        filterAmbiente = "";
         filterIdentificador = "";
         filterTipoIdentificador = "";
         filterDataFrom = "";
@@ -202,28 +202,12 @@
         if (idx >= 0) {
             bucket = bucket.filter((_, i) => i !== idx);
         } else {
-            bucket = [...bucket, { animal, cicloFinalizado: true }];
+            bucket = [...bucket, { animal }];
         }
     }
 
     function removeAnimalFromBucket(animalId: string) {
         bucket = bucket.filter((b) => b.animal.id !== animalId);
-    }
-
-    function toggleAllCicloFinalizado() {
-        if (bucket.length === 0) return;
-        const allTrue = bucket.every((b) => b.cicloFinalizado);
-        const target = !allTrue;
-        bucket = bucket.map((b) => ({ ...b, cicloFinalizado: target }));
-    }
-
-    function setCicloFinalizado(animalId: string, value: boolean) {
-        bucket = bucket.map((b) => {
-            if (b.animal.id === animalId) {
-                return { ...b, cicloFinalizado: value };
-            }
-            return b;
-        });
     }
 
     function clearBucket() {
@@ -269,7 +253,6 @@
                     : undefined,
                 animais: bucket.map((b) => ({
                     animalId: b.animal.id!,
-                    cicloFinalizado: b.cicloFinalizado,
                 })),
             };
 
@@ -308,8 +291,7 @@
                 <h1 class="text-2xl font-bold">Vacinação em Lote</h1>
             </div>
             <p class="text-sm text-base-content/60 mt-1">
-                Aplicação simultânea de vacinas em múltiplos animais com
-                controle individual de ciclo.
+                Aplicação simultânea de vacinas em múltiplos animais.
             </p>
         </div>
         <div class="flex items-center gap-2">
@@ -357,6 +339,7 @@
                         <!-- Vacina -->
                         <div class="sm:col-span-2">
                             <VacinaSelect
+                                onlyActive
                                 label="Vacina Imunobiológica"
                                 id="vacinaSelect"
                                 bind:value={vacinaId}
@@ -365,12 +348,6 @@
                                     selectedVacina = v;
                                 }}
                             />
-                            {#if selectedVacina?.reaplicarEmXDias}
-                                <p class="text-xs text-info -mt-1 mb-2">
-                                    Esta vacina possui intervalo de reforço
-                                    padrão de {selectedVacina.reaplicarEmXDias} dias.
-                                </p>
-                            {/if}
                         </div>
 
                         <!-- Número do Lote -->
@@ -413,15 +390,14 @@
                                 bind:value={dataProximaDose}
                             />
                             <span class="text-[11px] text-base-content/50">
-                                Se vazio, calculará automaticamente se a vacina
-                                exigir reforço.
+                                Para aplicação avulsa, informe a próxima data quando houver reforço.
                             </span>
                         </div>
 
                         <div><Input label="Fabricante / Laboratório" bind:value={laboratorioFabricante} /></div>
                         <div><Input label="Local da aplicação" bind:value={localAplicacao} /></div>
                         <p class="sm:col-span-2 text-sm opacity-70">
-                            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+            Quem lança fica identificado como aplicador. O veterinário responsável será identificado ao assinar.
                         </p>
 
                         <!-- Observações -->
@@ -569,11 +545,12 @@
                             >
                                 <!-- Sexo -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteSexo"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Sexo</label
                                     >
                                     <select
+                                        id="filtroLoteSexo"
                                         class="select select-bordered select-xs w-full"
                                         bind:value={filterSexo}
                                         onchange={() => {
@@ -590,11 +567,12 @@
 
                                 <!-- Origem -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteOrigem"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Origem</label
                                     >
                                     <select
+                                        id="filtroLoteOrigem"
                                         class="select select-bordered select-xs w-full"
                                         bind:value={filterOrigem}
                                         onchange={() => {
@@ -611,11 +589,12 @@
 
                                 <!-- Status Ativo -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteStatus"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Status</label
                                     >
                                     <select
+                                        id="filtroLoteStatus"
                                         class="select select-bordered select-xs w-full"
                                         bind:value={filterAtivo}
                                         onchange={() => {
@@ -631,29 +610,17 @@
 
                                 <!-- Pasto / Lote -->
                                 <div>
-                                    <label
-                                        class="label label-text text-[11px] p-0 mb-1"
-                                        >Pasto / Lote</label
-                                    >
-                                    <input
-                                        type="text"
-                                        class="input input-bordered input-xs w-full"
-                                        placeholder="Ex: Pasto 1, Baia 3"
-                                        bind:value={filterLotePasto}
-                                        onchange={() => {
-                                            currentPage = 1;
-                                            loadAnimais();
-                                        }}
-                                    />
+                                    <AmbienteSelect label="Ambiente" bind:value={filterAmbiente} onchange={() => { currentPage = 1; loadAnimais(); }} />
                                 </div>
 
                                 <!-- Identificador -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteIdentificador"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Identificador</label
                                     >
                                     <input
+                                        id="filtroLoteIdentificador"
                                         type="text"
                                         class="input input-bordered input-xs w-full"
                                         placeholder="Ex: 0012, SISBOV..."
@@ -667,11 +634,12 @@
 
                                 <!-- Tipo Identificador -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteTipoIdentificador"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Tipo Identificador</label
                                     >
                                     <select
+                                        id="filtroLoteTipoIdentificador"
                                         class="select select-bordered select-xs w-full"
                                         bind:value={filterTipoIdentificador}
                                         onchange={() => {
@@ -688,11 +656,12 @@
 
                                 <!-- Nascimento De / Até -->
                                 <div>
-                                    <label
+                                    <label for="filtroLoteDataFrom"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Nasc. de</label
                                     >
                                     <input
+                                        id="filtroLoteDataFrom"
                                         type="date"
                                         class="input input-bordered input-xs w-full"
                                         bind:value={filterDataFrom}
@@ -704,11 +673,12 @@
                                 </div>
 
                                 <div>
-                                    <label
+                                    <label for="filtroLoteDataTo"
                                         class="label label-text text-[11px] p-0 mb-1"
                                         >Nasc. até</label
                                     >
                                     <input
+                                        id="filtroLoteDataTo"
                                         type="date"
                                         class="input input-bordered input-xs w-full"
                                         bind:value={filterDataTo}
@@ -948,23 +918,6 @@
                     {/if}
                 </div>
 
-                <!-- Botão Mestre de Ciclo Finalizado -->
-                {#if bucket.length > 0}
-                    <div
-                        class="px-5 py-2.5 bg-base-200/50 border-b border-base-200 flex items-center justify-between"
-                    >
-                        <span class="text-xs font-medium text-base-content/70">
-                            Ação em massa:
-                        </span>
-                        <button
-                            class="btn btn-xs btn-outline btn-neutral gap-1"
-                            onclick={toggleAllCicloFinalizado}
-                        >
-                            Alternar Ciclo de Todos
-                        </button>
-                    </div>
-                {/if}
-
                 <!-- Lista de Animais Selecionados -->
                 <div class="p-4 max-h-[380px] overflow-y-auto space-y-2.5">
                     {#if bucket.length === 0}
@@ -1023,39 +976,6 @@
                                     </button>
                                 </div>
 
-                                <!-- Switch Individual de Ciclo Finalizado -->
-                                <div
-                                    class="flex items-center justify-between pt-1 border-t border-base-300/40 text-xs"
-                                >
-                                    <span class="text-base-content/70">
-                                        Ciclo Finalizado:
-                                    </span>
-                                    <label
-                                        class="flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            class="toggle toggle-xs toggle-primary"
-                                            checked={item.cicloFinalizado}
-                                            onchange={(e) =>
-                                                setCicloFinalizado(
-                                                    item.animal.id!,
-                                                    (
-                                                        e.currentTarget as HTMLInputElement
-                                                    ).checked,
-                                                )}
-                                        />
-                                        <span
-                                            class="font-medium text-[11px] {item.cicloFinalizado
-                                                ? 'text-primary'
-                                                : 'text-base-content/50'}"
-                                        >
-                                            {item.cicloFinalizado
-                                                ? "Sim"
-                                                : "Não"}
-                                        </span>
-                                    </label>
-                                </div>
                             </div>
                         {/each}
                     {/if}

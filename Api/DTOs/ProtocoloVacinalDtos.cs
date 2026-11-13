@@ -60,6 +60,7 @@ public sealed record ProtocoloVacinalPatchDto
     private string? _finalidade;
     private Guid? _especieId;
     private List<ProtocoloVacinalDoseCreateDto>? _doses;
+    private int? _idadeMinimaDias, _idadeMaximaDias;
 
     [StringLength(100, MinimumLength = 1)]
     public string? Nome { get; init; }
@@ -106,8 +107,22 @@ public sealed record ProtocoloVacinalPatchDto
     public bool EspecieIdWasProvided { get; private set; }
 
     public bool? Ativo { get; init; }
-    public int? IdadeMinimaDias { get; init; }
-    public int? IdadeMaximaDias { get; init; }
+    [Range(0, int.MaxValue)]
+    public int? IdadeMinimaDias
+    {
+        get => _idadeMinimaDias;
+        init { _idadeMinimaDias = value; IdadeMinimaDiasWasProvided = true; }
+    }
+    [JsonIgnore]
+    public bool IdadeMinimaDiasWasProvided { get; private set; }
+    [Range(0, int.MaxValue)]
+    public int? IdadeMaximaDias
+    {
+        get => _idadeMaximaDias;
+        init { _idadeMaximaDias = value; IdadeMaximaDiasWasProvided = true; }
+    }
+    [JsonIgnore]
+    public bool IdadeMaximaDiasWasProvided { get; private set; }
 
     public List<ProtocoloVacinalDoseCreateDto>? Doses
     {
@@ -138,6 +153,9 @@ public sealed record ProtocoloVacinalDoseResponseDto
 
 public sealed record ProtocoloVacinalShortResponseDto
 {
+    public Guid FamiliaId { get; init; }
+    public int Versao { get; init; }
+    public bool VersaoAtual { get; init; }
     public Guid Id { get; init; }
     public required string Nome { get; init; }
     public string? Finalidade { get; init; }
@@ -146,6 +164,9 @@ public sealed record ProtocoloVacinalShortResponseDto
 
 public sealed record ProtocoloVacinalReadResponseDto
 {
+    public Guid FamiliaId { get; init; }
+    public int Versao { get; init; }
+    public bool VersaoAtual { get; init; }
     public Guid Id { get; init; }
     public required string Nome { get; init; }
     public string? Descricao { get; init; }
@@ -160,6 +181,9 @@ public sealed record ProtocoloVacinalReadResponseDto
 
 public sealed record ProtocoloVacinalDetailResponseDto
 {
+    public Guid FamiliaId { get; init; }
+    public int Versao { get; init; }
+    public bool VersaoAtual { get; init; }
     public Guid Id { get; init; }
     public required string Nome { get; init; }
     public string? Descricao { get; init; }
@@ -211,6 +235,13 @@ public sealed record AnimalProtocoloVacinalPatchDto
 
     [JsonIgnore]
     public bool ObservacoesWasProvided { get; private set; }
+}
+
+public sealed record MigracaoProtocoloVacinalDto
+{
+    [NonEmptyGuid] public Guid ProtocoloDestinoId { get; init; }
+    [PastOrPresentDate] public DateOnly DataInicio { get; init; }
+    [Required, StringLength(1000, MinimumLength = 3)] public required string Motivo { get; init; }
 }
 
 public sealed record AnimalProtocoloVacinalDoseResponseDto

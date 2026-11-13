@@ -9,7 +9,7 @@ namespace Api.Controllers;
 
 [ApiController]
 [Route("api/v1/protocolos-vacinais")]
-public class ProtocoloVacinalController(IProtocoloVacinalService service) : ControllerBase
+public class ProtocoloVacinalController(IProtocoloVacinalService service, Api.Services.ClinicalCalendar calendar) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<ProtocoloVacinalReadResponseDto>>> GetAll(
@@ -50,6 +50,16 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
         return item is null ? NotFound() : Ok(ProtocoloVacinalMapper.MapToDetail(item));
     }
 
+    [HttpGet("{id:guid}/versoes")]
+    public async Task<ActionResult<List<ProtocoloVacinalReadResponseDto>>> Versoes(Guid id, CancellationToken ct)
+    {
+        var item = await service.GetByIdAsync(id, ct);
+        if (item is null) return NotFound();
+        var versions = await service.GetAllAsync(null,
+            new ProtocoloVacinalSearchDto { FamiliaId = item.FamiliaId, IncluirVersoesAnteriores = true }, ct);
+        return Ok(versions.OrderByDescending(p => p.Versao).Select(ProtocoloVacinalMapper.MapToRead).ToList());
+    }
+
     [HttpPost]
     [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
     public async Task<ActionResult<ProtocoloVacinalDetailResponseDto>> Create(
@@ -69,7 +79,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
         if (item is null)
             return NotFound();
 
-        var fullItem = await service.GetByIdAsync(id, cancellationToken);
+        var fullItem = await service.GetByIdAsync(item.Id, cancellationToken);
         return Ok(ProtocoloVacinalMapper.MapToDetail(fullItem!));
     }
 
@@ -85,7 +95,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
         CancellationToken cancellationToken)
     {
         var items = await service.GetAnimalProtocolsAsync(animalId, cancellationToken);
-        return Ok(items.Select(ProtocoloVacinalMapper.MapAnimalProtocol).ToList());
+        return Ok(items.Select(item => ProtocoloVacinalMapper.MapAnimalProtocol(item, calendar.Today)).ToList());
     }
 
     [HttpPost("~/api/v1/animais/{animalId:guid}/protocolos-vacinais")]
@@ -95,7 +105,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
     {
         var item = await service.AssignToAnimalAsync(animalId, dto, cancellationToken);
         return CreatedAtAction(nameof(GetAnimalProtocolById), new { animalId, id = item.Id },
-            ProtocoloVacinalMapper.MapAnimalProtocol(item));
+            ProtocoloVacinalMapper.MapAnimalProtocol(item, calendar.Today));
     }
 
     [HttpGet("~/api/v1/animais/{animalId:guid}/protocolos-vacinais/{id:guid}")]
@@ -106,7 +116,7 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
         if (item is null || item.AnimalId != animalId)
             return NotFound();
 
-        return Ok(ProtocoloVacinalMapper.MapAnimalProtocol(item));
+        return Ok(ProtocoloVacinalMapper.MapAnimalProtocol(item, calendar.Today));
     }
 
     [HttpPatch("~/api/v1/animais/{animalId:guid}/protocolos-vacinais/{id:guid}")]
@@ -119,6 +129,15 @@ public class ProtocoloVacinalController(IProtocoloVacinalService service) : Cont
             return NotFound();
 
         var item = await service.PatchAnimalProtocolAsync(id, dto, cancellationToken);
-        return Ok(ProtocoloVacinalMapper.MapAnimalProtocol(item!));
+        return Ok(ProtocoloVacinalMapper.MapAnimalProtocol(item!, calendar.Today));
+    }
+
+    [HttpPost("~/api/v1/animais/{animalId:guid}/protocolos-vacinais/{id:guid}/migrar")]
+    [Authorize(Policy = ClinicalPolicies.ManageProtocols)]
+    public async Task<ActionResult<AnimalProtocoloVacinalReadResponseDto>> Migrar(Guid animalId, Guid id,
+        MigracaoProtocoloVacinalDto dto, CancellationToken ct)
+    {
+        var item = await service.MigrarAsync(animalId, id, dto, ct);
+        return item is null ? NotFound() : Ok(ProtocoloVacinalMapper.MapAnimalProtocol(item, calendar.Today));
     }
 }

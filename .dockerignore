@@ -5,6 +5,20 @@
 
 # dotenv files
 .env
+**/.env
+**/.env.*
+**/node_modules
+**/.svelte-kit
+web/build
+web/test-results
+Testing
+Api.Tests
+Auth.Tests
+deployment/certificates
+**/data-protection-keys/
+**/*.key
+**/*.pem
+**/*.p12
 
 # User-specific files
 *.rsuser

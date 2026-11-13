@@ -26,6 +26,7 @@ public sealed record AnimalCreateDto
     public OrigemAnimal Origem { get; init; } = OrigemAnimal.Externo;
 
     public string? LoteOuPasto { get; init; }
+    public Guid? AmbienteId { get; init; }
 
     public bool Ativo { get; init; } = true;
 
@@ -39,6 +40,7 @@ public sealed record AnimalPatchDto
     private string? _name;
     private Guid? _racaId;
     private string? _loteOuPasto;
+    private Guid? _ambienteId;
 
     [StringLength(100, MinimumLength = 1)]
     public string? Name
@@ -88,6 +90,19 @@ public sealed record AnimalPatchDto
     [JsonIgnore]
     public bool LoteOuPastoWasProvided { get; private set; }
 
+    public Guid? AmbienteId
+    {
+        get => _ambienteId;
+        init
+        {
+            _ambienteId = value;
+            AmbienteIdWasProvided = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool AmbienteIdWasProvided { get; private set; }
+
     public bool? Ativo { get; init; }
 
     public List<IdentificadorCreateDto>? Identificadores { get; init; }
@@ -117,6 +132,7 @@ public sealed record AnimalReadResponseDto
     public bool DataNascimentoAproximada { get; init; }
 
     public string? LoteOuPasto { get; init; }
+    public Guid? AmbienteId { get; init; }
 
     public bool Ativo { get; init; } = true;
 
@@ -140,6 +156,7 @@ public sealed record AnimalDetailResponseDto
     public OrigemAnimal Origem { get; init; }
 
     public string? LoteOuPasto { get; init; }
+    public Guid? AmbienteId { get; init; }
 
     public bool Ativo { get; init; } = true;
 

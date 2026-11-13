@@ -5,12 +5,15 @@ namespace Api.Models;
 public class MovimentacaoAnimal : IAuditedEntity
 {
     public Guid Id { get; set; }
+    public Guid? GrupoId { get; set; }
 
     public Guid AnimalId { get; set; }
     public DateOnly DataMovimentacao { get; set; }
     public TipoMovimentacaoAnimal Tipo { get; set; } = TipoMovimentacaoAnimal.Transferencia;
     public string? LocalOrigem { get; set; }
     public string? LocalDestino { get; set; }
+    public Guid? AmbienteOrigemId { get; set; }
+    public Guid? AmbienteDestinoId { get; set; }
     public string? Motivo { get; set; }
     public string? Observacoes { get; set; }
 

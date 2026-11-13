@@ -4,6 +4,289 @@
  */
 
 export interface paths {
+    "/api/v1/agenda-vacinal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    AnimalId?: string;
+                    VacinaId?: string;
+                    EspecieId?: string;
+                    ProtocoloVacinalId?: string;
+                    LoteOuPasto?: string;
+                    AmbienteId?: string;
+                    Origem?: components["schemas"]["OrigemPendenciaVacinal"];
+                    DataPrevistaFrom?: string;
+                    DataPrevistaTo?: string;
+                    Status?: components["schemas"]["StatusPendenciaVacinal"];
+                    SomenteObrigatorias?: boolean;
+                    IncluirConcluidas?: boolean;
+                    page?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AgendaVacinalItemDto"][];
+                        "application/json": components["schemas"]["AgendaVacinalItemDto"][];
+                        "text/json": components["schemas"]["AgendaVacinalItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agenda-vacinal/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    AnimalId?: string;
+                    VacinaId?: string;
+                    EspecieId?: string;
+                    ProtocoloVacinalId?: string;
+                    LoteOuPasto?: string;
+                    AmbienteId?: string;
+                    Origem?: components["schemas"]["OrigemPendenciaVacinal"];
+                    DataPrevistaFrom?: string;
+                    DataPrevistaTo?: string;
+                    Status?: components["schemas"]["StatusPendenciaVacinal"];
+                    SomenteObrigatorias?: boolean;
+                    IncluirConcluidas?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number | string;
+                        "application/json": number | string;
+                        "text/json": number | string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ambientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number | string;
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AmbienteResponseDto"][];
+                        "application/json": components["schemas"]["AmbienteResponseDto"][];
+                        "text/json": components["schemas"]["AmbienteResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AmbienteCreateDto"];
+                    "text/json": components["schemas"]["AmbienteCreateDto"];
+                    "application/*+json": components["schemas"]["AmbienteCreateDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AmbienteResponseDto"];
+                        "application/json": components["schemas"]["AmbienteResponseDto"];
+                        "text/json": components["schemas"]["AmbienteResponseDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ambientes/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number | string;
+                        "application/json": number | string;
+                        "text/json": number | string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ambientes/ocupacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AmbienteOcupacaoDto"][];
+                        "application/json": components["schemas"]["AmbienteOcupacaoDto"][];
+                        "text/json": components["schemas"]["AmbienteOcupacaoDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ambientes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AmbienteResponseDto"];
+                        "application/json": components["schemas"]["AmbienteResponseDto"];
+                        "text/json": components["schemas"]["AmbienteResponseDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/animais": {
         parameters: {
             query?: never;
@@ -23,6 +306,7 @@ export interface paths {
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                     LoteOuPasto?: string;
+                    AmbienteId?: string;
                     Ativo?: boolean;
                     Identificador?: string;
                     TipoIdentificador?: components["schemas"]["TipoIdentificador"];
@@ -106,6 +390,7 @@ export interface paths {
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                     LoteOuPasto?: string;
+                    AmbienteId?: string;
                     Ativo?: boolean;
                     Identificador?: string;
                     TipoIdentificador?: components["schemas"]["TipoIdentificador"];
@@ -158,6 +443,7 @@ export interface paths {
                     DataNascimentoFrom?: string;
                     DataNascimentoTo?: string;
                     LoteOuPasto?: string;
+                    AmbienteId?: string;
                     Ativo?: boolean;
                     Identificador?: string;
                     TipoIdentificador?: components["schemas"]["TipoIdentificador"];
@@ -328,6 +614,7 @@ export interface paths {
             parameters: {
                 query?: {
                     page?: number | string;
+                    SituacaoRegistro?: components["schemas"]["SituacaoRegistroVacina"];
                     VacinaId?: string;
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
@@ -338,7 +625,6 @@ export interface paths {
                     SomenteAtrasadas?: boolean;
                     PendenteAssinatura?: boolean;
                     Proximas?: boolean;
-                    CicloFinalizado?: boolean;
                     StatusComprovante?: components["schemas"]["StatusComprovanteVacina"];
                     AnimalProtocoloVacinalId?: string;
                     ProtocoloVacinalDoseId?: string;
@@ -534,6 +820,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    SituacaoRegistro?: components["schemas"]["SituacaoRegistroVacina"];
                     VacinaId?: string;
                     AnimalId?: string;
                     DataAplicacaoFrom?: string;
@@ -544,7 +831,6 @@ export interface paths {
                     SomenteAtrasadas?: boolean;
                     PendenteAssinatura?: boolean;
                     Proximas?: boolean;
-                    CicloFinalizado?: boolean;
                     StatusComprovante?: components["schemas"]["StatusComprovanteVacina"];
                     AnimalProtocoloVacinalId?: string;
                     ProtocoloVacinalDoseId?: string;
@@ -893,6 +1179,96 @@ export interface paths {
                     "application/json": components["schemas"]["AplicacaoVacinaAssinaturaDto"];
                     "text/json": components["schemas"]["AplicacaoVacinaAssinaturaDto"];
                     "application/*+json": components["schemas"]["AplicacaoVacinaAssinaturaDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                        "application/json": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                        "text/json": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/{id}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CancelamentoVacinaDto"];
+                    "text/json": components["schemas"]["CancelamentoVacinaDto"];
+                    "application/*+json": components["schemas"]["CancelamentoVacinaDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                        "application/json": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                        "text/json": components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aplicacoes-vacina/{id}/retificar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RetificacaoVacinaDto"];
+                    "text/json": components["schemas"]["RetificacaoVacinaDto"];
+                    "application/*+json": components["schemas"]["RetificacaoVacinaDto"];
                 };
             };
             responses: {
@@ -1313,6 +1689,8 @@ export interface paths {
                     DataMovimentacaoTo?: string;
                     LocalOrigem?: string;
                     LocalDestino?: string;
+                    AmbienteOrigemId?: string;
+                    AmbienteDestinoId?: string;
                     page?: number | string;
                 };
                 header?: never;
@@ -1358,6 +1736,8 @@ export interface paths {
                     DataMovimentacaoTo?: string;
                     LocalOrigem?: string;
                     LocalDestino?: string;
+                    AmbienteOrigemId?: string;
+                    AmbienteDestinoId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1419,6 +1799,49 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movimentacoes-animais/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MovimentacaoAnimalLoteCreateDto"];
+                    "text/json": components["schemas"]["MovimentacaoAnimalLoteCreateDto"];
+                    "application/*+json": components["schemas"]["MovimentacaoAnimalLoteCreateDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MovimentacaoAnimalResponseDto"][];
+                        "application/json": components["schemas"]["MovimentacaoAnimalResponseDto"][];
+                        "text/json": components["schemas"]["MovimentacaoAnimalResponseDto"][];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1505,6 +1928,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    FamiliaId?: string;
+                    IncluirVersoesAnteriores?: boolean;
                     EspecieId?: string;
                     Ativo?: boolean;
                     Nome?: string;
@@ -1575,6 +2000,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    FamiliaId?: string;
+                    IncluirVersoesAnteriores?: boolean;
                     EspecieId?: string;
                     Ativo?: boolean;
                     Nome?: string;
@@ -1785,6 +2212,45 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/protocolos-vacinais/{id}/versoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProtocoloVacinalReadResponseDto"][];
+                        "application/json": components["schemas"]["ProtocoloVacinalReadResponseDto"][];
+                        "text/json": components["schemas"]["ProtocoloVacinalReadResponseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/animais/{animalId}/protocolos-vacinais": {
         parameters: {
             query?: never;
@@ -1921,6 +2387,52 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/animais/{animalId}/protocolos-vacinais/{id}/migrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    animalId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MigracaoProtocoloVacinalDto"];
+                    "text/json": components["schemas"]["MigracaoProtocoloVacinalDto"];
+                    "application/*+json": components["schemas"]["MigracaoProtocoloVacinalDto"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnimalProtocoloVacinalReadResponseDto"];
+                        "application/json": components["schemas"]["AnimalProtocoloVacinalReadResponseDto"];
+                        "text/json": components["schemas"]["AnimalProtocoloVacinalReadResponseDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/racas": {
@@ -2201,10 +2713,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    Ativo?: boolean;
                     EspecieId?: string;
                     ObrigatorioOrgaoSanitario?: boolean;
-                    ReaplicarEmXDiasMin?: number | string;
-                    ReaplicarEmXDiasMax?: number | string;
                     page?: number | string;
                 };
                 header?: never;
@@ -2273,10 +2784,9 @@ export interface paths {
                 query?: {
                     page?: number | string;
                     name?: string;
+                    Ativo?: boolean;
                     EspecieId?: string;
                     ObrigatorioOrgaoSanitario?: boolean;
-                    ReaplicarEmXDiasMin?: number | string;
-                    ReaplicarEmXDiasMax?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -2402,10 +2912,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    Ativo?: boolean;
                     EspecieId?: string;
                     ObrigatorioOrgaoSanitario?: boolean;
-                    ReaplicarEmXDiasMin?: number | string;
-                    ReaplicarEmXDiasMax?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -2477,6 +2986,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AgendaVacinalItemDto: {
+            origem?: components["schemas"]["OrigemPendenciaVacinal"];
+            /** Format: uuid */
+            animalId?: string;
+            animalNome?: null | string;
+            identificadorPrincipal?: null | string;
+            loteOuPasto?: null | string;
+            /** Format: uuid */
+            ambienteId?: null | string;
+            /** Format: uuid */
+            especieId?: null | string;
+            /** Format: uuid */
+            vacinaId?: string;
+            vacinaNome?: string;
+            /** Format: uuid */
+            protocoloVacinalId?: null | string;
+            protocoloNome?: null | string;
+            /** Format: int32 */
+            protocoloVersao?: null | number | string;
+            /** Format: uuid */
+            animalProtocoloVacinalId?: null | string;
+            /** Format: uuid */
+            protocoloVacinalDoseId?: null | string;
+            /** Format: uuid */
+            aplicacaoVacinaId?: null | string;
+            /** Format: date */
+            dataPrevista?: string;
+            /** Format: date */
+            dataAplicacao?: null | string;
+            /** Format: int32 */
+            ordem?: null | number | string;
+            obrigatoria?: boolean;
+            status?: components["schemas"]["StatusPendenciaVacinal"];
+        };
+        AmbienteCreateDto: {
+            nome: string;
+            tipo?: components["schemas"]["TipoAmbiente"];
+        };
+        AmbienteOcupacaoDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            tipo: components["schemas"]["TipoAmbiente"];
+            /** Format: int32 */
+            quantidadeAnimais: number | string;
+        };
+        AmbienteResponseDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            tipo: components["schemas"]["TipoAmbiente"];
+        };
         AnimalCreateDto: {
             name?: null | string;
             /** Format: date */
@@ -2487,6 +3048,8 @@ export interface components {
             sexo?: components["schemas"]["SexoAnimal"];
             origem?: components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
+            /** Format: uuid */
+            ambienteId?: null | string;
             ativo?: boolean;
             identificadores: components["schemas"]["IdentificadorCreateDto"][];
         };
@@ -2500,6 +3063,8 @@ export interface components {
             sexo?: components["schemas"]["SexoAnimal"];
             origem?: components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
+            /** Format: uuid */
+            ambienteId?: null | string;
             ativo?: boolean;
             raca?: null | components["schemas"]["RacaReadResponseDto"];
             identificadores?: components["schemas"]["IdentificadorResponseDto"][];
@@ -2519,6 +3084,8 @@ export interface components {
             sexo?: null | components["schemas"]["SexoAnimal"];
             origem?: null | components["schemas"]["OrigemAnimal"];
             loteOuPasto?: null | string;
+            /** Format: uuid */
+            ambienteId?: null | string;
             ativo?: null | boolean;
             identificadores?: null | components["schemas"]["IdentificadorCreateDto"][];
         };
@@ -2589,6 +3156,8 @@ export interface components {
             dataNascimento?: string;
             dataNascimentoAproximada?: boolean;
             loteOuPasto?: null | string;
+            /** Format: uuid */
+            ambienteId?: null | string;
             ativo?: boolean;
             raca?: null | components["schemas"]["RacaShortResponseDto"];
             identificadorPrincipal?: null | components["schemas"]["IdentificadorResponseDto"];
@@ -2600,9 +3169,6 @@ export interface components {
             identificadorPrincipal?: null | string;
         };
         AplicacaoVacinaAssinaturaDto: {
-            nomeAssinante: string;
-            crmv: string;
-            crmvUf: string;
             observacoes?: null | string;
         };
         AplicacaoVacinaCreateDto: {
@@ -2618,7 +3184,6 @@ export interface components {
             dataAplicacao?: string;
             /** Format: date */
             dataProximaDose?: null | string;
-            cicloFinalizado?: null | boolean;
             numeroLote: string;
             doseMl?: unknown;
             /** Format: date */
@@ -2630,6 +3195,23 @@ export interface components {
             laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaDetailResponseDto: {
+            situacaoRegistro?: components["schemas"]["SituacaoRegistroVacina"];
+            /** Format: int32 */
+            versaoAssinatura?: number | string;
+            dadosHistoricosPreservados?: boolean;
+            /** Format: uuid */
+            aplicadorUserId?: null | string;
+            /** Format: uuid */
+            veterinarioResponsavelUserId?: null | string;
+            /** Format: uuid */
+            assinanteUserId?: null | string;
+            /** Format: uuid */
+            retificaAplicacaoVacinaId?: null | string;
+            /** Format: uuid */
+            substituidaPorId?: null | string;
+            motivoAlteracao?: null | string;
+            /** Format: date-time */
+            alteradaEm?: null | string;
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -2646,7 +3228,6 @@ export interface components {
             dataAplicacao?: string;
             /** Format: date */
             dataProximaDose?: null | string;
-            cicloFinalizado?: boolean;
             numeroLote: string;
             doseMl?: unknown;
             observacoes?: null | string;
@@ -2713,7 +3294,6 @@ export interface components {
             dataAplicacao?: null | string;
             /** Format: date */
             dataProximaDose?: null | string;
-            cicloFinalizado?: null | boolean;
             /** Format: date */
             dataFabricacao?: null | string;
             /** Format: date */
@@ -2725,6 +3305,17 @@ export interface components {
             laboratorioFabricante?: null | string;
         };
         AplicacaoVacinaReadResponseDto: {
+            situacaoRegistro?: components["schemas"]["SituacaoRegistroVacina"];
+            /** Format: int32 */
+            versaoAssinatura?: number | string;
+            dadosHistoricosPreservados?: boolean;
+            /** Format: uuid */
+            retificaAplicacaoVacinaId?: null | string;
+            /** Format: uuid */
+            substituidaPorId?: null | string;
+            motivoAlteracao?: null | string;
+            /** Format: date-time */
+            alteradaEm?: null | string;
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -2741,7 +3332,6 @@ export interface components {
             dataAplicacao?: string;
             /** Format: date */
             dataProximaDose?: null | string;
-            cicloFinalizado?: boolean;
             statusComprovante?: components["schemas"]["StatusComprovanteVacina"];
             numeroLote?: string;
             doseMl?: unknown;
@@ -2766,6 +3356,8 @@ export interface components {
         AssinaturaAplicacaoVacinaResponseDto: {
             /** Format: uuid */
             id?: string;
+            /** Format: uuid */
+            assinanteUserId?: null | string;
             tipoEvento?: string;
             nomeAssinante?: string;
             crmv?: string;
@@ -2787,6 +3379,9 @@ export interface components {
             hashArmazenado?: null | string;
             hashCalculado?: null | string;
             mensagem?: string;
+        };
+        CancelamentoVacinaDto: {
+            motivo: string;
         };
         ComprovanteVacinasDadosResponseDto: {
             animal: components["schemas"]["AnimalDetailResponseDto"];
@@ -2854,8 +3449,18 @@ export interface components {
         };
         ItemAnimalLoteDto: {
             /** Format: uuid */
+            animalProtocoloVacinalId?: null | string;
+            /** Format: uuid */
+            protocoloVacinalDoseId?: null | string;
+            /** Format: uuid */
             animalId: string;
-            cicloFinalizado?: boolean;
+        };
+        MigracaoProtocoloVacinalDto: {
+            /** Format: uuid */
+            protocoloDestinoId?: string;
+            /** Format: date */
+            dataInicio?: string;
+            motivo: string;
         };
         MovimentacaoAnimalCreateDto: {
             /** Format: date */
@@ -2863,12 +3468,32 @@ export interface components {
             tipo?: components["schemas"]["TipoMovimentacaoAnimal"];
             localOrigem?: null | string;
             localDestino?: null | string;
+            /** Format: uuid */
+            ambienteOrigemId?: null | string;
+            /** Format: uuid */
+            ambienteDestinoId?: null | string;
+            motivo?: null | string;
+            observacoes?: null | string;
+        };
+        MovimentacaoAnimalLoteCreateDto: {
+            animalIds?: string[];
+            /** Format: date */
+            dataMovimentacao?: string;
+            tipo?: components["schemas"]["TipoMovimentacaoAnimal"];
+            localOrigem?: null | string;
+            localDestino?: null | string;
+            /** Format: uuid */
+            ambienteOrigemId?: null | string;
+            /** Format: uuid */
+            ambienteDestinoId?: null | string;
             motivo?: null | string;
             observacoes?: null | string;
         };
         MovimentacaoAnimalResponseDto: {
             /** Format: uuid */
             id?: string;
+            /** Format: uuid */
+            grupoId?: null | string;
             /** Format: uuid */
             animalId?: string;
             animal?: null | components["schemas"]["AnimalShortResponseDto"];
@@ -2877,6 +3502,10 @@ export interface components {
             tipo?: components["schemas"]["TipoMovimentacaoAnimal"];
             localOrigem?: null | string;
             localDestino?: null | string;
+            /** Format: uuid */
+            ambienteOrigemId?: null | string;
+            /** Format: uuid */
+            ambienteDestinoId?: null | string;
             motivo?: null | string;
             observacoes?: null | string;
             /** Format: date-time */
@@ -2884,6 +3513,8 @@ export interface components {
         };
         /** @enum {unknown} */
         OrigemAnimal: "Interno" | "Externo";
+        /** @enum {unknown} */
+        OrigemPendenciaVacinal: "Protocolo" | "Avulsa";
         /** @enum {unknown} */
         PorteAnimal: "Pequeno" | "Medio" | "Grande";
         ProtocoloVacinalCreateDto: {
@@ -2900,6 +3531,11 @@ export interface components {
             doses: components["schemas"]["ProtocoloVacinalDoseCreateDto"][];
         };
         ProtocoloVacinalDetailResponseDto: {
+            /** Format: uuid */
+            familiaId?: string;
+            /** Format: int32 */
+            versao?: number | string;
+            versaoAtual?: boolean;
             /** Format: uuid */
             id?: string;
             nome: string;
@@ -2988,6 +3624,11 @@ export interface components {
         };
         ProtocoloVacinalReadResponseDto: {
             /** Format: uuid */
+            familiaId?: string;
+            /** Format: int32 */
+            versao?: number | string;
+            versaoAtual?: boolean;
+            /** Format: uuid */
             id?: string;
             nome: string;
             descricao?: null | string;
@@ -3004,6 +3645,11 @@ export interface components {
             doseCount?: number | string;
         };
         ProtocoloVacinalShortResponseDto: {
+            /** Format: uuid */
+            familiaId?: string;
+            /** Format: int32 */
+            versao?: number | string;
+            versaoAtual?: boolean;
             /** Format: uuid */
             id?: string;
             nome: string;
@@ -3047,32 +3693,38 @@ export interface components {
             id?: string;
             nome: string;
         };
+        RetificacaoVacinaDto: {
+            motivo: string;
+            alteracoes: components["schemas"]["AplicacaoVacinaPatchDto"];
+        };
         /** @enum {unknown} */
         SexoAnimal: "Femea" | "Macho" | "Indefinido";
+        /** @enum {unknown} */
+        SituacaoRegistroVacina: "Ativo" | "Cancelado" | "Retificado";
         /** @enum {unknown} */
         StatusComprovanteVacina: "NaoEmitido" | "PendenteAssinatura" | "Assinado";
         /** @enum {unknown} */
         StatusPendenciaVacinal: "Pendente" | "Atrasada" | "Concluida";
         /** @enum {unknown} */
+        TipoAmbiente: "Outro" | "Pasto" | "Piquete" | "Baia" | "Curral";
+        /** @enum {unknown} */
         TipoIdentificador: "BrincoVisual" | "BrincoEletronico" | "Sisbov" | "Microchip" | "RegistroAssociado" | "Tatuagem" | "NomeUnico";
         /** @enum {unknown} */
         TipoMovimentacaoAnimal: "Entrada" | "Transferencia" | "Saida" | "Ajuste";
         VacinaCreateDto: {
+            ativo?: boolean;
             name: string;
             descricao?: null | string;
-            /** Format: uint32 */
-            reaplicarEmXDias?: number | string;
             obrigatorioOrgaoSanitario?: boolean;
             /** Format: uuid */
             especieId?: null | string;
         };
         VacinaDetailResponseDto: {
+            ativo?: boolean;
             /** Format: uuid */
             id?: string;
             name: string;
             descricao?: null | string;
-            /** Format: uint32 */
-            reaplicarEmXDias?: number | string;
             obrigatorioOrgaoSanitario?: boolean;
             /** Format: uuid */
             especieId?: null | string;
@@ -3087,21 +3739,19 @@ export interface components {
             criadoEm?: string;
         };
         VacinaPatchDto: {
+            ativo?: null | boolean;
             name?: null | string;
             descricao?: null | string;
-            /** Format: uint32 */
-            reaplicarEmXDias?: null | number | string;
             obrigatorioOrgaoSanitario?: null | boolean;
             /** Format: uuid */
             especieId?: null | string;
         };
         VacinaReadResponseDto: {
+            ativo?: boolean;
             /** Format: uuid */
             id?: string;
             name: string;
             descricao?: null | string;
-            /** Format: uint32 */
-            reaplicarEmXDias?: number | string;
             obrigatorioOrgaoSanitario?: boolean;
             /** Format: uuid */
             especieId?: null | string;
@@ -3114,15 +3764,31 @@ export interface components {
             descricao?: null | string;
         };
         ValidacaoPublicaVacinaResponseDto: {
-            encontrado?: boolean;
+            situacaoRegistro?: components["schemas"]["SituacaoRegistroVacina"];
+            registroVigente?: boolean;
+            dadosHistoricosPreservados?: boolean;
             /** Format: uuid */
-            codigoValidacao?: null | string;
+            substituidaPorId?: null | string;
+            /** Format: uuid */
+            retificaAplicacaoVacinaId?: null | string;
+            motivoAlteracao?: null | string;
+            encontrado?: boolean;
             mensagem?: string;
             assinada?: boolean;
             assinaturaIntegra?: boolean;
-            auditoriaIntegra?: boolean;
-            validacao?: null | components["schemas"]["AssinaturaValidacaoResponseDto"];
-            registro?: null | components["schemas"]["AplicacaoVacinaDetailResponseDto"];
+            vacinaNome?: null | string;
+            animalIdentificacao?: null | string;
+            /** Format: date */
+            dataAplicacao?: null | string;
+            numeroLote?: null | string;
+            veterinarioResponsavel?: null | string;
+            veterinarioCrmv?: null | string;
+            veterinarioCrmvUf?: null | string;
+            assinante?: null | string;
+            assinanteCrmv?: null | string;
+            assinanteCrmvUf?: null | string;
+            /** Format: date-time */
+            assinadaEm?: null | string;
         };
         VetAuthSessionResponse: {
             authenticated: boolean;

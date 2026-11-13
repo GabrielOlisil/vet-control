@@ -30,6 +30,8 @@
         onChange?: ((value: any) => void) | null;
         list?: string | undefined;
     } = $props();
+    const generatedId = $props.id();
+    const inputId = $derived(id || generatedId);
 
     function handleChange(e: Event) {
         const target = e.target as HTMLInputElement;
@@ -48,19 +50,21 @@
 
 <div class="w-full mb-3">
     {#if label}
-        <label for={id} class="label py-1 block">
+        <label for={inputId} class="label py-1 block">
             <span
                 class="label-text font-medium text-sm flex items-center gap-1"
             >
                 {label}
                 {#if required}
-                    <span class="text-error font-bold">*</span>
+                    <span class="text-error font-bold" aria-hidden="true">*</span>
                 {/if}
             </span>
         </label>
     {/if}
     <input
-        {id}
+        id={inputId}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${inputId}-error` : undefined}
         {type}
         value={value ?? ""}
         {placeholder}
@@ -79,7 +83,7 @@
     />
     {#if error}
         <div class="label py-1">
-            <span class="label-text-alt text-error text-xs">{error}</span>
+            <span id={`${inputId}-error`} class="label-text-alt text-error text-xs">{error}</span>
         </div>
     {/if}
 </div>

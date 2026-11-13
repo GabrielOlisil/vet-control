@@ -5,6 +5,7 @@
     import EspeciesTab from "./tabs/EspeciesTab.svelte";
     import RacasTab from "./tabs/RacasTab.svelte";
     import ProtocolosTab from "./tabs/ProtocolosTab.svelte";
+    import AmbientesTab from "./tabs/AmbientesTab.svelte";
 
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
@@ -17,12 +18,12 @@
     let { data }: { data: PageData } = $props();
     const roles = $derived(data.session.roles);
 
-    type TabKey = "vacinas" | "protocolos" | "animais" | "especies" | "racas";
+    type TabKey = "vacinas" | "protocolos" | "animais" | "especies" | "racas" | "ambientes";
 
     const validTabs = $derived.by((): TabKey[] => [
         ...(canManageVaccines(roles) ? ["vacinas" as const] : []),
         ...(canManageProtocols(roles) ? ["protocolos" as const] : []),
-        ...(canManageAnimals(roles) ? ["animais" as const, "especies" as const, "racas" as const] : []),
+        ...(canManageAnimals(roles) ? ["animais" as const, "especies" as const, "racas" as const, "ambientes" as const] : []),
     ]);
 
     // Default tab is "vacinas" (1ª aba)
@@ -141,6 +142,10 @@
                 <IconLabel width="18" height="18" />
                 <span>Raças</span>
             </button>
+            <button type="button" role="tab" class="tab gap-2 text-sm font-semibold" class:tab-active={activeTab === "ambientes"}
+                onclick={() => selectTab("ambientes")} aria-selected={activeTab === "ambientes"}>
+                <IconLabel width="18" height="18" /><span>Ambientes</span>
+            </button>
             {/if}
         </div>
     </div>
@@ -170,6 +175,9 @@
 
         <div class:hidden={activeTab !== "racas"}>
             <RacasTab isActive={activeTab === "racas"} />
+        </div>
+        <div class:hidden={activeTab !== "ambientes"}>
+            <AmbientesTab isActive={activeTab === "ambientes"} />
         </div>
         {/if}
     </div>

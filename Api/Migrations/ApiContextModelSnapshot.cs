@@ -22,10 +22,58 @@ namespace Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Api.Models.Ambiente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedByUser")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastModificationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("lower(btrim(\"Nome\"))", true);
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("UpdatedByUser")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Nome"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Nome"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("NomeNormalizado")
+                        .IsUnique();
+
+                    b.ToTable("Ambientes");
+                });
+
             modelBuilder.Entity("Api.Models.Animal", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AmbienteId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Ativo")
@@ -65,7 +113,15 @@ namespace Api.Migrations
                     b.Property<Guid?>("UpdatedByUser")
                         .HasColumnType("uuid");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AmbienteId");
 
                     b.HasIndex("Name");
 
@@ -118,6 +174,10 @@ namespace Api.Migrations
 
                     b.HasIndex("AnimalId", "Ativo");
 
+                    b.HasIndex("AnimalId", "ProtocoloVacinalId")
+                        .IsUnique()
+                        .HasFilter("\"Ativo\"");
+
                     b.ToTable("AnimalProtocolosVacinais");
                 });
 
@@ -125,6 +185,12 @@ namespace Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AlteradaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AlteradaPorUserId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AnimalId")
@@ -135,6 +201,9 @@ namespace Api.Migrations
 
                     b.Property<string>("Aplicador")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("AplicadorUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("AssinadaEm")
                         .HasColumnType("timestamp with time zone");
@@ -150,8 +219,8 @@ namespace Api.Migrations
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)");
 
-                    b.Property<bool>("CicloFinalizado")
-                        .HasColumnType("boolean");
+                    b.Property<Guid?>("AssinanteUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("CreatedByUser")
                         .HasColumnType("uuid");
@@ -191,6 +260,10 @@ namespace Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("MotivoAlteracao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<string>("NumeroLote")
                         .IsRequired()
                         .HasColumnType("text");
@@ -201,6 +274,18 @@ namespace Api.Migrations
                     b.Property<Guid?>("ProtocoloVacinalDoseId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RetificaAplicacaoVacinaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SituacaoRegistro")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Ativo");
+
+                    b.Property<string>("SnapshotAssinado")
+                        .HasColumnType("text");
+
                     b.Property<int>("StatusComprovante")
                         .HasColumnType("integer");
 
@@ -209,6 +294,17 @@ namespace Api.Migrations
 
                     b.Property<Guid>("VacinaId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("VersaoAssinatura")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("VeterinarioCrmv")
                         .HasMaxLength(50)
@@ -221,11 +317,10 @@ namespace Api.Migrations
                     b.Property<string>("VeterinarioResponsavel")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("VeterinarioResponsavelUserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
-
-                    b.HasIndex("AnimalId");
-
-                    b.HasIndex("AnimalProtocoloVacinalId");
 
                     b.HasIndex("DataAplicacao");
 
@@ -235,9 +330,18 @@ namespace Api.Migrations
 
                     b.HasIndex("ProtocoloVacinalDoseId");
 
+                    b.HasIndex("RetificaAplicacaoVacinaId")
+                        .IsUnique();
+
+                    b.HasIndex("SituacaoRegistro");
+
                     b.HasIndex("StatusComprovante");
 
                     b.HasIndex("VacinaId");
+
+                    b.HasIndex("AnimalId", "VacinaId", "SituacaoRegistro", "DataAplicacao");
+
+                    b.HasIndex("AnimalProtocoloVacinalId", "ProtocoloVacinalDoseId", "SituacaoRegistro", "DataAplicacao");
 
                     b.ToTable("AplicacoesVacina");
                 });
@@ -249,6 +353,9 @@ namespace Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AplicacaoVacinaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssinanteUserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Crmv")
@@ -291,6 +398,8 @@ namespace Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AplicacaoVacinaId");
+
+                    b.HasIndex("AssinanteUserId");
 
                     b.HasIndex("DataHora");
 
@@ -396,6 +505,12 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AmbienteDestinoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AmbienteOrigemId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("AnimalId")
                         .HasColumnType("uuid");
 
@@ -407,6 +522,9 @@ namespace Api.Migrations
 
                     b.Property<DateOnly>("DataMovimentacao")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("GrupoId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("LastModificationDateTime")
                         .HasColumnType("timestamp with time zone");
@@ -430,6 +548,10 @@ namespace Api.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AmbienteDestinoId");
+
+                    b.HasIndex("AmbienteOrigemId");
 
                     b.HasIndex("LocalDestino");
 
@@ -462,6 +584,11 @@ namespace Api.Migrations
                     b.Property<Guid?>("EspecieId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("FamiliaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("Finalidade")
                         .HasColumnType("text");
 
@@ -481,7 +608,27 @@ namespace Api.Migrations
                     b.Property<Guid?>("UpdatedByUser")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Versao")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<bool>("VersaoAtual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("FamiliaId")
+                        .IsUnique()
+                        .HasFilter("\"VersaoAtual\"");
 
                     b.HasIndex("Nome");
 
@@ -489,6 +636,9 @@ namespace Api.Migrations
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Nome"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("EspecieId", "Ativo");
+
+                    b.HasIndex("FamiliaId", "Versao")
+                        .IsUnique();
 
                     b.ToTable("ProtocolosVacinais");
                 });
@@ -579,11 +729,36 @@ namespace Api.Migrations
                     b.ToTable("Racas");
                 });
 
+            modelBuilder.Entity("Api.Models.ServerSession", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProtectedTicket")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("ServerSessions", (string)null);
+                });
+
             modelBuilder.Entity("Api.Models.Vacina", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<Guid?>("CreatedByUser")
                         .HasColumnType("uuid");
@@ -607,9 +782,6 @@ namespace Api.Migrations
                     b.Property<bool>("ObrigatorioOrgaoSanitario")
                         .HasColumnType("boolean");
 
-                    b.Property<long>("ReaplicarEmXDias")
-                        .HasColumnType("bigint");
-
                     b.Property<Guid?>("UpdatedByUser")
                         .HasColumnType("uuid");
 
@@ -627,10 +799,17 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Api.Models.Animal", b =>
                 {
+                    b.HasOne("Api.Models.Ambiente", "Ambiente")
+                        .WithMany("Animais")
+                        .HasForeignKey("AmbienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Api.Models.Raca", "Raca")
                         .WithMany("Animais")
                         .HasForeignKey("RacaId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Ambiente");
 
                     b.Navigation("Raca");
                 });
@@ -640,7 +819,7 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.Animal", "Animal")
                         .WithMany("ProtocolosVacinais")
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Api.Models.ProtocoloVacinal", "ProtocoloVacinal")
@@ -659,28 +838,35 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.Animal", "Animal")
                         .WithMany("VacinasAplicadas")
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Api.Models.AnimalProtocoloVacinal", "AnimalProtocoloVacinal")
                         .WithMany("Aplicacoes")
                         .HasForeignKey("AnimalProtocoloVacinalId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Api.Models.ProtocoloVacinalDose", "ProtocoloVacinalDose")
                         .WithMany("Aplicacoes")
                         .HasForeignKey("ProtocoloVacinalDoseId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Api.Models.AplicacaoVacina", "AplicacaoOriginal")
+                        .WithOne("SubstituidaPor")
+                        .HasForeignKey("Api.Models.AplicacaoVacina", "RetificaAplicacaoVacinaId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Api.Models.Vacina", "Vacina")
                         .WithMany("Aplicacoes")
                         .HasForeignKey("VacinaId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Animal");
 
                     b.Navigation("AnimalProtocoloVacinal");
+
+                    b.Navigation("AplicacaoOriginal");
 
                     b.Navigation("ProtocoloVacinalDose");
 
@@ -692,7 +878,7 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.AplicacaoVacina", "AplicacaoVacina")
                         .WithMany("Assinaturas")
                         .HasForeignKey("AplicacaoVacinaId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("AplicacaoVacina");
@@ -711,10 +897,20 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Api.Models.MovimentacaoAnimal", b =>
                 {
+                    b.HasOne("Api.Models.Ambiente", null)
+                        .WithMany()
+                        .HasForeignKey("AmbienteDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Api.Models.Ambiente", null)
+                        .WithMany()
+                        .HasForeignKey("AmbienteOrigemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Api.Models.Animal", "Animal")
                         .WithMany("Movimentacoes")
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Animal");
@@ -725,7 +921,7 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.Especie", "Especie")
                         .WithMany("ProtocolosVacinais")
                         .HasForeignKey("EspecieId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.ClientNoAction);
 
                     b.Navigation("Especie");
                 });
@@ -754,7 +950,7 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.Especie", "Especie")
                         .WithMany("Racas")
                         .HasForeignKey("EspecieId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired();
 
                     b.Navigation("Especie");
@@ -765,9 +961,14 @@ namespace Api.Migrations
                     b.HasOne("Api.Models.Especie", "Especie")
                         .WithMany("VacinasRestritas")
                         .HasForeignKey("EspecieId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.ClientNoAction);
 
                     b.Navigation("Especie");
+                });
+
+            modelBuilder.Entity("Api.Models.Ambiente", b =>
+                {
+                    b.Navigation("Animais");
                 });
 
             modelBuilder.Entity("Api.Models.Animal", b =>
@@ -789,6 +990,8 @@ namespace Api.Migrations
             modelBuilder.Entity("Api.Models.AplicacaoVacina", b =>
                 {
                     b.Navigation("Assinaturas");
+
+                    b.Navigation("SubstituidaPor");
                 });
 
             modelBuilder.Entity("Api.Models.Especie", b =>

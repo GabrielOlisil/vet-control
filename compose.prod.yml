@@ -1,48 +1,132 @@
-# Use postgres/example user/password credentials
+name: vet-control-prod
 
 services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   migrations:
-    profiles: [ "dev" ]
-
     build:
       context: .
       target: migrations
     environment:
-      ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
-    command:
-      - "--connection"
-      - "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ApiContext: "Host=db;Database=vacinas;Username=postgres;Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  auth-migrations:
+    build:
+      context: .
+      target: auth-migrations
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__AuthContext: "Host=db;Database=AppUsers;Username=postgres;Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  auth:
+    build:
+      context: .
+      target: auth
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__AuthContext: "Host=db;Database=AppUsers;Username=postgres;Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}"
+      Frontend__Origin: "https://${APP_DOMAIN:?Configure APP_DOMAIN}"
+      OpenId__Issuer: "https://${AUTH_DOMAIN:?Configure AUTH_DOMAIN}/"
+      OpenId__RedirectUri: "https://${APP_DOMAIN}/signin-oidc"
+      OpenId__PostLogoutRedirectUri: "https://${APP_DOMAIN}/signout-callback-oidc"
+      OpenId__ClientSecret: ${OIDC_CLIENT_SECRET:?Configure OIDC_CLIENT_SECRET}
+      OpenId__SigningCertificatePath: /certificates/identity-signing.pfx
+      OpenId__SigningCertificatePassword: ${SIGNING_CERTIFICATE_PASSWORD:?Configure SIGNING_CERTIFICATE_PASSWORD}
+      OpenId__EncryptionCertificatePath: /certificates/identity-encryption.pfx
+      OpenId__EncryptionCertificatePassword: ${ENCRYPTION_CERTIFICATE_PASSWORD:?Configure ENCRYPTION_CERTIFICATE_PASSWORD}
+      DataProtection__KeysPath: /var/lib/vet-control/keys
+      DataProtection__CertificatePath: /certificates/data-protection.pfx
+      DataProtection__CertificatePassword: ${DATA_PROTECTION_CERTIFICATE_PASSWORD:?Configure DATA_PROTECTION_CERTIFICATE_PASSWORD}
+      ReverseProxy__KnownProxies__0: ${PROXY_IP:-172.30.240.10}
+      AllowedHosts: ${AUTH_DOMAIN}
+    volumes:
+      - auth-keys:/var/lib/vet-control/keys
+      - ${CRYPTO_CERTIFICATES_PATH:?Configure CRYPTO_CERTIFICATES_PATH}:/certificates:ro
+    depends_on:
+      auth-migrations:
+        condition: service_completed_successfully
 
   api:
-    profiles: [ "dev" ]
-
     build:
       context: .
       target: api
+      args:
+        VITE_API_URL: "https://${APP_DOMAIN:?Configure APP_DOMAIN}"
+        VITE_IDENTITY_URL: "https://${AUTH_DOMAIN:?Configure AUTH_DOMAIN}"
+    restart: unless-stopped
     environment:
-      ConnectionStrings__ApiContext: "Server=db;Database=vacinas;Username=postgres;Password=postgresssss;Port=5432"
-      ASPNETCORE_ENVIRONMENT: "Development"
-      ASPNETCORE_URLS: "http://+:8080"
-    ports:
-      - "8080:8080"
-
-  db:
-    image: postgres:18-alpine
-    restart: always
-    shm_size: 128mb
-    ports:
-      - 5432:5432
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ApiContext: "Host=db;Database=vacinas;Username=postgres;Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}"
+      Authentication__Authority: "https://${AUTH_DOMAIN}/"
+      Authentication__FrontendOrigin: "https://${APP_DOMAIN}"
+      Authentication__ClientId: vet-control
+      Authentication__ClientSecret: ${OIDC_CLIENT_SECRET:?Configure OIDC_CLIENT_SECRET}
+      DataProtection__KeysPath: /var/lib/vet-control/keys
+      DataProtection__CertificatePath: /certificates/data-protection.pfx
+      DataProtection__CertificatePassword: ${DATA_PROTECTION_CERTIFICATE_PASSWORD:?Configure DATA_PROTECTION_CERTIFICATE_PASSWORD}
+      ReverseProxy__KnownProxies__0: ${PROXY_IP:-172.30.240.10}
+      Clinic__TimeZone: ${CLINIC_TIME_ZONE:-America/Manaus}
+      AllowedHosts: ${APP_DOMAIN}
     volumes:
-      - db-data:/var/lib/postgresql
+      - api-data-protection-keys:/var/lib/vet-control/keys
+      - ${CRYPTO_CERTIFICATES_PATH}:/certificates:ro
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      auth:
+        condition: service_started
+
+  proxy:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
     environment:
-      POSTGRES_PASSWORD: "postgresssss"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d vacinas" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      APP_DOMAIN: ${APP_DOMAIN}
+      AUTH_DOMAIN: ${AUTH_DOMAIN}
+    volumes:
+      - ./deployment/nginx:/etc/nginx/templates:ro
+      - ${TLS_CERTIFICATES_PATH:?Configure TLS_CERTIFICATES_PATH}:/etc/nginx/certificates:ro
+    networks:
+      default:
+        ipv4_address: ${PROXY_IP:-172.30.240.10}
+        aliases:
+          - ${APP_DOMAIN}
+          - ${AUTH_DOMAIN}
+    depends_on:
+      - api
+      - auth
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${PROXY_SUBNET:-172.30.240.0/24}
 
 volumes:
   db-data:
-  nuget-cache:
+  api-data-protection-keys:
+  auth-keys:

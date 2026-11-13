@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AmbienteSelect from '$lib/components/AmbienteSelect.svelte';
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
@@ -7,6 +8,7 @@
     import { animalService } from "$lib/api/animais";
     import { racaService } from "$lib/api/racas";
     import { especieService } from "$lib/api/especies";
+    import { formatDateOnly } from "$lib/utils/dates";
     import {
         getAnimalName,
         calcularIdade,
@@ -46,7 +48,7 @@
     let filterSexo = $state("");
     let filterOrigem = $state("");
     let filterAtivo = $state("");
-    let filterLoteOuPasto = $state("");
+    let filterAmbiente = $state("");
     let filterIdentificador = $state("");
     let filterTipoIdentificador = $state("");
     let filterDataFrom = $state("");
@@ -63,7 +65,7 @@
             Sexo: filterSexo !== "" ? (filterSexo as any) : undefined,
             Origem: filterOrigem !== "" ? (filterOrigem as any) : undefined,
             Ativo: filterAtivo !== "" ? filterAtivo === "true" : undefined,
-            LoteOuPasto: filterLoteOuPasto.trim() || undefined,
+            AmbienteId: filterAmbiente || undefined,
             Identificador: filterIdentificador.trim() || undefined,
             TipoIdentificador:
                 filterTipoIdentificador !== ""
@@ -131,7 +133,7 @@
         filterSexo = "";
         filterOrigem = "";
         filterAtivo = "";
-        filterLoteOuPasto = "";
+        filterAmbiente = "";
         filterIdentificador = "";
         filterTipoIdentificador = "";
         filterDataFrom = "";
@@ -161,7 +163,7 @@
         racaId: undefined,
         sexo: "Indefinido",
         origem: "Interno",
-        loteOuPasto: "",
+        ambienteId: "",
         identificadores: [{ tipo: "NomeUnico", valor: "", ehPrincipal: true }],
     });
 
@@ -188,7 +190,7 @@
                 racaId: detail.raca?.id ?? undefined,
                 sexo: detail.sexo ?? "Indefinido",
                 origem: detail.origem ?? "Interno",
-                loteOuPasto: detail.loteOuPasto ?? "",
+                ambienteId: detail.ambienteId ?? "",
                 identificadores: detail.identificadores?.map((i) => ({
                     tipo: i.tipo,
                     valor: i.valor,
@@ -219,7 +221,7 @@
                     racaId: form.racaId || null,
                     sexo: form.sexo ?? null,
                     origem: form.origem ?? null,
-                    loteOuPasto: form.loteOuPasto?.trim() || null,
+                    ambienteId: form.ambienteId || null,
                     identificadores: form.identificadores,
                 };
                 await animalService.patch(editingId, patch);
@@ -228,7 +230,7 @@
                     ...form,
                     name: form.name?.trim() || undefined,
                     racaId: form.racaId || undefined,
-                    loteOuPasto: form.loteOuPasto?.trim() || undefined,
+                    ambienteId: form.ambienteId || undefined,
                 });
             }
             showModal = false;
@@ -458,21 +460,7 @@
             </div>
 
             <div>
-                <label
-                    for="filterLotePastoInput"
-                    class="label label-text text-xs">Lote / Pasto / Baia</label
-                >
-                <input
-                    id="filterLotePastoInput"
-                    type="text"
-                    placeholder="Ex: P-02, Baia..."
-                    class="input input-bordered input-sm w-full"
-                    bind:value={filterLoteOuPasto}
-                    onchange={() => {
-                        currentPage = 1;
-                        load();
-                    }}
-                />
+                <AmbienteSelect label="Ambiente" bind:value={filterAmbiente} onchange={() => { currentPage = 1; load(); }} />
             </div>
 
             <div>
@@ -636,11 +624,7 @@
                                         <span
                                             class="text-xs text-base-content/50"
                                         >
-                                            {animal.dataNascimento
-                                                ? new Date(
-                                                      animal.dataNascimento,
-                                                  ).toLocaleDateString("pt-BR")
-                                                : "—"}
+                                            {formatDateOnly(animal.dataNascimento)}
                                         </span>
                                         <span
                                             >{calcularIdade(
@@ -792,11 +776,7 @@
             </select>
         </div>
         <div class="sm:col-span-2">
-            <Input
-                label="Lote / Pasto / Baia"
-                placeholder="Ex: Pasto 02, Baia 4…"
-                bind:value={form.loteOuPasto}
-            />
+            <AmbienteSelect label="Ambiente atual" bind:value={form.ambienteId} />
         </div>
     </div>
 

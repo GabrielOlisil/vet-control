@@ -5,6 +5,13 @@
 
 # dotenv files
 .env
+.env.*
+!.env.example
+!.env.production.example
+**/data-protection-keys/
+**/*.key
+**/*.pem
+**/*.p12
 
 # User-specific files
 *.rsuser

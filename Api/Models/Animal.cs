@@ -6,6 +6,7 @@ namespace Api.Models;
 public class Animal : IAuditedEntity
 {
     public Guid Id { get; set; }
+    public uint Version { get; set; }
     public string? Name { get; set; }
 
     public SexoAnimal Sexo { get; set; } = SexoAnimal.Indefinido;
@@ -16,6 +17,8 @@ public class Animal : IAuditedEntity
     public OrigemAnimal OrigemAnimal { get; set; } = OrigemAnimal.Externo;
 
     public string? LoteOuPasto { get; set; }
+    public Guid? AmbienteId { get; set; }
+    public Ambiente? Ambiente { get; set; }
 
     public bool Ativo { get; set; } = true;
 

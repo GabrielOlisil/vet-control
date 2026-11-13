@@ -3,7 +3,9 @@
  * Uso: SexoAnimalLabels[animal.sexo] => "Macho"
  */
 
-import type { StatusComprovanteVacina } from ".";
+import type { StatusComprovanteVacina, StatusPendenciaVacinal } from ".";
+import { clinicToday } from '$lib/utils/clinic-clock';
+import { parseDateOnly } from '$lib/utils/dates';
 
 export const SexoAnimalLabels: Record<string | number, string> = {
     0: 'Macho',
@@ -54,11 +56,17 @@ export const StatusComprovanteLabels: Record<
     Assinado: 'badge-success',
 };
 
-export const StatusPendenciaVacinalLabels: Record<string, string> = {
+export const StatusPendenciaVacinalLabels: Record<StatusPendenciaVacinal, string> = {
     Pendente: 'Pendente',
     Atrasada: 'Atrasada',
     Concluida: 'Concluída',
 };
+
+export function rotuloStatusDoseVacinal(status: StatusPendenciaVacinal = 'Pendente', temAplicacaoAnterior = false): string {
+    if (temAplicacaoAnterior && status === 'Pendente') return 'Reforço pendente';
+    if (temAplicacaoAnterior && status === 'Atrasada') return 'Reforço atrasado';
+    return StatusPendenciaVacinalLabels[status];
+}
 
 export const TipoMovimentacaoAnimalLabels: Record<string, string> = {
     Entrada: 'Entrada',
@@ -71,12 +79,12 @@ export const TipoMovimentacaoAnimalLabels: Record<string, string> = {
  * Calcula a idade em anos/meses a partir de uma data ISO (YYYY-MM-DD).
  */
 export function calcularIdade(dataNascimento?: string): string {
-    if (!dataNascimento) return '—';
-    const nasc = new Date(dataNascimento);
-    const hoje = new Date();
-    const anos = hoje.getFullYear() - nasc.getFullYear();
-    const meses = hoje.getMonth() - nasc.getMonth();
-    const totalMeses = anos * 12 + meses;
+    const nasc = parseDateOnly(dataNascimento);
+    const hoje = parseDateOnly(clinicToday());
+    if (!nasc || !hoje || nasc > hoje) return '—';
+    const anos = hoje.getUTCFullYear() - nasc.getUTCFullYear();
+    const meses = hoje.getUTCMonth() - nasc.getUTCMonth();
+    const totalMeses = anos * 12 + meses - Number(hoje.getUTCDate() < nasc.getUTCDate());
     if (totalMeses < 1) return '< 1 mês';
     if (totalMeses < 12) return `${totalMeses} ${totalMeses === 1 ? 'mês' : 'meses'}`;
     const anosCalc = Math.floor(totalMeses / 12);
@@ -104,11 +112,5 @@ export function formatarPeriodo(dias?: number | string): string {
 /**
  * Retorna a data de hoje em formato YYYY-MM-DD.
  */
-export function hoje(): string {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
+export { clinicToday as hoje } from '$lib/utils/clinic-clock';
 

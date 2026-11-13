@@ -1,6 +1,7 @@
 using Api.Database;
 using Api.DTOs;
 using Api.Models;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.Vacinas;
@@ -19,7 +20,7 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
 
         if (page.HasValue)
         {
-            query = query.Skip((page.Value - 1) * 10).Take(10);
+            query = query.Skip(Pagination.Offset(page, 10)).Take(10);
         }
 
         return query.ToListAsync(cancellationToken);
@@ -39,10 +40,10 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
     {
         var vacina = new Vacina
         {
+            Ativo = dto.Ativo,
             Id = Guid.NewGuid(),
             Name = dto.Name,
             Descricao = dto.Descricao,
-            ReaplicarEmXDias = dto.ReaplicarEmXDias,
             ObrigatorioOrgaoSanitario = dto.ObrigatorioOrgaoSanitario,
             EspecieId = dto.EspecieId
         };
@@ -62,6 +63,7 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
             return null;
         }
 
+        if (dto.Ativo.HasValue) vacina.Ativo = dto.Ativo.Value;
         if (dto.Name is not null)
         {
             vacina.Name = dto.Name;
@@ -70,11 +72,6 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         if (dto.DescricaoWasProvided)
         {
             vacina.Descricao = dto.Descricao;
-        }
-
-        if (dto.ReaplicarEmXDias.HasValue)
-        {
-            vacina.ReaplicarEmXDias = dto.ReaplicarEmXDias.Value;
         }
 
         if (dto.ObrigatorioOrgaoSanitario.HasValue)
@@ -101,6 +98,10 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
             return false;
         }
 
+        if (await context.AplicacoesVacina.AnyAsync(a => a.VacinaId == id, cancellationToken) ||
+            await context.ProtocoloVacinalDoses.AnyAsync(d => d.VacinaId == id, cancellationToken))
+            throw new InvalidOperationException("Esta vacina possui histórico ou integra um protocolo. Inative o cadastro para preservá-lo.");
+
         context.Vacinas.Remove(vacina);
         await context.SaveChangesAsync(cancellationToken);
         return true;
@@ -126,9 +127,10 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
 
         query = ApplyFilters(query, search);
 
+        var currentPage = Pagination.NormalizePage(page);
         return query
              .OrderBy(e => e.Name)
-             .Skip((page - 1) * 10)
+             .Skip(Pagination.Offset(currentPage, 10))
              .Take(10)
              .ToListAsync(cancellationToken);
     }
@@ -138,17 +140,14 @@ public sealed class VacinaService(ApiContext context) : IVacinaService
         if (search is null)
             return query;
 
+        if (search.Ativo.HasValue)
+            query = query.Where(v => v.Ativo == search.Ativo.Value);
+
         if (search.EspecieId.HasValue)
             query = query.Where(vacina => vacina.EspecieId == search.EspecieId.Value);
 
         if (search.ObrigatorioOrgaoSanitario.HasValue)
             query = query.Where(vacina => vacina.ObrigatorioOrgaoSanitario == search.ObrigatorioOrgaoSanitario.Value);
-
-        if (search.ReaplicarEmXDiasMin.HasValue)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias >= search.ReaplicarEmXDiasMin.Value);
-
-        if (search.ReaplicarEmXDiasMax.HasValue)
-            query = query.Where(vacina => vacina.ReaplicarEmXDias <= search.ReaplicarEmXDiasMax.Value);
 
         return query;
     }

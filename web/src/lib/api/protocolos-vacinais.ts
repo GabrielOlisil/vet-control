@@ -9,11 +9,22 @@ import type {
     ProtocoloVacinalPatchDto,
     ProtocoloVacinalReadResponseDto,
     ProtocoloVacinalSearchParams,
+    MigracaoProtocoloVacinalDto,
 } from '../types';
 
 const client = apiClient as any;
 
 export const protocoloVacinalService = {
+    async getVersions(id: string) {
+        const { data, error } = await apiClient.GET('/api/v1/protocolos-vacinais/{id}/versoes', { params: { path: { id } } });
+        if (error) throw new Error(extractErrorMessage(error, 'Não foi possível consultar as versões.'));
+        return data ?? [];
+    },
+    async migrate(animalId: string, id: string, body: MigracaoProtocoloVacinalDto) {
+        const { data, error } = await apiClient.POST('/api/v1/animais/{animalId}/protocolos-vacinais/{id}/migrar', { params: { path: { animalId, id } }, body });
+        if (error || !data) throw new Error(extractErrorMessage(error, 'Não foi possível migrar o esquema.'));
+        return data;
+    },
     async getList(params?: ProtocoloVacinalSearchParams): Promise<ProtocoloVacinalReadResponseDto[]> {
         const { data, error } = await client.GET('/api/v1/protocolos-vacinais', { params: { query: params } });
         if (error) throw new Error(extractErrorMessage(error, 'Erro ao listar protocolos vacinais'));

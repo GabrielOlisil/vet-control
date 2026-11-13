@@ -187,6 +187,26 @@ public class AplicacaoVacinaController(IAplicacaoVacinaService aplicacaoVacinaSe
         return deleted ? NoContent() : NotFound();
     }
 
+    [HttpPost("{id:guid}/cancelar")]
+    [Authorize(Policy = ClinicalPolicies.SignVaccineApplications)]
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Cancelar(Guid id,
+        CancelamentoVacinaDto dto, CancellationToken cancellationToken)
+    {
+        var record = await aplicacaoVacinaService.CancelarAsync(id, dto, cancellationToken);
+        return record is null ? NotFound() : Ok(AplicacaoVacinaMapper.MapToResponse(
+            (await aplicacaoVacinaService.GetByIdAsync(id, cancellationToken))!));
+    }
+
+    [HttpPost("{id:guid}/retificar")]
+    [Authorize(Policy = ClinicalPolicies.SignVaccineApplications)]
+    public async Task<ActionResult<AplicacaoVacinaDetailResponseDto>> Retificar(Guid id,
+        RetificacaoVacinaDto dto, CancellationToken cancellationToken)
+    {
+        var record = await aplicacaoVacinaService.RetificarAsync(id, dto, cancellationToken);
+        return record is null ? NotFound() : Ok(AplicacaoVacinaMapper.MapToResponse(
+            (await aplicacaoVacinaService.GetByIdAsync(record.Id, cancellationToken))!));
+    }
+
     [HttpGet("animal/{animalId:guid}/comprovante-vacinas/dados")]
     public async Task<ActionResult<ComprovanteVacinasDadosResponseDto>> GetComprovanteVacinasDados(Guid animalId,
         [FromQuery] bool incluirNaoAssinadas = true, CancellationToken cancellationToken = default)

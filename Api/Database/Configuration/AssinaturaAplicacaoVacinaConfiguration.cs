@@ -20,9 +20,10 @@ public class AssinaturaAplicacaoVacinaConfiguration : IEntityTypeConfiguration<A
         builder.HasOne(e => e.AplicacaoVacina)
             .WithMany(e => e.Assinaturas)
             .HasForeignKey(e => e.AplicacaoVacinaId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => e.AplicacaoVacinaId);
+        builder.HasIndex(e => e.AssinanteUserId);
         builder.HasIndex(e => e.DataHora);
     }
 }

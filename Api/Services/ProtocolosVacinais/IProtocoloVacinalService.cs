@@ -22,6 +22,8 @@ public interface IProtocoloVacinalService
         CancellationToken cancellationToken = default);
     Task<AnimalProtocoloVacinal?> PatchAnimalProtocolAsync(Guid animalProtocolId,
         AnimalProtocoloVacinalPatchDto dto, CancellationToken cancellationToken = default);
+    Task<AnimalProtocoloVacinal?> MigrarAsync(Guid animalId, Guid vinculoId, MigracaoProtocoloVacinalDto dto,
+        CancellationToken cancellationToken = default);
 
     Task<List<ProtocoloVacinalPendenciaResponseDto>> GetPendenciasAsync(int? page,
         ProtocoloVacinalPendenciaSearchDto? search = null, CancellationToken cancellationToken = default);

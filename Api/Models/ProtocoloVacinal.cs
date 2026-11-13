@@ -3,6 +3,10 @@ namespace Api.Models;
 public class ProtocoloVacinal : IAuditedEntity
 {
     public Guid Id { get; set; }
+    public Guid FamiliaId { get; set; } = Guid.NewGuid();
+    public int Versao { get; set; } = 1;
+    public bool VersaoAtual { get; set; } = true;
+    public uint Version { get; set; }
 
     public required string Nome { get; set; }
     public string? Descricao { get; set; }

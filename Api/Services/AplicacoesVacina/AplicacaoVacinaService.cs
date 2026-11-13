@@ -3,6 +3,7 @@ using Api.DTOs;
 using Api.Mappers;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -10,18 +11,18 @@ using System.Text;
 
 namespace Api.Services.AplicacoesVacina;
 
-public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAccessor httpContextAccessor) : IAplicacaoVacinaService
+public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAccessor httpContextAccessor, ClinicalCalendar calendar) : IAplicacaoVacinaService
 {
     public async Task<AplicacaoVacina> CreateAsync(AplicacaoVacinaCreateDto dto,
         CancellationToken cancellationToken = default)
     {
         var currentUser = GetAuthenticatedUser();
-        var animal = await context.Animals.FindAsync([dto.AnimalId], cancellationToken);
+        var animal = await context.Animals.Include(a => a.Raca).SingleOrDefaultAsync(a => a.Id == dto.AnimalId, cancellationToken);
         if (animal is null)
             throw new KeyNotFoundException($"Animal com Id '{dto.AnimalId}' não encontrado.");
 
-        var vacinaExists = await context.Vacinas.AnyAsync(v => v.Id == dto.VacinaId, cancellationToken);
-        if (!vacinaExists)
+        var vacina = await context.Vacinas.FindAsync([dto.VacinaId], cancellationToken);
+        if (vacina is null)
             throw new KeyNotFoundException($"Vacina com Id '{dto.VacinaId}' não encontrada.");
 
         ValidateVaccineDates(dto.DataFabricacao, dto.DataValidade);
@@ -41,12 +42,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
                 dataProximaDose = CalculateNextDoseDate(protocolLink.Value.Assignment,
                     protocolLink.Value.Dose, dto.DataAplicacao);
             }
-            else
-            {
-                var vacina = await context.Vacinas.FindAsync([dto.VacinaId], cancellationToken);
-                if (vacina is not null && vacina.ReaplicarEmXDias > 0)
-                    dataProximaDose = dto.DataAplicacao.AddDays((int)vacina.ReaplicarEmXDias);
-            }
+            // Sem protocolo, a próxima dose deve ser informada explicitamente.
         }
 
         var aplicacao = new AplicacaoVacina
@@ -58,7 +54,6 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             ProtocoloVacinalDoseId = dto.ProtocoloVacinalDoseId,
             DataAplicacao = dto.DataAplicacao,
             DataProximaDose = dataProximaDose,
-            CicloFinalizado = dto.CicloFinalizado ?? true,
             StatusComprovante = StatusComprovanteVacina.PendenteAssinatura,
             NumeroLote = dto.NumeroLote,
             DoseMl = dto.DoseMl,
@@ -66,13 +61,12 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             DataValidade = dto.DataValidade,
             LocalAplicacao = dto.LocalAplicacao,
             Observacoes = dto.Observacoes,
-            VeterinarioResponsavel = currentUser.Name,
-            VeterinarioCrmv = currentUser.Crmv,
-            VeterinarioCrmvUf = currentUser.CrmvUf,
             Aplicador = currentUser.Name,
+            AplicadorUserId = currentUser.Id,
             LaboratorioFabricante = dto.LaboratorioFabricante
         };
 
+        VaccineApplicationRules.Validate(aplicacao, animal, vacina, calendar.Today);
         context.AplicacoesVacina.Add(aplicacao);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -122,7 +116,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             aplicacao.VacinaId,
             aplicacao.AnimalProtocoloVacinalId,
             aplicacao.ProtocoloVacinalDoseId,
-            cancellationToken);
+            cancellationToken, aplicacao.RetificaAplicacaoVacinaId.HasValue);
 
         if (dto.DataAplicacao.HasValue)
         {
@@ -132,11 +126,6 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         if (dto.DataProximaDoseWasProvided)
         {
             aplicacao.DataProximaDose = dto.DataProximaDose;
-        }
-
-        if (dto.CicloFinalizado.HasValue)
-        {
-            aplicacao.CicloFinalizado = dto.CicloFinalizado.Value;
         }
 
         if (dto.NumeroLote is not null)
@@ -186,6 +175,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
                 protocolLink.Value.Dose, aplicacao.DataAplicacao);
         }
 
+        var animal = await context.Animals.Include(a => a.Raca).SingleAsync(a => a.Id == aplicacao.AnimalId, cancellationToken);
+        var vaccine = await context.Vacinas.SingleAsync(v => v.Id == aplicacao.VacinaId, cancellationToken);
+        VaccineApplicationRules.Validate(aplicacao, animal, vaccine, calendar.Today, aplicacao.RetificaAplicacaoVacinaId.HasValue);
+
         await context.SaveChangesAsync(cancellationToken);
 
         return aplicacao;
@@ -194,8 +187,12 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public async Task<AplicacaoVacina?> AssinarAsync(Guid id, AplicacaoVacinaAssinaturaDto dto,
         CancellationToken cancellationToken = default)
     {
+        var currentUser = GetAuthenticatedUser();
         var aplicacao = await context.AplicacoesVacina
             .AsNoTracking()
+            .Include(a => a.Animal).ThenInclude(a => a!.Identificadores)
+            .Include(a => a.Animal).ThenInclude(a => a!.Raca).ThenInclude(r => r!.Especie)
+            .Include(a => a.Vacina).ThenInclude(v => v!.Especie)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
         if (aplicacao is null)
@@ -203,32 +200,49 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
 
         if (aplicacao.StatusComprovante == StatusComprovanteVacina.Assinado)
             throw new InvalidOperationException("Esta aplicação já está assinada e não pode ser assinada novamente.");
+        if (aplicacao.SituacaoRegistro != SituacaoRegistroVacina.Ativo)
+            throw new InvalidOperationException("Somente registros ativos podem ser assinados.");
 
-        var nome = dto.NomeAssinante.Trim();
-        var crmv = dto.Crmv.Trim();
-        var uf = NormalizeUf(dto.CrmvUf);
+        var nome = currentUser.Name;
+        var crmv = currentUser.Crmv?.Trim();
+        var uf = NormalizeUf(currentUser.CrmvUf);
         if (string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(crmv) || string.IsNullOrWhiteSpace(uf))
-            throw new ArgumentException("Informe nome, CRMV e UF do veterinário assinante.");
+            throw new ArgumentException("Cadastre o CRMV e a UF do CRMV do usuário antes de assinar a aplicação.");
 
         // A assinatura usa precisão de minutos. Isso torna o timestamp usado no
         // hash idêntico ao timestamp persistido, sem depender de frações de segundo.
-        var assinaturaEm = NormalizeSignatureTimestamp(DateTimeOffset.UtcNow);
-        var hash = CalculateSignatureHash(aplicacao, nome, crmv, uf, assinaturaEm);
+        var assinaturaEm = NormalizeSignatureTimestamp(calendar.UtcNow);
+        aplicacao.Assinante = nome; aplicacao.AssinanteCrmv = crmv; aplicacao.AssinanteCrmvUf = uf;
+        aplicacao.AssinanteUserId = currentUser.Id; aplicacao.AssinadaEm = assinaturaEm;
+        aplicacao.VeterinarioResponsavel = nome; aplicacao.VeterinarioCrmv = crmv; aplicacao.VeterinarioCrmvUf = uf;
+        aplicacao.VeterinarioResponsavelUserId = currentUser.Id;
+        var snapshot = AssinaturaSnapshot.Criar(aplicacao);
+        var hash = AssinaturaSnapshot.Hash(snapshot);
 
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = context.Database.CurrentTransaction is null
+            ? await context.Database.BeginTransactionAsync(cancellationToken) : null;
         try
         {
             var updatedRows = await context.AplicacoesVacina
-                .Where(a => a.Id == id && a.StatusComprovante != StatusComprovanteVacina.Assinado)
+                .Where(a => a.Id == id && a.StatusComprovante != StatusComprovanteVacina.Assinado &&
+                            a.SituacaoRegistro == SituacaoRegistroVacina.Ativo && a.Version == aplicacao.Version)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(a => a.StatusComprovante, StatusComprovanteVacina.Assinado)
                     .SetProperty(a => a.AssinadaEm, assinaturaEm)
                     .SetProperty(a => a.Assinante, nome)
                     .SetProperty(a => a.AssinanteCrmv, crmv)
                     .SetProperty(a => a.AssinanteCrmvUf, uf)
+                    .SetProperty(a => a.AssinanteUserId, currentUser.Id)
+                    .SetProperty(a => a.VeterinarioResponsavel, nome)
+                    .SetProperty(a => a.VeterinarioCrmv, crmv)
+                    .SetProperty(a => a.VeterinarioCrmvUf, uf)
+                    .SetProperty(a => a.VeterinarioResponsavelUserId, currentUser.Id)
+                    .SetProperty(a => a.SnapshotAssinado, snapshot)
+                    .SetProperty(a => a.VersaoAssinatura, 2)
                     .SetProperty(a => a.HashAssinatura, hash)
                     .SetProperty(a => a.MetodoAssinatura, "InternaAuditavel")
-                    .SetProperty(a => a.LastModificationDateTime, assinaturaEm),
+                    .SetProperty(a => a.LastModificationDateTime, assinaturaEm)
+                    .SetProperty(a => a.UpdatedByUser, currentUser.Id),
                     cancellationToken);
 
             if (updatedRows == 0)
@@ -248,6 +262,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             {
                 Id = Guid.NewGuid(),
                 AplicacaoVacinaId = id,
+                AssinanteUserId = currentUser.Id,
                 TipoEvento = "Assinatura",
                 NomeAssinante = nome,
                 Crmv = crmv,
@@ -259,15 +274,98 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             });
 
             await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
             throw;
         }
 
         return aplicacao;
+    }
+
+    public async Task<AplicacaoVacina?> CancelarAsync(Guid id, CancelamentoVacinaDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var user = GetAuthenticatedUser();
+        var reason = ValidateReason(dto.Motivo);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var record = await LockRecord(id, cancellationToken);
+        if (record is null) return null;
+        EnsureSignedActive(record);
+        RecordChange(record, SituacaoRegistroVacina.Cancelado, "Cancelamento", reason, user);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return record;
+    }
+
+    public async Task<AplicacaoVacina?> RetificarAsync(Guid id, RetificacaoVacinaDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var user = GetAuthenticatedUser();
+        var reason = ValidateReason(dto.Motivo);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var original = await LockRecord(id, cancellationToken);
+        if (original is null) return null;
+        EnsureSignedActive(original);
+        var validation = await ValidarAssinaturaAsync(id, cancellationToken);
+        if (validation?.Integra != true)
+            throw new InvalidOperationException("Não é possível retificar um registro cuja assinatura não confere. Investigue a integridade do original.");
+
+        var replacement = new AplicacaoVacina
+        {
+            Id = Guid.NewGuid(), RetificaAplicacaoVacinaId = id,
+            AnimalId = original.AnimalId, VacinaId = original.VacinaId,
+            AnimalProtocoloVacinalId = original.AnimalProtocoloVacinalId,
+            ProtocoloVacinalDoseId = original.ProtocoloVacinalDoseId,
+            DataAplicacao = original.DataAplicacao, DataProximaDose = original.DataProximaDose,
+            NumeroLote = original.NumeroLote, DoseMl = original.DoseMl,
+            DataFabricacao = original.DataFabricacao, DataValidade = original.DataValidade,
+            LocalAplicacao = original.LocalAplicacao, Observacoes = original.Observacoes,
+            LaboratorioFabricante = original.LaboratorioFabricante,
+            Aplicador = original.Aplicador, AplicadorUserId = original.AplicadorUserId
+        };
+        RecordChange(original, SituacaoRegistroVacina.Retificado, "Retificacao", reason, user);
+        context.AplicacoesVacina.Add(replacement);
+        await context.SaveChangesAsync(cancellationToken);
+        await PatchAsync(replacement.Id, dto.Alteracoes, cancellationToken);
+        await AssinarAsync(replacement.Id, new AplicacaoVacinaAssinaturaDto { Observacoes = reason }, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return replacement;
+    }
+
+    private Task<AplicacaoVacina?> LockRecord(Guid id, CancellationToken ct) => context.AplicacoesVacina
+        .FromSqlInterpolated($"SELECT *, xmin FROM \"AplicacoesVacina\" WHERE \"Id\" = {id} FOR UPDATE")
+        .SingleOrDefaultAsync(ct);
+
+    private static string ValidateReason(string? reason)
+    {
+        var value = reason?.Trim();
+        if (value is null || value.Length < 3 || value.Length > 1000)
+            throw new ArgumentException("Informe um motivo de 3 a 1000 caracteres.");
+        return value;
+    }
+
+    private static void EnsureSignedActive(AplicacaoVacina record)
+    {
+        if (record.StatusComprovante != StatusComprovanteVacina.Assinado || record.SituacaoRegistro != SituacaoRegistroVacina.Ativo)
+            throw new InvalidOperationException("A operação exige um registro assinado, ativo e ainda não substituído.");
+    }
+
+    private void RecordChange(AplicacaoVacina record, SituacaoRegistroVacina state, string eventName,
+        string reason, CurrentUser user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Crmv) || string.IsNullOrWhiteSpace(user.CrmvUf))
+            throw new ArgumentException("Cadastre o CRMV e a UF antes de corrigir um registro assinado.");
+        record.SituacaoRegistro = state; record.MotivoAlteracao = reason;
+        record.AlteradaEm = calendar.UtcNow; record.AlteradaPorUserId = user.Id;
+        context.AssinaturasAplicacoesVacina.Add(new AssinaturaAplicacaoVacina
+        {
+            Id = Guid.NewGuid(), AplicacaoVacinaId = record.Id, AssinanteUserId = user.Id,
+            TipoEvento = eventName, NomeAssinante = user.Name, Crmv = user.Crmv, CrmvUf = user.CrmvUf,
+            DataHora = record.AlteradaEm.Value, HashConteudo = record.HashAssinatura!, Observacoes = reason
+        });
     }
 
     public async Task<AssinaturaValidacaoResponseDto?> ValidarAssinaturaAsync(Guid id,
@@ -315,7 +413,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             };
         }
 
-        var assinaturaEm = aplicacao.AssinadaEm;
+        var assinaturaEm = aplicacao.AssinadaEm!.Value;
         var assinaturaUf = NormalizeUf(aplicacao.AssinanteCrmvUf);
         if (string.IsNullOrWhiteSpace(assinaturaUf))
         {
@@ -331,12 +429,14 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             };
         }
 
-        var hashCalculado = CalculateSignatureHash(
+        var hashCalculado = aplicacao.VersaoAssinatura == 2
+            ? AssinaturaSnapshot.Recalcular(aplicacao) ?? string.Empty
+            : CalculateSignatureHash(
             aplicacao,
             aplicacao.Assinante!.Trim(),
             aplicacao.AssinanteCrmv!.Trim(),
             assinaturaUf,
-            assinaturaEm!.Value);
+            assinaturaEm);
 
         var hashMatches = string.Equals(aplicacao.HashAssinatura, hashCalculado,
             StringComparison.OrdinalIgnoreCase);
@@ -344,16 +444,16 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         // Compatibilidade com assinaturas emitidas antes da canonicalização do
         // timestamp. O banco pode ter removido até 9 tiques de 100 ns do valor
         // usado originalmente no hash, sem alterar o instante persistido.
-        if (!hashMatches)
+        if (!hashMatches && aplicacao.VersaoAssinatura == 1)
         {
             for (var ticks = -9; ticks <= 9; ticks++)
             {
                 var legacyHash = CalculateSignatureHash(
                     aplicacao,
-                    aplicacao.Assinante.Trim(),
-                    aplicacao.AssinanteCrmv.Trim(),
+                    aplicacao.Assinante!.Trim(),
+                    aplicacao.AssinanteCrmv!.Trim(),
                     assinaturaUf,
-                    assinaturaEm.Value.AddTicks(ticks));
+                    assinaturaEm.AddTicks(ticks));
 
                 if (!string.Equals(aplicacao.HashAssinatura, legacyHash,
                         StringComparison.OrdinalIgnoreCase))
@@ -371,6 +471,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             .FirstOrDefault();
 
         var auditMatches = auditEvent is not null &&
+                           (aplicacao.VersaoAssinatura == 1 || auditEvent.AssinanteUserId == aplicacao.AssinanteUserId) &&
                            string.Equals(auditEvent.HashConteudo, aplicacao.HashAssinatura,
                                StringComparison.OrdinalIgnoreCase) &&
                            string.Equals(auditEvent.NomeAssinante, aplicacao.Assinante,
@@ -379,7 +480,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
                                StringComparison.Ordinal) &&
                            string.Equals(auditEvent.CrmvUf, aplicacao.AssinanteCrmvUf,
                                StringComparison.OrdinalIgnoreCase) &&
-                           auditEvent.DataHora == assinaturaEm.Value;
+                           auditEvent.DataHora == assinaturaEm;
 
         return new AssinaturaValidacaoResponseDto
         {
@@ -401,7 +502,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         Guid vacinaId,
         Guid? animalProtocolId,
         Guid? protocolDoseId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool allowClosedProtocol = false)
     {
         if (!animalProtocolId.HasValue && !protocolDoseId.HasValue)
             return null;
@@ -417,6 +518,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
 
         if (assignment.AnimalId != animalId)
             throw new ArgumentException("O protocolo informado não pertence ao animal da aplicação.");
+
+        if (assignment.ProtocoloVacinal is null || (!allowClosedProtocol && !assignment.Ativo))
+            throw new ArgumentException("O protocolo informado não está ativo para receber novas aplicações.");
 
         var dose = assignment.ProtocoloVacinal?.Doses.FirstOrDefault(d => d.Id == protocolDoseId.Value)
             ?? throw new KeyNotFoundException($"Dose de protocolo com Id '{protocolDoseId}' não encontrada.");
@@ -438,7 +542,11 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             .OrderBy(d => d.Ordem)
             .FirstOrDefault();
 
-        return nextDose is null ? null : assignment.DataInicio.AddDays(nextDose.DiasAposInicio);
+        if (nextDose is null) return null;
+        var nextDate = assignment.DataInicio.AddDays(nextDose.DiasAposInicio);
+        // An overdue subsequent stage remains visible in the agenda. Do not store
+        // an impossible next-dose date before the physical application just made.
+        return nextDate > applicationDate ? nextDate : null;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -468,6 +576,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             .Include(aplicacao => aplicacao.Animal)
                 .ThenInclude(a => a!.Raca)
             .Include(aplicacao => aplicacao.Assinaturas)
+            .Include(aplicacao => aplicacao.SubstituidaPor)
             .FirstOrDefaultAsync(aplicacao => aplicacao.Id == id, cancellationToken);
     }
 
@@ -478,13 +587,14 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             .Include(aplicacao => aplicacao.Vacina)
             .Include(aplicacao => aplicacao.Animal)
                 .ThenInclude(a => a!.Identificadores)
+            .Include(a => a.SubstituidaPor)
             .AsNoTracking();
 
         query = ApplyFilters(query, search, null);
 
-        var currentPage = page ?? 1;
+        var currentPage = Pagination.NormalizePage(page);
         query = query.OrderByDescending(aplicacao => aplicacao.DataAplicacao)
-            .Skip((currentPage - 1) * 10).Take(10);
+            .Skip(Pagination.Offset(currentPage, 10)).Take(10);
 
         return query.ToListAsync(cancellationToken);
     }
@@ -501,8 +611,8 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     {
         if (somenteAtrasadas == true || search?.SomenteAtrasadas == true)
         {
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-            query = query.Where(a => !a.CicloFinalizado && a.DataProximaDose != null && a.DataProximaDose < hoje);
+            var hoje = calendar.Today;
+            query = query.Where(a => a.DataProximaDose != null && a.DataProximaDose < hoje);
             query = query.Where(a => !context.AplicacoesVacina.Any(posterior =>
                 posterior.AnimalId == a.AnimalId &&
                 posterior.VacinaId == a.VacinaId &&
@@ -511,6 +621,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
 
         if (search is null)
             return query;
+
+        if (search.SituacaoRegistro.HasValue)
+            query = query.Where(a => a.SituacaoRegistro == search.SituacaoRegistro.Value);
 
         if (search.VacinaId.HasValue)
             query = query.Where(aplicacao => aplicacao.VacinaId == search.VacinaId.Value);
@@ -543,9 +656,6 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         if (search.DataLimite.HasValue)
             query = query.Where(aplicacao => aplicacao.DataProximaDose != null && aplicacao.DataProximaDose <= search.DataLimite.Value);
 
-        if (search.CicloFinalizado.HasValue)
-            query = query.Where(aplicacao => aplicacao.CicloFinalizado == search.CicloFinalizado.Value);
-
         if (search.StatusComprovante.HasValue)
             query = query.Where(aplicacao => aplicacao.StatusComprovante == search.StatusComprovante.Value);
 
@@ -557,7 +667,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
 
         if (search.Proximas == true)
         {
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+            var hoje = calendar.Today;
             var limite = search.DataLimite ?? hoje.AddDays(30);
             query = query.Where(a => a.DataProximaDose != null && a.DataProximaDose >= hoje && a.DataProximaDose <= limite);
         }
@@ -565,21 +675,27 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         return query;
     }
 
+    // Compatibility endpoints describe reminders of existing applications only.
+    // The complete operational calendar, including unstarted doses, is /agenda-vacinal.
+    private IQueryable<AplicacaoVacina> CurrentReminders() => context.AplicacoesVacina.Where(a =>
+        a.SituacaoRegistro == SituacaoRegistroVacina.Ativo && a.Animal!.Ativo &&
+        (a.AnimalProtocoloVacinalId == null || a.AnimalProtocoloVacinal!.Ativo) &&
+        !context.AplicacoesVacina.Any(next => next.AnimalId == a.AnimalId && next.VacinaId == a.VacinaId &&
+            next.SituacaoRegistro == SituacaoRegistroVacina.Ativo && (next.DataAplicacao > a.DataAplicacao ||
+            next.DataAplicacao == a.DataAplicacao && next.CreationDateTime > a.CreationDateTime)));
+
     public Task<List<AplicacaoVacina>> GetAtrasadasAsync(int? page, Guid? animalId, Guid? vacinaId,
         StatusComprovanteVacina? statusComprovante, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-        var query = context.AplicacoesVacina
+        var hoje = calendar.Today;
+        var query = CurrentReminders()
             .Include(aplicacao => aplicacao.Vacina)
             .Include(aplicacao => aplicacao.Animal)
                 .ThenInclude(a => a!.Identificadores)
             .AsNoTracking()
-            .Where(a => !a.CicloFinalizado && a.DataProximaDose != null && a.DataProximaDose < hoje);
+            .Where(a => a.DataProximaDose != null && a.DataProximaDose < hoje);
 
-        query = query.Where(a => !context.AplicacoesVacina.Any(posterior =>
-            posterior.AnimalId == a.AnimalId &&
-            posterior.VacinaId == a.VacinaId &&
-            posterior.DataAplicacao > a.DataAplicacao));
+
 
         if (animalId.HasValue)
             query = query.Where(a => a.AnimalId == animalId.Value);
@@ -590,9 +706,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         if (statusComprovante.HasValue)
             query = query.Where(a => a.StatusComprovante == statusComprovante.Value);
 
-        var currentPage = page ?? 1;
+        var currentPage = Pagination.NormalizePage(page);
         query = query.OrderBy(a => a.DataProximaDose)
-            .Skip((currentPage - 1) * 10)
+            .Skip(Pagination.Offset(currentPage, 10))
             .Take(10);
 
         return query.ToListAsync(cancellationToken);
@@ -601,15 +717,12 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public Task<int> CountAtrasadasAsync(Guid? animalId = null, Guid? vacinaId = null,
         StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-        var query = context.AplicacoesVacina
+        var hoje = calendar.Today;
+        var query = CurrentReminders()
             .AsNoTracking()
-            .Where(a => !a.CicloFinalizado && a.DataProximaDose != null && a.DataProximaDose < hoje);
+            .Where(a => a.DataProximaDose != null && a.DataProximaDose < hoje);
 
-        query = query.Where(a => !context.AplicacoesVacina.Any(posterior =>
-            posterior.AnimalId == a.AnimalId &&
-            posterior.VacinaId == a.VacinaId &&
-            posterior.DataAplicacao > a.DataAplicacao));
+
 
         if (animalId.HasValue)
             query = query.Where(a => a.AnimalId == animalId.Value);
@@ -626,7 +739,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public Task<List<AplicacaoVacina>> GetPendentesAssinaturaAsync(int? page, Guid? animalId, Guid? vacinaId,
         StatusComprovanteVacina? statusComprovante, CancellationToken cancellationToken = default)
     {
-        var query = context.AplicacoesVacina
+        var query = context.AplicacoesVacina.Where(a => a.SituacaoRegistro == SituacaoRegistroVacina.Ativo)
             .Include(aplicacao => aplicacao.Vacina)
             .Include(aplicacao => aplicacao.Animal)
                 .ThenInclude(a => a!.Identificadores)
@@ -648,9 +761,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         if (vacinaId.HasValue)
             query = query.Where(a => a.VacinaId == vacinaId.Value);
 
-        var currentPage = page ?? 1;
-        query = query.OrderBy(a => a.DataAplicacao)
-            .Skip((currentPage - 1) * 10)
+        var currentPage = Pagination.NormalizePage(page);
+        query = query.OrderByDescending(a => a.CreationDateTime).ThenByDescending(a => a.Id)
+            .Skip(Pagination.Offset(currentPage, 10))
             .Take(10);
 
         return query.ToListAsync(cancellationToken);
@@ -659,7 +772,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public Task<int> CountPendentesAssinaturaAsync(Guid? animalId = null, Guid? vacinaId = null,
         StatusComprovanteVacina? statusComprovante = null, CancellationToken cancellationToken = default)
     {
-        var query = context.AplicacoesVacina
+        var query = context.AplicacoesVacina.Where(a => a.SituacaoRegistro == SituacaoRegistroVacina.Ativo)
             .AsNoTracking();
 
         if (statusComprovante.HasValue)
@@ -684,10 +797,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public Task<List<AplicacaoVacina>> GetProximasAsync(int? page, DateOnly? dataLimite, Guid? animalId,
         Guid? vacinaId, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = calendar.Today;
         var limite = dataLimite ?? hoje.AddDays(30);
 
-        var query = context.AplicacoesVacina
+        var query = CurrentReminders()
             .Include(aplicacao => aplicacao.Vacina)
             .Include(aplicacao => aplicacao.Animal)
                 .ThenInclude(a => a!.Identificadores)
@@ -700,9 +813,9 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         if (vacinaId.HasValue)
             query = query.Where(a => a.VacinaId == vacinaId.Value);
 
-        var currentPage = page ?? 1;
+        var currentPage = Pagination.NormalizePage(page);
         query = query.OrderBy(a => a.DataProximaDose)
-            .Skip((currentPage - 1) * 10)
+            .Skip(Pagination.Offset(currentPage, 10))
             .Take(10);
 
         return query.ToListAsync(cancellationToken);
@@ -711,10 +824,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
     public Task<int> CountProximasAsync(DateOnly? dataLimite = null, Guid? animalId = null,
         Guid? vacinaId = null, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = calendar.Today;
         var limite = dataLimite ?? hoje.AddDays(30);
 
-        var query = context.AplicacoesVacina
+        var query = CurrentReminders()
             .AsNoTracking()
             .Where(a => a.DataProximaDose != null && a.DataProximaDose >= hoje && a.DataProximaDose <= limite);
 
@@ -731,25 +844,25 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
         CancellationToken cancellationToken = default)
     {
         var currentUser = GetAuthenticatedUser();
+        if (dto.Animais is null || dto.Animais.Count == 0)
+            throw new ArgumentException("Selecione pelo menos um animal.");
+        var animalIds = dto.Animais.Select(a => a.AnimalId).ToArray();
+        if (animalIds.Distinct().Count() != animalIds.Length)
+            throw new ArgumentException("Um animal não pode aparecer duas vezes na mesma vacinação em lote.");
         var vacina = await context.Vacinas.FindAsync([dto.VacinaId], cancellationToken);
         if (vacina is null)
             throw new KeyNotFoundException($"Vacina com Id '{dto.VacinaId}' não encontrada.");
-
-        var dataProximaDose = dto.DataProximaDose;
-        if (dataProximaDose is null && vacina.ReaplicarEmXDias > 0)
-        {
-            dataProximaDose = dto.DataAplicacao.AddDays((int)vacina.ReaplicarEmXDias);
-        }
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             var criadas = new List<AplicacaoVacina>();
+            var animals = await context.Animals.Include(a => a.Raca).Where(a => animalIds.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, cancellationToken);
 
             foreach (var item in dto.Animais)
             {
-                var animalExists = await context.Animals.AnyAsync(a => a.Id == item.AnimalId, cancellationToken);
-                if (!animalExists)
+                if (!animals.TryGetValue(item.AnimalId, out var animal))
                 {
                     throw new KeyNotFoundException($"Animal com Id '{item.AnimalId}' não encontrado.");
                 }
@@ -759,9 +872,10 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
                     Id = Guid.NewGuid(),
                     AnimalId = item.AnimalId,
                     VacinaId = dto.VacinaId,
+                    AnimalProtocoloVacinalId = item.AnimalProtocoloVacinalId,
+                    ProtocoloVacinalDoseId = item.ProtocoloVacinalDoseId,
                     DataAplicacao = dto.DataAplicacao,
-                    DataProximaDose = dataProximaDose,
-                    CicloFinalizado = item.CicloFinalizado,
+                    DataProximaDose = dto.DataProximaDose,
                     StatusComprovante = StatusComprovanteVacina.PendenteAssinatura,
                     NumeroLote = dto.NumeroLote,
                     DoseMl = dto.DoseMl,
@@ -769,12 +883,16 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
                     DataValidade = dto.DataValidade,
                     LocalAplicacao = dto.LocalAplicacao,
                     Observacoes = dto.Observacoes,
-                    VeterinarioResponsavel = currentUser.Name,
-                    VeterinarioCrmv = currentUser.Crmv,
-                    VeterinarioCrmvUf = currentUser.CrmvUf,
                     Aplicador = currentUser.Name,
+                    AplicadorUserId = currentUser.Id,
                     LaboratorioFabricante = dto.LaboratorioFabricante
                 };
+
+                var protocol = await ValidateProtocolLinkAsync(item.AnimalId, dto.VacinaId,
+                    item.AnimalProtocoloVacinalId, item.ProtocoloVacinalDoseId, cancellationToken);
+                if (aplicacao.DataProximaDose is null && protocol is not null)
+                    aplicacao.DataProximaDose = CalculateNextDoseDate(protocol.Value.Assignment, protocol.Value.Dose, dto.DataAplicacao);
+                VaccineApplicationRules.Validate(aplicacao, animal, vacina, calendar.Today);
 
                 context.AplicacoesVacina.Add(aplicacao);
                 criadas.Add(aplicacao);
@@ -810,6 +928,7 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
             .Include(a => a.Vacina)
                 .ThenInclude(v => v!.Especie)
             .Include(a => a.Assinaturas)
+            .Include(a => a.SubstituidaPor)
             .Where(a => a.AnimalId == animalId);
 
         if (!incluirNaoAssinadas)
@@ -830,33 +949,32 @@ public sealed class AplicacaoVacinaService(ApiContext context, IHttpContextAcces
 
     private static void EnsureNotSigned(AplicacaoVacina aplicacao)
     {
+        if (aplicacao.SituacaoRegistro != SituacaoRegistroVacina.Ativo)
+            throw new InvalidOperationException("Registros cancelados ou retificados não podem ser alterados.");
         if (aplicacao.StatusComprovante == StatusComprovanteVacina.Assinado)
-            throw new InvalidOperationException("Aplicações assinadas não podem ser alteradas. Registre uma nova aplicação para corrigir o histórico.");
+            throw new InvalidOperationException("Aplicações assinadas não podem ser editadas. Solicite retificação ou cancelamento com motivo ao veterinário.");
     }
 
     private CurrentUser GetAuthenticatedUser()
     {
         var principal = httpContextAccessor.HttpContext?.User;
+        var subject = principal?.FindFirstValue("sub")
+            ?? principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         var name = principal?.FindFirstValue("name")
             ?? principal?.FindFirstValue("display_name")
             ?? principal?.FindFirstValue(ClaimTypes.Name)
             ?? principal?.FindFirstValue("preferred_username");
 
-        if (principal?.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(name))
+        if (principal?.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(name) ||
+            !Guid.TryParse(subject, out var userId))
             throw new InvalidOperationException("Não foi possível identificar o usuário autenticado.");
 
         var crmv = principal.FindFirstValue("crmv")?.Trim();
         var crmvUf = NormalizeUf(principal.FindFirstValue("crmv_uf"));
-        if (principal.IsInRole("medico_veterinario") &&
-            (string.IsNullOrWhiteSpace(crmv) || string.IsNullOrWhiteSpace(crmvUf)))
-        {
-            throw new ArgumentException("Cadastre o CRMV e a UF do CRMV do usuário antes de registrar uma vacinação.");
-        }
-
-        return new CurrentUser(name.Trim(), string.IsNullOrWhiteSpace(crmv) ? null : crmv, crmvUf);
+        return new CurrentUser(userId, name.Trim(), string.IsNullOrWhiteSpace(crmv) ? null : crmv, crmvUf);
     }
 
-    private sealed record CurrentUser(string Name, string? Crmv, string? CrmvUf);
+    private sealed record CurrentUser(Guid Id, string Name, string? Crmv, string? CrmvUf);
 
     private static string? NormalizeUf(string? uf)
     {

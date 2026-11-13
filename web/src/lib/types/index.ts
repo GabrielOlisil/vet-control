@@ -95,9 +95,16 @@ export type AnimalProtocoloVacinalDoseResponseDto = Schemas['AnimalProtocoloVaci
 export type AnimalProtocoloVacinalReadResponseDto = Schemas['AnimalProtocoloVacinalReadResponseDto'];
 export type ProtocoloVacinalPendenciaResponseDto = Schemas['ProtocoloVacinalPendenciaResponseDto'];
 export type MovimentacaoAnimalCreateDto = Schemas['MovimentacaoAnimalCreateDto'];
+export type MovimentacaoAnimalLoteCreateDto = Schemas['MovimentacaoAnimalLoteCreateDto'];
 export type MovimentacaoAnimalResponseDto = Schemas['MovimentacaoAnimalResponseDto'];
 export type ProtocoloVacinalSearchParams = NonNullable<paths['/api/v1/protocolos-vacinais']['get']['parameters']['query']>;
 export type MovimentacaoAnimalSearchParams = NonNullable<paths['/api/v1/movimentacoes-animais']['get']['parameters']['query']>;
+export type AgendaVacinalItemDto = Schemas['AgendaVacinalItemDto'];
+export type AgendaVacinalSearchParams = NonNullable<paths['/api/v1/agenda-vacinal']['get']['parameters']['query']>;
+export type CancelamentoVacinaDto = Schemas['CancelamentoVacinaDto'];
+export type RetificacaoVacinaDto = Schemas['RetificacaoVacinaDto'];
+export type MigracaoProtocoloVacinalDto = Schemas['MigracaoProtocoloVacinalDto'];
+export type SituacaoRegistroVacina = Schemas['SituacaoRegistroVacina'];
 
 // ── Helpers de nome ──────────────────────────────────────────────────────────
 export function getAnimalName(animal?: { identificadorPrincipal?: any; name?: string | null } | null): string {
@@ -121,6 +128,7 @@ export {
     TipoIdentificadorLabels,
     StatusComprovanteLabels,
     StatusPendenciaVacinalLabels,
+    rotuloStatusDoseVacinal,
     TipoMovimentacaoAnimalLabels,
     calcularIdade,
     formatarPeriodo,

@@ -5,6 +5,7 @@
     import { vetSession, VET_API_URL } from '$lib/auth/session';
     import type { IdentitySession } from '$lib/auth/types';
     import AccountMenu from '$lib/components/AccountMenu.svelte';
+    import ThemePicker from '$lib/components/ThemePicker.svelte';
     import IconPets from '@iconify-svelte/material-symbols/pets-rounded';
     let { children, data }: { children: Snippet; data: { session: IdentitySession | null } } = $props();
     let error = $state('');
@@ -32,15 +33,16 @@
 </script>
 <div class="min-h-screen bg-base-200 text-base-content">
     <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100">
-        <nav class="mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6" aria-label="Navegação de contas">
+        <nav class="mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6" aria-label="Navegação de contas" inert={signingOut}>
             <a href={data.session && !data.session.roles.includes('admin') ? '/auth/password' : '/auth'} class="flex min-w-0 flex-1 items-center gap-2.5">
                 <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-content"><IconPets width="21" height="21" /></span>
                 <span class="min-w-0"><span class="block truncate text-base font-bold">Vet Control</span><span class="block text-[11px] text-base-content/60">Contas e acessos</span></span>
             </a>
-            <a href="/" class="btn btn-sm btn-ghost hidden shrink-0 md:inline-flex">Abrir Vet Control</a>
+            {#if !signingOut}<a href="/" class="btn btn-sm btn-ghost hidden shrink-0 md:inline-flex">Abrir Vet Control</a>{/if}
+            <ThemePicker />
             {#if data.session}
                 <AccountMenu name={data.session.fullName} email={data.session.email}>
-                    <a href="/" class="btn btn-ghost justify-start md:hidden">Abrir Vet Control</a>
+                    {#if !signingOut}<a href="/" class="btn btn-ghost justify-start md:hidden">Abrir Vet Control</a>{/if}
                     {#if data.session.roles.includes('admin')}<a href="/auth" class="btn btn-ghost justify-start">Gerenciar usuários</a>{/if}
                     <a href="/auth/password" class="btn btn-ghost justify-start">Minha senha</a>
                     <div class="border-t border-base-200 pt-1"><button type="button" class="btn btn-ghost w-full justify-start text-error" disabled={signingOut} onclick={logout}>{signingOut ? 'Saindo…' : 'Sair da conta'}</button></div>
@@ -50,7 +52,8 @@
             {/if}
         </nav>
     </header>
-    <main class="mx-auto max-w-7xl p-5 sm:p-8">
+    {#if signingOut}<p role="status" class="mx-auto max-w-7xl px-5 pt-4 sm:px-8">Saindo da conta…</p>{/if}
+    <main class="mx-auto max-w-7xl p-5 sm:p-8" inert={signingOut}>
         {#if error}<p class="alert alert-error mb-4">{error}</p>{/if}
         {@render children()}
     </main>

@@ -5,15 +5,13 @@ namespace Api.DTOs;
 
 public sealed record VacinaCreateDto
 {
+    public bool Ativo { get; init; } = true;
     [Required]
     [StringLength(100, MinimumLength = 1)]
     public required string Name { get; init; }
 
     [StringLength(500)]
     public string? Descricao { get; init; }
-
-    [Range(0, uint.MaxValue)]
-    public uint ReaplicarEmXDias { get; init; }
 
     public bool ObrigatorioOrgaoSanitario { get; init; } = false;
 
@@ -22,6 +20,7 @@ public sealed record VacinaCreateDto
 
 public sealed record VacinaPatchDto
 {
+    public bool? Ativo { get; init; }
     private string? _descricao;
     private Guid? _especieId;
 
@@ -41,9 +40,6 @@ public sealed record VacinaPatchDto
 
     [JsonIgnore]
     public bool DescricaoWasProvided { get; private set; }
-
-    [Range(0, uint.MaxValue)]
-    public uint? ReaplicarEmXDias { get; init; }
 
     public bool? ObrigatorioOrgaoSanitario { get; init; }
 
@@ -72,13 +68,12 @@ public sealed record VacinaShortResponseDto
 
 public sealed record VacinaReadResponseDto
 {
+    public bool Ativo { get; init; } = true;
     public Guid Id { get; init; }
 
     public required string Name { get; init; }
 
     public string? Descricao { get; init; }
-
-    public uint ReaplicarEmXDias { get; init; }
 
     public bool ObrigatorioOrgaoSanitario { get; init; }
 
@@ -89,13 +84,12 @@ public sealed record VacinaReadResponseDto
 
 public sealed record VacinaDetailResponseDto
 {
+    public bool Ativo { get; init; } = true;
     public Guid Id { get; init; }
 
     public required string Name { get; init; }
 
     public string? Descricao { get; init; }
-
-    public uint ReaplicarEmXDias { get; init; }
 
     public bool ObrigatorioOrgaoSanitario { get; init; }
 

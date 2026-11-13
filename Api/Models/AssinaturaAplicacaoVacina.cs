@@ -4,6 +4,7 @@ public class AssinaturaAplicacaoVacina
 {
     public Guid Id { get; set; }
     public Guid AplicacaoVacinaId { get; set; }
+    public Guid? AssinanteUserId { get; set; }
 
     public string TipoEvento { get; set; } = "Assinatura";
     public string NomeAssinante { get; set; } = string.Empty;

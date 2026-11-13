@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { formatDateOnly } from '$lib/utils/dates';
     import "../../../app.css";
     import { onMount } from "svelte";
     import { tick } from "svelte";
@@ -28,7 +29,7 @@
 
     function formatDate(value?: string | null): string {
         if (!value) return "Não informada";
-        return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
+        return formatDateOnly(value);
     }
 
     function formatDateTime(value?: string | null): string {
@@ -78,7 +79,7 @@
         </header>
 
         <section class="animal-summary">
-            <p class="section-label">Identificação do animal</p>
+            <p class="section-label">Identificação atual do animal</p>
             <h2>{documento.animal.name ?? "Sem nome"}</h2>
             <div class="animal-grid">
                 <div><span>Identificador principal</span><strong>{documento.animal.identificadorPrincipal?.valor ?? "Não informado"}</strong></div>
@@ -118,12 +119,13 @@
                                     {/if}
                                 </p>
                             </div>
-                            <span class:status-signed={assinada} class:status-pending={!assinada} class="status-badge">
-                                {assinada ? "ASSINADO" : "PENDENTE DE ASSINATURA"}
+                            <span class:status-signed={assinada && (aplicacao.situacaoRegistro ?? 'Ativo') === 'Ativo'} class:status-pending={!assinada || (aplicacao.situacaoRegistro ?? 'Ativo') !== 'Ativo'} class="status-badge">
+                                {aplicacao.situacaoRegistro === 'Cancelado' ? 'CANCELADO' : aplicacao.situacaoRegistro === 'Retificado' ? 'SUBSTITUÍDO' : assinada ? "ASSINADO" : "PENDENTE DE ASSINATURA"}
                             </span>
                         </div>
 
                         <div class="data-grid">
+                            <div><span>Animal no registro</span><strong>{aplicacao.animal?.name || aplicacao.animal?.identificadorPrincipal?.valor || 'Não informado'}</strong></div>
                             <div><span>Aplicação</span><strong>{formatDate(aplicacao.dataAplicacao)}</strong></div>
                             <div><span>Lote</span><strong>{aplicacao.numeroLote || "Não informado"}</strong></div>
                             <div><span>Dose</span><strong>{aplicacao.doseMl ? `${aplicacao.doseMl} mL` : "Não informada"}</strong></div>
@@ -135,6 +137,13 @@
                             <div><span>Aplicador</span><strong>{aplicacao.aplicador || "Não informado"}</strong></div>
                             <div><span>Veterinário responsável</span><strong>{professional(aplicacao.veterinarioResponsavel, aplicacao.veterinarioCrmv, aplicacao.veterinarioCrmvUf)}</strong></div>
                         </div>
+
+                        {#if (aplicacao.situacaoRegistro ?? 'Ativo') !== 'Ativo'}
+                            <div class="pending-box"><strong>Este registro não está vigente.</strong> {aplicacao.motivoAlteracao}
+                                {#if aplicacao.substituidaPorId}<p><a href={publicValidationUrl(aplicacao.substituidaPorId)}>Consultar vacinação substituta: {publicValidationUrl(aplicacao.substituidaPorId)}</a></p>{/if}
+                            </div>
+                        {/if}
+                        {#if assinada && !aplicacao.dadosHistoricosPreservados}<p class="observations">Registro legado: dados cadastrais sem cópia histórica preservada na assinatura original.</p>{/if}
 
                         {#if assinada}
                             <div class="signature-box">

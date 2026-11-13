@@ -8,6 +8,7 @@ public static class ProtocoloVacinalMapper
 {
     public static ProtocoloVacinalShortResponseDto MapToShort(ProtocoloVacinal protocolo) => new()
     {
+        FamiliaId = protocolo.FamiliaId, Versao = protocolo.Versao, VersaoAtual = protocolo.VersaoAtual,
         Id = protocolo.Id,
         Nome = protocolo.Nome,
         Finalidade = protocolo.Finalidade,
@@ -29,6 +30,7 @@ public static class ProtocoloVacinalMapper
 
     public static ProtocoloVacinalReadResponseDto MapToRead(ProtocoloVacinal protocolo) => new()
     {
+        FamiliaId = protocolo.FamiliaId, Versao = protocolo.Versao, VersaoAtual = protocolo.VersaoAtual,
         Id = protocolo.Id,
         Nome = protocolo.Nome,
         Descricao = protocolo.Descricao,
@@ -43,6 +45,7 @@ public static class ProtocoloVacinalMapper
 
     public static ProtocoloVacinalDetailResponseDto MapToDetail(ProtocoloVacinal protocolo) => new()
     {
+        FamiliaId = protocolo.FamiliaId, Versao = protocolo.Versao, VersaoAtual = protocolo.VersaoAtual,
         Id = protocolo.Id,
         Nome = protocolo.Nome,
         Descricao = protocolo.Descricao,
@@ -58,14 +61,14 @@ public static class ProtocoloVacinalMapper
         LastModificationDateTime = protocolo.LastModificationDateTime
     };
 
-    public static AnimalProtocoloVacinalReadResponseDto MapAnimalProtocol(AnimalProtocoloVacinal assignment)
+    public static AnimalProtocoloVacinalReadResponseDto MapAnimalProtocol(AnimalProtocoloVacinal assignment, DateOnly? referenceDate = null)
     {
         var doses = assignment.ProtocoloVacinal?.Doses
             .OrderBy(d => d.Ordem)
             .Select(dose =>
             {
                 var application = assignment.Aplicacoes
-                    .Where(a => a.ProtocoloVacinalDoseId == dose.Id)
+                    .Where(a => a.ProtocoloVacinalDoseId == dose.Id && a.SituacaoRegistro == SituacaoRegistroVacina.Ativo)
                     .OrderByDescending(a => a.DataAplicacao)
                     .FirstOrDefault();
                 var dataPrevista = assignment.DataInicio.AddDays(dose.DiasAposInicio);
@@ -80,7 +83,7 @@ public static class ProtocoloVacinalMapper
                 }
 
                 if (status != StatusPendenciaVacinal.Concluida &&
-                    dataPrevista < DateOnly.FromDateTime(DateTime.UtcNow))
+                    dataPrevista < (referenceDate ?? DateOnly.FromDateTime(DateTime.UtcNow)))
                     status = StatusPendenciaVacinal.Atrasada;
 
                 return new AnimalProtocoloVacinalDoseResponseDto

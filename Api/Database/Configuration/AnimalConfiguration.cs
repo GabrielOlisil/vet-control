@@ -10,6 +10,9 @@ public class AnimalConfiguration : IEntityTypeConfiguration<Animal>
 {
     public void Configure(EntityTypeBuilder<Animal> builder)
     {
+        builder.Property(a => a.Version).IsRowVersion();
+        builder.HasOne(a => a.Ambiente).WithMany(a => a.Animais)
+            .HasForeignKey(a => a.AmbienteId).OnDelete(DeleteBehavior.Restrict);
         builder
         .HasOne(animal => animal.Raca)
         .WithMany(raca => raca.Animais)

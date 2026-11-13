@@ -11,11 +11,22 @@ public class AplicacaoVacina : IAuditedEntity
     public Guid AnimalId { get; set; }
     public Guid? AnimalProtocoloVacinalId { get; set; }
     public Guid? ProtocoloVacinalDoseId { get; set; }
+    public uint Version { get; set; }
+    public Guid? AplicadorUserId { get; set; }
+    public Guid? VeterinarioResponsavelUserId { get; set; }
+    public Guid? AssinanteUserId { get; set; }
+    public string? SnapshotAssinado { get; set; }
+    public int VersaoAssinatura { get; set; } = 1;
+    public SituacaoRegistroVacina SituacaoRegistro { get; set; } = SituacaoRegistroVacina.Ativo;
+    public Guid? RetificaAplicacaoVacinaId { get; set; }
+    public AplicacaoVacina? AplicacaoOriginal { get; set; }
+    public AplicacaoVacina? SubstituidaPor { get; set; }
+    public string? MotivoAlteracao { get; set; }
+    public DateTimeOffset? AlteradaEm { get; set; }
+    public Guid? AlteradaPorUserId { get; set; }
 
     public DateOnly DataAplicacao { get; set; }
     public DateOnly? DataProximaDose { get; set; }
-
-    public bool CicloFinalizado { get; set; } = true;
 
     public StatusComprovanteVacina StatusComprovante { get; set; } = StatusComprovanteVacina.PendenteAssinatura;
 

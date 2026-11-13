@@ -14,6 +14,8 @@ public interface IAplicacaoVacinaService
 
     Task<AplicacaoVacina?> AssinarAsync(Guid id, AplicacaoVacinaAssinaturaDto dto,
         CancellationToken cancellationToken = default);
+    Task<AplicacaoVacina?> CancelarAsync(Guid id, CancelamentoVacinaDto dto, CancellationToken cancellationToken = default);
+    Task<AplicacaoVacina?> RetificarAsync(Guid id, RetificacaoVacinaDto dto, CancellationToken cancellationToken = default);
 
     Task<AssinaturaValidacaoResponseDto?> ValidarAssinaturaAsync(Guid id,
         CancellationToken cancellationToken = default);

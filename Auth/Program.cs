@@ -8,9 +8,14 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using VetControl.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<AuthContext>(options => options.UseNpgsql(AuthContext.ConnectionString).UseOpenIddict());
+builder.AddDeploymentDefaults("VetControl.Identity");
+var authConnection = builder.Configuration.GetConnectionString("AuthContext")
+    ?? (builder.Environment.IsDevelopment() ? AuthContext.ConnectionString
+        : throw new InvalidOperationException("Configure ConnectionStrings:AuthContext para produção."));
+builder.Services.AddDbContext<AuthContext>(options => options.UseNpgsql(authConnection).UseOpenIddict());
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<UserAdministration>();
 builder.Services.AddScoped<InitialSetup>();
@@ -20,7 +25,8 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
     options.Password.RequiredLength = 10;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-}).AddEntityFrameworkStores<AuthContext>().AddDefaultTokenProviders().AddClaimsPrincipalFactory<UserClaimsFactory>();
+}).AddEntityFrameworkStores<AuthContext>().AddDefaultTokenProviders().AddClaimsPrincipalFactory<UserClaimsFactory>()
+    .AddErrorDescriber<PortugueseIdentityErrors>();
 builder.Services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -83,6 +89,7 @@ builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict);
 builder.Services.AddOpenApi();
 var app = builder.Build();
+app.UseDeploymentDefaults();
 app.UseExceptionHandler(handler => handler.Run(async context =>
 {
     var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
@@ -94,8 +101,12 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
 app.UseCors(); app.UseRateLimiter(); app.UseAuthentication(); app.UseAuthorization();
 app.Use(async (context, next) => { context.Response.Headers.CacheControl = "no-store"; await next(); });
 if (app.Environment.IsDevelopment()) app.MapOpenApi().AllowAnonymous();
+app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" })).AllowAnonymous().ExcludeFromDescription();
+app.MapGet("/health/ready", async (AuthContext db, CancellationToken ct) =>
+    await db.Database.CanConnectAsync(ct) ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503)).AllowAnonymous().ExcludeFromDescription();
 app.MapAccountEndpoints(); app.MapAdminEndpoints(); app.MapOpenIdEndpoints();
 await Bootstrap.Initialize(app.Services, app.Configuration);
+await DevelopmentSeed.Initialize(app.Services, app.Configuration, app.Environment);
 app.Run();
 
 public partial class Program;

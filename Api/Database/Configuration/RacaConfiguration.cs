@@ -13,7 +13,7 @@ public class RacaConfiguration : IEntityTypeConfiguration<Raca>
         .HasOne(raca => raca.Especie)
         .WithMany(especie => especie.Racas)
         .HasForeignKey(raca => raca.EspecieId)
-        .OnDelete(DeleteBehavior.Cascade);
+        .OnDelete(DeleteBehavior.ClientNoAction);
 
         builder.HasIndex(b => new { b.Nome })
             .HasMethod("GIN")

@@ -51,8 +51,6 @@ public sealed record AplicacaoVacinaCreateDto
     [DataType(DataType.Date)]
     public DateOnly? DataProximaDose { get; init; }
 
-    public bool? CicloFinalizado { get; init; } = true;
-
     [Required]
     public required string NumeroLote { get; init; }
 
@@ -131,8 +129,6 @@ public sealed record AplicacaoVacinaPatchDto
 
     [JsonIgnore]
     public bool DataProximaDoseWasProvided { get; private set; }
-
-    public bool? CicloFinalizado { get; init; }
 
     public DateOnly? DataFabricacao
     {
@@ -234,6 +230,13 @@ public sealed record AplicacaoVacinaShortResponseDto
 
 public sealed record AplicacaoVacinaReadResponseDto
 {
+    public SituacaoRegistroVacina SituacaoRegistro { get; init; }
+    public int VersaoAssinatura { get; init; }
+    public bool DadosHistoricosPreservados { get; init; }
+    public Guid? RetificaAplicacaoVacinaId { get; init; }
+    public Guid? SubstituidaPorId { get; init; }
+    public string? MotivoAlteracao { get; init; }
+    public DateTimeOffset? AlteradaEm { get; init; }
     public Guid Id { get; init; }
 
     public Guid AnimalId { get; init; }
@@ -250,8 +253,6 @@ public sealed record AplicacaoVacinaReadResponseDto
     public DateOnly DataAplicacao { get; init; }
 
     public DateOnly? DataProximaDose { get; init; }
-
-    public bool CicloFinalizado { get; init; } = true;
 
     public StatusComprovanteVacina StatusComprovante { get; init; } = StatusComprovanteVacina.PendenteAssinatura;
 
@@ -291,6 +292,16 @@ public sealed record AplicacaoVacinaReadResponseDto
 
 public sealed record AplicacaoVacinaDetailResponseDto
 {
+    public SituacaoRegistroVacina SituacaoRegistro { get; init; }
+    public int VersaoAssinatura { get; init; }
+    public bool DadosHistoricosPreservados { get; init; }
+    public Guid? AplicadorUserId { get; init; }
+    public Guid? VeterinarioResponsavelUserId { get; init; }
+    public Guid? AssinanteUserId { get; init; }
+    public Guid? RetificaAplicacaoVacinaId { get; init; }
+    public Guid? SubstituidaPorId { get; init; }
+    public string? MotivoAlteracao { get; init; }
+    public DateTimeOffset? AlteradaEm { get; init; }
     public Guid Id { get; init; }
 
     public Guid AnimalId { get; init; }
@@ -307,8 +318,6 @@ public sealed record AplicacaoVacinaDetailResponseDto
     public DateOnly DataAplicacao { get; init; }
 
     public DateOnly? DataProximaDose { get; init; }
-
-    public bool CicloFinalizado { get; init; } = true;
 
     public required string NumeroLote { get; init; }
 
@@ -361,6 +370,7 @@ public sealed record AplicacaoVacinaDetailResponseDto
 public sealed record AssinaturaAplicacaoVacinaResponseDto
 {
     public Guid Id { get; init; }
+    public Guid? AssinanteUserId { get; init; }
     public string TipoEvento { get; init; } = string.Empty;
     public string NomeAssinante { get; init; } = string.Empty;
     public string Crmv { get; init; } = string.Empty;
@@ -373,17 +383,21 @@ public sealed record AssinaturaAplicacaoVacinaResponseDto
 
 public sealed record AplicacaoVacinaAssinaturaDto
 {
-    [Required]
-    public required string NomeAssinante { get; init; }
-
-    [Required]
-    public required string Crmv { get; init; }
-
-    [Required]
-    [StringLength(2, MinimumLength = 2)]
-    public required string CrmvUf { get; init; }
-
     public string? Observacoes { get; init; }
+}
+
+public sealed record CancelamentoVacinaDto
+{
+    [Required, StringLength(1000, MinimumLength = 3)]
+    public required string Motivo { get; init; }
+}
+
+public sealed record RetificacaoVacinaDto
+{
+    [Required, StringLength(1000, MinimumLength = 3)]
+    public required string Motivo { get; init; }
+    [Required]
+    public required AplicacaoVacinaPatchDto Alteracoes { get; init; }
 }
 
 public sealed record AssinaturaValidacaoResponseDto
@@ -400,14 +414,27 @@ public sealed record AssinaturaValidacaoResponseDto
 
 public sealed record ValidacaoPublicaVacinaResponseDto
 {
+    public SituacaoRegistroVacina SituacaoRegistro { get; init; }
+    public bool RegistroVigente { get; init; }
+    public bool DadosHistoricosPreservados { get; init; }
+    public Guid? SubstituidaPorId { get; init; }
+    public Guid? RetificaAplicacaoVacinaId { get; init; }
+    public string? MotivoAlteracao { get; init; }
     public bool Encontrado { get; init; }
-    public Guid? CodigoValidacao { get; init; }
     public string Mensagem { get; init; } = string.Empty;
     public bool Assinada { get; init; }
     public bool AssinaturaIntegra { get; init; }
-    public bool AuditoriaIntegra { get; init; }
-    public AssinaturaValidacaoResponseDto? Validacao { get; init; }
-    public AplicacaoVacinaDetailResponseDto? Registro { get; init; }
+    public string? VacinaNome { get; init; }
+    public string? AnimalIdentificacao { get; init; }
+    public DateOnly? DataAplicacao { get; init; }
+    public string? NumeroLote { get; init; }
+    public string? VeterinarioResponsavel { get; init; }
+    public string? VeterinarioCrmv { get; init; }
+    public string? VeterinarioCrmvUf { get; init; }
+    public string? Assinante { get; init; }
+    public string? AssinanteCrmv { get; init; }
+    public string? AssinanteCrmvUf { get; init; }
+    public DateTimeOffset? AssinadaEm { get; init; }
 }
 
 public sealed record ComprovanteVacinasDadosResponseDto
@@ -419,11 +446,12 @@ public sealed record ComprovanteVacinasDadosResponseDto
 
 public sealed record ItemAnimalLoteDto
 {
+    public Guid? AnimalProtocoloVacinalId { get; init; }
+    public Guid? ProtocoloVacinalDoseId { get; init; }
     [Required]
     [NonEmptyGuid]
     public Guid AnimalId { get; init; }
 
-    public bool CicloFinalizado { get; init; } = true;
 }
 
 public sealed record AplicacaoVacinaLoteCreateDto

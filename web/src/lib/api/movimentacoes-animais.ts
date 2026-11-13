@@ -1,5 +1,5 @@
 import { apiClient, extractErrorMessage } from './client';
-import type { MovimentacaoAnimalCreateDto, MovimentacaoAnimalResponseDto, MovimentacaoAnimalSearchParams } from '../types';
+import type { MovimentacaoAnimalCreateDto, MovimentacaoAnimalLoteCreateDto, MovimentacaoAnimalResponseDto, MovimentacaoAnimalSearchParams } from '../types';
 
 const client = apiClient as any;
 
@@ -20,5 +20,11 @@ export const movimentacaoAnimalService = {
         const { data, error } = await client.POST('/api/v1/animais/{animalId}/movimentacoes', { params: { path: { animalId } }, body: dto });
         if (error || !data) throw new Error(extractErrorMessage(error, 'Erro ao registrar movimentação'));
         return data;
+    },
+
+    async createBatch(dto: MovimentacaoAnimalLoteCreateDto): Promise<MovimentacaoAnimalResponseDto[]> {
+        const { data, error } = await apiClient.POST('/api/v1/movimentacoes-animais/lote', { body: dto });
+        if (error) throw new Error(extractErrorMessage(error, 'Erro ao registrar movimentação'));
+        return data ?? [];
     },
 };

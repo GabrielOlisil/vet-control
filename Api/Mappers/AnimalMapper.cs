@@ -19,6 +19,7 @@ public static class AnimalMapper
             DataNascimento = animal.DataNascimento,
             DataNascimentoAproximada = animal.DataNascimentoAproximada,
             LoteOuPasto = animal.LoteOuPasto,
+            AmbienteId = animal.AmbienteId,
             Ativo = animal.Ativo,
             Raca = animal.Raca != null ? RacaMapper.MapToShort(animal.Raca) : null,
             IdentificadorPrincipal = principal != null
@@ -50,6 +51,7 @@ public static class AnimalMapper
             Sexo = animal.Sexo,
             Origem = animal.OrigemAnimal,
             LoteOuPasto = animal.LoteOuPasto,
+            AmbienteId = animal.AmbienteId,
             Ativo = animal.Ativo,
             Raca = animal.Raca is null ? null : RacaMapper.MapToRead(animal.Raca),
             Identificadores = identificadores,

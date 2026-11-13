@@ -6,7 +6,6 @@
     import { vacinaService } from "$lib/api/vacinas";
     import { especieService } from "$lib/api/especies";
     import {
-        formatarPeriodo,
         type VacinaReadResponseDto,
         type VacinaCreateDto,
         type VacinaPatchDto,
@@ -33,31 +32,18 @@
     let searchTerm = $state("");
     let filterEspecieId = $state("");
     let filterObrigatoria = $state("");
-    let selectedPeriodo = $state<number | null>(null);
-    let filterDiasMin = $state("");
-    let filterDiasMax = $state("");
+    let filterAtivo = $state('');
 
     let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 
     function getFilterPayload() {
         return {
+            Ativo: filterAtivo === '' ? undefined : filterAtivo === 'true',
             EspecieId: filterEspecieId || undefined,
             ObrigatorioOrgaoSanitario:
                 filterObrigatoria !== ""
                     ? filterObrigatoria === "true"
                     : undefined,
-            ReaplicarEmXDiasMin:
-                selectedPeriodo !== null
-                    ? selectedPeriodo
-                    : filterDiasMin
-                      ? Number(filterDiasMin)
-                      : undefined,
-            ReaplicarEmXDiasMax:
-                selectedPeriodo !== null
-                    ? selectedPeriodo
-                    : filterDiasMax
-                      ? Number(filterDiasMax)
-                      : undefined,
         };
     }
 
@@ -109,9 +95,7 @@
         searchTerm = "";
         filterEspecieId = "";
         filterObrigatoria = "";
-        selectedPeriodo = null;
-        filterDiasMin = "";
-        filterDiasMax = "";
+        filterAtivo = '';
         currentPage = 1;
         load();
     }
@@ -128,30 +112,18 @@
     let isSubmitting = $state(false);
     let formError = $state("");
     let form = $state<VacinaCreateDto>({
+        ativo: true,
         name: "",
-        reaplicarEmXDias: 365,
         descricao: "",
         obrigatorioOrgaoSanitario: false,
         especieId: undefined,
     });
 
-    const periodicidadePresets = [
-        { label: "Anual (365d)", dias: 365 },
-        { label: "Semestral (180d)", dias: 180 },
-        { label: "Trimestral (90d)", dias: 90 },
-        { label: "Mensal (30d)", dias: 30 },
-        { label: "21 dias", dias: 21 },
-    ];
-
-    function setPreset(dias: number) {
-        form.reaplicarEmXDias = dias;
-    }
-
     function openCreate() {
         editingId = null;
         form = {
+            ativo: true,
             name: "",
-            reaplicarEmXDias: 365,
             descricao: "",
             obrigatorioOrgaoSanitario: false,
             especieId: undefined,
@@ -160,11 +132,14 @@
         showModal = true;
     }
 
-    function openEdit(vacina: VacinaReadResponseDto) {
+    async function openEdit(vacina: VacinaReadResponseDto) {
+        if (!vacina.id) return;
+        try { vacina = await vacinaService.getById(vacina.id); }
+        catch (e) { formError = e instanceof Error ? e.message : 'Erro ao carregar vacina.'; showModal = true; return; }
         editingId = vacina.id ?? null;
         form = {
+            ativo: vacina.ativo ?? true,
             name: vacina.name,
-            reaplicarEmXDias: Number(vacina.reaplicarEmXDias) || 365,
             descricao: vacina.descricao ?? "",
             obrigatorioOrgaoSanitario:
                 vacina.obrigatorioOrgaoSanitario ?? false,
@@ -181,18 +156,12 @@
             formError = "Nome da vacina é obrigatório.";
             return;
         }
-        const dias = Number(form.reaplicarEmXDias);
-        if (!dias || dias < 1) {
-            formError = "Informe uma periodicidade válida (mínimo de 1 dia).";
-            return;
-        }
-
         isSubmitting = true;
         try {
             if (editingId) {
                 const patch: VacinaPatchDto = {
+                    ativo: form.ativo ?? true,
                     name: name,
-                    reaplicarEmXDias: dias,
                     descricao: form.descricao?.trim() || null,
                     obrigatorioOrgaoSanitario: form.obrigatorioOrgaoSanitario,
                     especieId: form.especieId || null,
@@ -200,8 +169,8 @@
                 await vacinaService.patch(editingId, patch);
             } else {
                 await vacinaService.create({
+                    ativo: form.ativo ?? true,
                     name: name,
-                    reaplicarEmXDias: dias,
                     descricao: form.descricao?.trim() || null,
                     obrigatorioOrgaoSanitario: form.obrigatorioOrgaoSanitario,
                     especieId: form.especieId || null,
@@ -315,8 +284,9 @@
                 </button>
             </div>
 
+            <label class="form-control"><span class="label label-text">Situação do cadastro</span><select class="select select-bordered select-sm w-full" bind:value={filterAtivo} onchange={() => { currentPage = 1; load(); }}><option value="">Ativas e inativas</option><option value="true">Ativas</option><option value="false">Inativas</option></select></label>
             <!-- Linha 2: Filtros de Espécie e Obrigatória -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <EspecieSelect
                         id="filtroVacinaEspecie"
@@ -354,80 +324,6 @@
                     </select>
                 </div>
 
-                <div>
-                    <label for="filtroDiasMin" class="label label-text text-xs"
-                        >Dias Mínimos</label
-                    >
-                    <input
-                        id="filtroDiasMin"
-                        type="number"
-                        placeholder="Ex: 30"
-                        class="input input-bordered input-sm w-full"
-                        bind:value={filterDiasMin}
-                        onchange={() => {
-                            selectedPeriodo = null;
-                            currentPage = 1;
-                            load();
-                        }}
-                    />
-                </div>
-
-                <div>
-                    <label for="filtroDiasMax" class="label label-text text-xs"
-                        >Dias Máximos</label
-                    >
-                    <input
-                        id="filtroDiasMax"
-                        type="number"
-                        placeholder="Ex: 365"
-                        class="input input-bordered input-sm w-full"
-                        bind:value={filterDiasMax}
-                        onchange={() => {
-                            selectedPeriodo = null;
-                            currentPage = 1;
-                            load();
-                        }}
-                    />
-                </div>
-            </div>
-
-            <!-- Linha 3: Atalhos de Periodicidade -->
-            <div class="flex items-center gap-1.5 flex-wrap pt-1">
-                <span class="text-xs font-semibold text-base-content/60 mr-1"
-                    >Atalhos de Periodicidade:</span
-                >
-                <button
-                    type="button"
-                    class="btn btn-xs {selectedPeriodo === null
-                        ? 'btn-primary'
-                        : 'btn-ghost'}"
-                    onclick={() => {
-                        selectedPeriodo = null;
-                        filterDiasMin = "";
-                        filterDiasMax = "";
-                        currentPage = 1;
-                        load();
-                    }}
-                >
-                    Todas
-                </button>
-                {#each periodicidadePresets as p}
-                    <button
-                        type="button"
-                        class="btn btn-xs {selectedPeriodo === p.dias
-                            ? 'btn-primary'
-                            : 'btn-ghost'}"
-                        onclick={() => {
-                            selectedPeriodo = p.dias;
-                            filterDiasMin = "";
-                            filterDiasMax = "";
-                            currentPage = 1;
-                            load();
-                        }}
-                    >
-                        {p.label}
-                    </button>
-                {/each}
             </div>
         </div>
 
@@ -466,7 +362,6 @@
                         <tr>
                             <th>Nome do Imunobiológico</th>
                             <th>Espécie</th>
-                            <th>Periodicidade de Reaplicação</th>
                             <th class="text-right">Ações</th>
                         </tr>
                     </thead>
@@ -490,6 +385,7 @@
                                                 class="flex items-center gap-2"
                                             >
                                                 <span>{v.name}</span>
+                                                {#if v.ativo === false}<span class="badge badge-ghost badge-xs">Inativa</span>{/if}
                                                 {#if v.obrigatorioOrgaoSanitario}
                                                     <span
                                                         class="badge badge-error badge-xs font-semibold uppercase tracking-wider text-[10px]"
@@ -521,20 +417,6 @@
                                             class="text-xs text-base-content/40 italic"
                                         >
                                             Todas as espécies
-                                        </span>
-                                    {/if}
-                                </td>
-                                <td>
-                                    <span
-                                        class="badge badge-outline badge-sm font-semibold"
-                                    >
-                                        {formatarPeriodo(v.reaplicarEmXDias)}
-                                    </span>
-                                    {#if v.reaplicarEmXDias}
-                                        <span
-                                            class="text-xs text-base-content/50 ml-1.5 font-mono"
-                                        >
-                                            ({v.reaplicarEmXDias} dias)
                                         </span>
                                     {/if}
                                 </td>
@@ -630,41 +512,7 @@
         label="Espécie Aplicável (Opcional)"
         bind:value={form.especieId}
     />
-
-    <div class="space-y-2">
-        <label
-            for="reaplicarDiasInput"
-            class="label label-text text-xs font-medium block"
-        >
-            Reaplicar em (dias) *
-        </label>
-        <input
-            id="reaplicarDiasInput"
-            type="number"
-            min="1"
-            class="input input-bordered w-full"
-            placeholder="365"
-            bind:value={form.reaplicarEmXDias}
-            required
-        />
-
-        <div class="flex items-center gap-1.5 flex-wrap pt-1">
-            <span class="text-xs text-base-content/50">Atalhos rápidos:</span>
-            {#each periodicidadePresets as preset}
-                <button
-                    type="button"
-                    class="btn btn-xs btn-outline btn-primary"
-                    onclick={() => setPreset(preset.dias)}
-                >
-                    {preset.label}
-                </button>
-            {/each}
-        </div>
-        <p class="text-xs text-base-content/50 mt-1">
-            Informe o intervalo em dias entre doses ou reforços (ex: 365 para
-            Anual).
-        </p>
-    </div>
+    <label class="form-control"><span class="label label-text">Situação do cadastro</span><select class="select select-bordered w-full" bind:value={form.ativo}><option value={true}>Ativa</option><option value={false}>Inativa — preservar histórico</option></select></label>
 
     <div class="space-y-1">
         <label

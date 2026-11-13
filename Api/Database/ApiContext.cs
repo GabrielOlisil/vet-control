@@ -10,6 +10,7 @@ public class ApiContext(DbContextOptions<ApiContext> options, IHttpContextAccess
     public DbSet<Especie> Especies { get; set; }
     public DbSet<Raca> Racas { get; set; }
     public DbSet<Animal> Animals { get; set; }
+    public DbSet<Ambiente> Ambientes { get; set; }
     public DbSet<IdentificadorAnimal> IdentificadorAnimal { get; set; }
     public DbSet<Vacina> Vacinas { get; set; }
     public DbSet<AplicacaoVacina> AplicacoesVacina { get; set; }
@@ -18,6 +19,7 @@ public class ApiContext(DbContextOptions<ApiContext> options, IHttpContextAccess
     public DbSet<AnimalProtocoloVacinal> AnimalProtocolosVacinais { get; set; }
     public DbSet<MovimentacaoAnimal> MovimentacoesAnimais { get; set; }
     public DbSet<AssinaturaAplicacaoVacina> AssinaturasAplicacoesVacina { get; set; }
+    public DbSet<ServerSession> ServerSessions { get; set; }
 
 
 

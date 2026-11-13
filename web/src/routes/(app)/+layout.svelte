@@ -4,6 +4,7 @@
     import type { Snippet } from "svelte";
     import { afterNavigate } from "$app/navigation";
     import AccountMenu from "$lib/components/AccountMenu.svelte";
+    import ThemePicker from "$lib/components/ThemePicker.svelte";
     import IconPets from "@iconify-svelte/material-symbols/pets-rounded";
     import IconVaccines from "@iconify-svelte/material-symbols/vaccines-rounded";
     import IconCalendar from "@iconify-svelte/material-symbols/calendar-month-rounded";
@@ -21,6 +22,7 @@
 
     const usabilityLinks = $derived.by(() => [
         { href: "/", label: "Dashboard", icon: IconDashboard },
+        { href: "/agenda-vacinal", label: "Agenda vacinal", icon: IconCalendar },
         { href: "/aplicacoes-vacina", label: "Aplicações", icon: IconCalendar },
         ...(canManageApplications
             ? [{ href: "/aplicacoes-vacina/lote", label: "Vacinação em Lote", icon: IconVaccines }]
@@ -32,7 +34,6 @@
             href: "/configuracoes",
             label: "Configurações",
             icon: IconSettings,
-            badge: "Mestres",
         },
     ];
 
@@ -78,19 +79,11 @@
                     </span>
                     <span class="truncate tracking-tight">Vet Control</span>
                 </a>
-                <p class="hidden truncate text-sm font-semibold lg:block">Controle vacinal</p>
             </div>
 
             <!-- Ações rápidas no Header -->
-                {#if canManageApplications}
-                    <a
-                        href="/aplicacoes-vacina/lote"
-                        class="btn btn-primary btn-sm hidden shrink-0 gap-1.5 rounded-lg shadow-xs md:inline-flex"
-                    >
-                        <IconVaccines width="16" height="16" />
-                        <span>Vacinar em Lote</span>
-                    </a>
-                {/if}
+
+                <ThemePicker />
                 <AccountMenu name={data.session.name} email={data.session.email}>
                     {#if canManageApplications}
                         <a href="/aplicacoes-vacina/lote" class="btn btn-ghost justify-start md:hidden">Vacinar em lote</a>
@@ -124,8 +117,7 @@
             <div
                 class="grid-flow-col gap-4 md:place-self-center md:justify-self-end"
             >
-                <span class="badge badge-sm badge-outline"
-                    >API v1 • DaisyUI</span
+                <span>Feito com TailwindCSS e DaisyUI</span
                 >
             </div>
         </footer>
@@ -213,37 +205,13 @@
                                     <IconComponent width="20" height="20" />
                                     <span>{link.label}</span>
                                 </div>
-                                {#if link.badge}
-                                    <span
-                                        class="badge badge-xs {active
-                                            ? 'badge-neutral'
-                                            : 'badge-ghost text-[10px]'}"
-                                    >
-                                        {link.badge}
-                                    </span>
-                                {/if}
                             </a>
                         </li>
                     {/each}
                 </ul>
             </div>
 
-            <!-- Rodapé da Drawer -->
-            <div
-                class="pt-4 border-t border-base-200 mt-auto flex flex-col gap-2"
-            >
-                <div
-                    class="bg-base-200/60 rounded-xl p-3 text-xs text-base-content/70"
-                >
-                    <p class="font-semibold text-base-content mb-1">
-                        Painel de Controle
-                    </p>
-                    <p class="leading-relaxed text-[11px]">
-                        Aba Configurações unifica Vacinas, Animais, Espécies e
-                        Raças sob demanda.
-                    </p>
-                </div>
-            </div>
+
         </aside>
     </div>
 </div>

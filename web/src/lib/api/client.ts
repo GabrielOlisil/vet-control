@@ -1,6 +1,7 @@
 import createClient from 'openapi-fetch';
 import type { paths } from '$lib/types/contract';
 import { csrfHeader, VET_API_URL } from '$lib/auth/session';
+import { setClinicTimeZone } from '$lib/utils/clinic-clock';
 
 export const API_BASE_URL = VET_API_URL;
 
@@ -15,6 +16,7 @@ apiClient.use({
         return request;
     },
     onResponse({ response }) {
+        setClinicTimeZone(response.headers.get('X-Clinic-TimeZone'));
         if (response.status === 401 && typeof window !== 'undefined' &&
             !window.location.pathname.startsWith('/auth') && !window.location.pathname.startsWith('/validar-vacinacao')) {
             window.location.assign(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);

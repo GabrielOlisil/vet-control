@@ -6,6 +6,7 @@ public sealed class NonEmptyGuidAttribute : ValidationAttribute
 {
     public override bool IsValid(object? value)
     {
+        if (value is null) return true;
         return value is Guid guid && guid != Guid.Empty;
     }
 
@@ -19,6 +20,9 @@ public sealed class PastOrPresentDateAttribute : ValidationAttribute
 {
     public override bool IsValid(object? value)
     {
+        // Optional dates may be omitted in PATCH. Required/non-nullable fields
+        // remain responsible for presence; a supplied default date is still invalid.
+        if (value is null) return true;
         var maxDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
         return value is DateOnly date && date != default && date <= maxDate;
     }

@@ -11,15 +11,14 @@ public sealed class VetSessionValidator(IHttpClientFactory clients, IConfigurati
 {
     public async Task Validate(CookieValidatePrincipalContext context)
     {
-        var session = store.Find(context.Properties.GetString("session-key") ?? "");
+        var sessionKey = context.Properties.GetString("session-key") ?? "";
+        var session = await store.RetrieveAsync(sessionKey);
         if (session is null) { context.RejectPrincipal(); return; }
-        await session.Gate.WaitAsync(context.HttpContext.RequestAborted);
-        try
-        {
+        await using var gate = await store.AcquireAsync(sessionKey, context.HttpContext.RequestAborted);
             // Another concurrent request may have rotated the refresh token while this request waited.
-            var latest = store.Find(context.Properties.GetString("session-key") ?? "");
+            var latest = await store.RetrieveAsync(sessionKey);
             if (latest is null) { context.RejectPrincipal(); return; }
-            var properties = latest.Ticket.Properties;
+            var properties = latest.Properties;
             var client = clients.CreateClient("identity");
             var issuer = config["Authentication:Authority"]!.TrimEnd('/');
             var expiry = DateTimeOffset.TryParse(properties.GetTokenValue("expires_at"), CultureInfo.InvariantCulture, out var parsed) ? parsed : DateTimeOffset.MinValue;
@@ -60,8 +59,7 @@ public sealed class VetSessionValidator(IHttpClientFactory clients, IConfigurati
             context.ReplacePrincipal(principal);
             context.Properties.StoreTokens(properties.GetTokens());
             await store.RenewAsync(context.Properties.GetString("session-key")!, new AuthenticationTicket(principal, context.Properties, context.Scheme.Name));
-        }
-        finally { session.Gate.Release(); }
+            if (await store.RetrieveAsync(sessionKey) is null) await Reject(context);
     }
     private static async Task Reject(CookieValidatePrincipalContext context)
     { context.RejectPrincipal(); await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme); }

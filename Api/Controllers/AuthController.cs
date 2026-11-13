@@ -34,6 +34,7 @@ public sealed class AuthController(IConfiguration config, IAntiforgery antiforge
     }
 
     [HttpPost("logout")]
+    [Authorize]
     // Antiforgery is validated by the API-wide middleware before reaching this action.
     public IActionResult Logout() => SignOut(new AuthenticationProperties { RedirectUri = config["Authentication:FrontendOrigin"] + "/login" },
         CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme);

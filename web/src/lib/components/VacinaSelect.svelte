@@ -9,7 +9,6 @@
         id?: string;
         name: string;
         descricao?: string | null;
-        reaplicarEmXDias?: number | string;
     }
 
     let {
@@ -19,6 +18,7 @@
         size = "sm",
         required = false,
         disabled = false,
+        onlyActive = false,
         placeholder = "Buscar vacina...",
         error = "",
         onSelect = null,
@@ -29,6 +29,7 @@
         size?: "sm" | "md";
         required?: boolean;
         disabled?: boolean;
+        onlyActive?: boolean;
         placeholder?: string;
         error?: string | null;
         onSelect?: ((vacina: VacinaOption | null) => void) | null;
@@ -54,11 +55,12 @@
                 const results = await vacinaService.search(
                     searchTerm.trim(),
                     page,
+                    { Ativo: onlyActive ? true : undefined },
                 );
                 options = results;
                 hasMore = results.length >= 10;
             } else {
-                const list = await vacinaService.getList({ page });
+                const list = await vacinaService.getList({ page, Ativo: onlyActive ? true : undefined });
                 options = list;
                 hasMore = list.length >= 10;
             }
@@ -319,13 +321,6 @@
                                             {/if}
                                         </div>
                                     </div>
-                                    {#if opt.reaplicarEmXDias}
-                                        <span
-                                            class="badge badge-sm badge-ghost shrink-0 ml-2"
-                                        >
-                                            a cada {opt.reaplicarEmXDias} dias
-                                        </span>
-                                    {/if}
                                 </button>
                             </li>
                         {/each}

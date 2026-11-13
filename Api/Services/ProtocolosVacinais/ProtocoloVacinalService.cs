@@ -3,11 +3,13 @@ using Api.DTOs;
 using Api.Mappers;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Api.Services.AgendaVacinal;
 
 namespace Api.Services.ProtocolosVacinais;
 
-public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVacinalService
+public sealed class ProtocoloVacinalService(ApiContext context, AgendaVacinalService agenda, ClinicalCalendar calendar) : IProtocoloVacinalService
 {
     private const int PageSize = 10;
 
@@ -25,7 +27,7 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
 
         if (page.HasValue)
         {
-            query = query.Skip((page.Value - 1) * PageSize).Take(PageSize);
+            query = query.Skip(Pagination.Offset(page, PageSize)).Take(PageSize);
         }
 
         return query.ToListAsync(cancellationToken);
@@ -46,6 +48,7 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
         CancellationToken cancellationToken = default)
     {
         ValidateProtocol(dto.IdadeMinimaDias, dto.IdadeMaximaDias, dto.Doses);
+        ValidateScheduleRange(dto.Doses);
         await ValidateReferencesAsync(dto.EspecieId, dto.Doses, cancellationToken);
 
         var protocolo = new ProtocoloVacinal
@@ -69,12 +72,35 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
     public async Task<ProtocoloVacinal?> PatchAsync(Guid id, ProtocoloVacinalPatchDto dto,
         CancellationToken cancellationToken = default)
     {
-        var protocolo = await context.ProtocolosVacinais
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var protocolo = await LockProtocol(id)
             .Include(p => p.Doses)
-            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (protocolo is null)
             return null;
+
+        if (!protocolo.VersaoAtual)
+            throw new InvalidOperationException("Uma versão histórica não pode ser editada. Edite a versão atual do protocolo.");
+
+        var changesDefinition = dto.Nome is not null || dto.DescricaoWasProvided || dto.FinalidadeWasProvided ||
+            dto.EspecieIdWasProvided || dto.IdadeMinimaDiasWasProvided || dto.IdadeMaximaDiasWasProvided || dto.DosesWasProvided;
+        var used = await context.AnimalProtocolosVacinais.AnyAsync(a => a.ProtocoloVacinalId == id, cancellationToken);
+        if (used && changesDefinition)
+        {
+            var prior = protocolo;
+            prior.VersaoAtual = false;
+            await context.SaveChangesAsync(cancellationToken);
+            protocolo = new ProtocoloVacinal
+            {
+                Id = Guid.NewGuid(), FamiliaId = prior.FamiliaId, Versao = prior.Versao + 1,
+                Nome = prior.Nome, Descricao = prior.Descricao, Finalidade = prior.Finalidade,
+                EspecieId = prior.EspecieId, Ativo = prior.Ativo,
+                IdadeMinimaDias = prior.IdadeMinimaDias, IdadeMaximaDias = prior.IdadeMaximaDias,
+                Doses = prior.Doses.Select(d => CreateDose(ToDoseDefinition(d))).ToList()
+            };
+            context.ProtocolosVacinais.Add(protocolo);
+        }
 
         if (dto.Nome is not null)
             protocolo.Nome = dto.Nome.Trim();
@@ -91,11 +117,11 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
         if (dto.Ativo.HasValue)
             protocolo.Ativo = dto.Ativo.Value;
 
-        if (dto.IdadeMinimaDias.HasValue)
-            protocolo.IdadeMinimaDias = dto.IdadeMinimaDias.Value;
+        if (dto.IdadeMinimaDiasWasProvided)
+            protocolo.IdadeMinimaDias = dto.IdadeMinimaDias;
 
-        if (dto.IdadeMaximaDias.HasValue)
-            protocolo.IdadeMaximaDias = dto.IdadeMaximaDias.Value;
+        if (dto.IdadeMaximaDiasWasProvided)
+            protocolo.IdadeMaximaDias = dto.IdadeMaximaDias;
 
         if (dto.DosesWasProvided)
         {
@@ -103,26 +129,21 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
                 throw new ArgumentException("O protocolo deve conter pelo menos uma dose.");
 
             ValidateProtocol(protocolo.IdadeMinimaDias, protocolo.IdadeMaximaDias, dto.Doses);
+            ValidateScheduleRange(dto.Doses);
             await ValidateReferencesAsync(protocolo.EspecieId, dto.Doses, cancellationToken);
 
-            context.ProtocoloVacinalDoses.RemoveRange(protocolo.Doses);
+            context.ProtocoloVacinalDoses.RemoveRange(protocolo.Doses.ToArray());
             protocolo.Doses = dto.Doses.Select(CreateDose).ToList();
+            context.ProtocoloVacinalDoses.AddRange(protocolo.Doses);
         }
         else
         {
             ValidateProtocol(protocolo.IdadeMinimaDias, protocolo.IdadeMaximaDias, protocolo.Doses
-                .Select(d => new ProtocoloVacinalDoseCreateDto
-                {
-                    VacinaId = d.VacinaId,
-                    Ordem = d.Ordem,
-                    DiasAposInicio = d.DiasAposInicio,
-                    IntervaloReforcoDias = d.IntervaloReforcoDias,
-                    Obrigatoria = d.Obrigatoria,
-                    Observacoes = d.Observacoes
-                }).ToList());
+                .Select(ToDoseDefinition).ToList());
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return protocolo;
     }
 
@@ -137,6 +158,9 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
 
         if (protocolo.AplicacoesEmAnimais.Count > 0)
             throw new InvalidOperationException("Não é possível excluir um protocolo já atribuído a animais. Inative-o para preservar o histórico.");
+
+        if (await context.ProtocolosVacinais.CountAsync(p => p.FamiliaId == protocolo.FamiliaId, cancellationToken) > 1)
+            throw new InvalidOperationException("Não é possível excluir uma versão de um protocolo com histórico de versões.");
 
         context.ProtocolosVacinais.Remove(protocolo);
         await context.SaveChangesAsync(cancellationToken);
@@ -170,23 +194,33 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
     public async Task<AnimalProtocoloVacinal> AssignToAnimalAsync(Guid animalId,
         AnimalProtocoloVacinalCreateDto dto, CancellationToken cancellationToken = default)
     {
+        if (dto.DataInicio == default || dto.DataInicio > calendar.Today)
+            throw new ArgumentException("O início do protocolo deve ser uma data válida, não futura.");
+        await using var transaction = context.Database.CurrentTransaction is null
+            ? await context.Database.BeginTransactionAsync(cancellationToken) : null;
         var animal = await context.Animals
+            .FromSqlInterpolated($"SELECT *, xmin FROM \"Animals\" WHERE \"Id\" = {animalId} FOR UPDATE")
             .Include(a => a.Raca)
             .FirstOrDefaultAsync(a => a.Id == animalId, cancellationToken)
             ?? throw new KeyNotFoundException($"Animal com Id '{animalId}' não encontrado.");
 
-        var protocolo = await context.ProtocolosVacinais
-            .Include(p => p.Especie)
-            .FirstOrDefaultAsync(p => p.Id == dto.ProtocoloVacinalId, cancellationToken)
+        var protocolo = await LockProtocol(dto.ProtocoloVacinalId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken)
             ?? throw new KeyNotFoundException($"Protocolo com Id '{dto.ProtocoloVacinalId}' não encontrado.");
 
         if (!protocolo.Ativo)
             throw new ArgumentException("O protocolo selecionado está inativo.");
+        if (!protocolo.VersaoAtual)
+            throw new ArgumentException("Novas atribuições devem usar a versão atual do protocolo.");
+        if (!animal.Ativo)
+            throw new ArgumentException("Não é possível atribuir protocolo a um animal inativo.");
 
         if (protocolo.EspecieId.HasValue && animal.Raca?.EspecieId != protocolo.EspecieId)
             throw new ArgumentException("O protocolo não é compatível com a espécie do animal.");
 
-        var idadeDias = DateOnly.FromDateTime(DateTime.UtcNow).DayNumber - animal.DataNascimento.DayNumber;
+        var idadeDias = dto.DataInicio.DayNumber - animal.DataNascimento.DayNumber;
+        if (idadeDias < 0) throw new ArgumentException("O início do protocolo não pode ser anterior ao nascimento.");
         if (protocolo.IdadeMinimaDias.HasValue && idadeDias < protocolo.IdadeMinimaDias)
             throw new ArgumentException("O animal ainda não atingiu a idade mínima do protocolo.");
         if (protocolo.IdadeMaximaDias.HasValue && idadeDias > protocolo.IdadeMaximaDias)
@@ -194,7 +228,7 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
 
         var alreadyAssigned = await context.AnimalProtocolosVacinais.AnyAsync(p =>
             p.AnimalId == animalId &&
-            p.ProtocoloVacinalId == dto.ProtocoloVacinalId &&
+            p.ProtocoloVacinal!.FamiliaId == protocolo.FamiliaId &&
             p.Ativo, cancellationToken);
 
         if (alreadyAssigned)
@@ -212,17 +246,44 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
 
         context.AnimalProtocolosVacinais.Add(assignment);
         await context.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return (await GetAnimalProtocolByIdAsync(assignment.Id, cancellationToken))!;
     }
 
     public async Task<AnimalProtocoloVacinal?> PatchAnimalProtocolAsync(Guid animalProtocolId,
         AnimalProtocoloVacinalPatchDto dto, CancellationToken cancellationToken = default)
     {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         var assignment = await context.AnimalProtocolosVacinais
+            .Include(p => p.ProtocoloVacinal)
             .FirstOrDefaultAsync(p => p.Id == animalProtocolId, cancellationToken);
 
         if (assignment is null)
             return null;
+
+        var animal = await context.Animals.FromSqlInterpolated($"SELECT *, xmin FROM \"Animals\" WHERE \"Id\" = {assignment.AnimalId} FOR UPDATE")
+            .Include(a => a.Raca).SingleAsync(cancellationToken);
+        if (dto.DataInicio.HasValue || (dto.Ativo == true && !assignment.Ativo))
+        {
+            var start = dto.DataInicio ?? assignment.DataInicio;
+            var protocol = assignment.ProtocoloVacinal!;
+            var age = start.DayNumber - animal.DataNascimento.DayNumber;
+            if (start == default || start > calendar.Today || age < 0 ||
+                (protocol.IdadeMinimaDias.HasValue && age < protocol.IdadeMinimaDias.Value) ||
+                (protocol.IdadeMaximaDias.HasValue && age > protocol.IdadeMaximaDias.Value))
+                throw new ArgumentException("A data de início não atende aos limites de idade ou à data da clínica.");
+            if (!animal.Ativo || !protocol.Ativo || (protocol.EspecieId.HasValue && protocol.EspecieId != animal.Raca?.EspecieId))
+                throw new ArgumentException("O animal ou protocolo está inativo ou possui espécie incompatível.");
+            if (dto.Ativo == true && !assignment.Ativo && !protocol.VersaoAtual)
+                throw new InvalidOperationException("Use a migração explícita para a versão atual em vez de reativar uma versão histórica.");
+        }
+        if (dto.DataInicio.HasValue && dto.DataInicio != assignment.DataInicio &&
+            await context.AplicacoesVacina.AnyAsync(a => a.AnimalProtocoloVacinalId == animalProtocolId, cancellationToken))
+            throw new InvalidOperationException("Não altere o início de um esquema já utilizado. Encerre-o e atribua um novo esquema.");
+        if (dto.Ativo == true && await context.AnimalProtocolosVacinais.AnyAsync(p => p.Id != animalProtocolId &&
+            p.AnimalId == assignment.AnimalId && p.Ativo &&
+            p.ProtocoloVacinal!.FamiliaId == assignment.ProtocoloVacinal!.FamiliaId, cancellationToken))
+            throw new InvalidOperationException("Já existe uma versão desta família de protocolo ativa para o animal.");
 
         if (dto.DataInicio.HasValue)
             assignment.DataInicio = dto.DataInicio.Value;
@@ -232,31 +293,71 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
             assignment.Observacoes = Normalize(dto.Observacoes);
 
         await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return await GetAnimalProtocolByIdAsync(animalProtocolId, cancellationToken);
+    }
+
+    public async Task<AnimalProtocoloVacinal?> MigrarAsync(Guid animalId, Guid vinculoId,
+        MigracaoProtocoloVacinalDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Motivo) || dto.Motivo.Trim().Length < 3)
+            throw new ArgumentException("Informe o motivo da migração.");
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await context.Animals.FromSqlInterpolated($"SELECT *, xmin FROM \"Animals\" WHERE \"Id\" = {animalId} FOR UPDATE")
+            .LoadAsync(cancellationToken);
+        var original = await context.AnimalProtocolosVacinais.Include(p => p.ProtocoloVacinal)
+            .SingleOrDefaultAsync(p => p.Id == vinculoId && p.AnimalId == animalId, cancellationToken);
+        if (original is null) return null;
+        var target = await context.ProtocolosVacinais.SingleOrDefaultAsync(p => p.Id == dto.ProtocoloDestinoId, cancellationToken);
+        if (!original.Ativo || target is null || target.FamiliaId != original.ProtocoloVacinal!.FamiliaId ||
+            target.Versao <= original.ProtocoloVacinal.Versao || !target.VersaoAtual)
+            throw new ArgumentException("A migração exige uma atribuição ativa e uma versão atual mais recente da mesma família.");
+        original.Ativo = false;
+        original.Observacoes = $"{original.Observacoes}\nMigrado para versão {target.Versao}: {dto.Motivo.Trim()}".Trim();
+        await context.SaveChangesAsync(cancellationToken);
+        var replacement = await AssignToAnimalAsync(animalId, new AnimalProtocoloVacinalCreateDto
+        {
+            ProtocoloVacinalId = target.Id, DataInicio = dto.DataInicio,
+            Observacoes = $"Migração do vínculo {vinculoId}. {dto.Motivo.Trim()}. As doses históricas permanecem no vínculo original; o novo esquema começa nesta data."
+        }, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return replacement;
     }
 
     public async Task<List<ProtocoloVacinalPendenciaResponseDto>> GetPendenciasAsync(int? page,
         ProtocoloVacinalPendenciaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
-        var items = await BuildPendingQuery(search).ToListAsync(cancellationToken);
-        var pending = ApplyPendingFilters(items.SelectMany(BuildPendingItems), search);
-
-        var currentPage = page ?? 1;
-        return pending
-            .OrderBy(p => p.DataPrevista)
-            .ThenBy(p => p.AnimalId)
-            .Skip((currentPage - 1) * PageSize)
-            .Take(PageSize)
-            .ToList();
+        var items = await agenda.GetAsync(page, AgendaSearch(search), cancellationToken);
+        return items.Select(p => new ProtocoloVacinalPendenciaResponseDto
+        {
+            AnimalProtocoloVacinalId = p.AnimalProtocoloVacinalId!.Value, AnimalId = p.AnimalId,
+            ProtocoloVacinalId = p.ProtocoloVacinalId!.Value, ProtocoloVacinalDoseId = p.ProtocoloVacinalDoseId!.Value,
+            Animal = new AnimalShortResponseDto { Id = p.AnimalId, Name = p.AnimalNome, IdentificadorPrincipal = p.IdentificadorPrincipal },
+            ProtocoloVacinal = new ProtocoloVacinalShortResponseDto { Id = p.ProtocoloVacinalId.Value, Nome = p.ProtocoloNome ?? "", Versao = p.ProtocoloVersao ?? 1 },
+            Vacina = new VacinaShortResponseDto { Id = p.VacinaId, Name = p.VacinaNome },
+            Ordem = p.Ordem ?? 1, DataPrevista = p.DataPrevista, DataAplicacao = p.DataAplicacao,
+            AplicacaoVacinaId = p.AplicacaoVacinaId, Obrigatoria = p.Obrigatoria, Status = p.Status
+        }).ToList();
     }
 
     public async Task<int> CountPendenciasAsync(ProtocoloVacinalPendenciaSearchDto? search = null,
         CancellationToken cancellationToken = default)
     {
-        var items = await BuildPendingQuery(search).ToListAsync(cancellationToken);
-        return ApplyPendingFilters(items.SelectMany(BuildPendingItems), search).Count();
+        return await agenda.CountAsync(AgendaSearch(search), cancellationToken);
     }
+
+    private static AgendaVacinalSearchDto AgendaSearch(ProtocoloVacinalPendenciaSearchDto? search) => new()
+    {
+        Origem = OrigemPendenciaVacinal.Protocolo, AnimalId = search?.AnimalId,
+        ProtocoloVacinalId = search?.ProtocoloVacinalId, EspecieId = search?.EspecieId,
+        DataPrevistaFrom = search?.DataPrevistaFrom, DataPrevistaTo = search?.DataPrevistaTo,
+        Status = search?.Status, SomenteObrigatorias = search?.SomenteObrigatorias == true
+    };
+
+    // Editing and assigning must read the same definition after acquiring its lock.
+    private IQueryable<ProtocoloVacinal> LockProtocol(Guid id) => context.ProtocolosVacinais
+        .FromSqlInterpolated($"SELECT *, xmin FROM \"ProtocolosVacinais\" WHERE \"Id\" = {id} FOR UPDATE");
 
     private IQueryable<AnimalProtocoloVacinal> BuildAnimalProtocolQuery()
     {
@@ -273,101 +374,17 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
                 .ThenInclude(a => a.ProtocoloVacinalDose);
     }
 
-    private IQueryable<AnimalProtocoloVacinal> BuildPendingQuery(ProtocoloVacinalPendenciaSearchDto? search)
-    {
-        var query = BuildAnimalProtocolQuery().Where(p => p.Ativo && p.ProtocoloVacinal!.Ativo);
-
-        if (search is null)
-            return query;
-
-        if (search.AnimalId.HasValue)
-            query = query.Where(p => p.AnimalId == search.AnimalId.Value);
-        if (search.ProtocoloVacinalId.HasValue)
-            query = query.Where(p => p.ProtocoloVacinalId == search.ProtocoloVacinalId.Value);
-        if (search.EspecieId.HasValue)
-            query = query.Where(p => p.ProtocoloVacinal!.EspecieId == search.EspecieId.Value);
-
-        return query;
-    }
-
-    private static IEnumerable<ProtocoloVacinalPendenciaResponseDto> ApplyPendingFilters(
-        IEnumerable<ProtocoloVacinalPendenciaResponseDto> items,
-        ProtocoloVacinalPendenciaSearchDto? search)
-    {
-        if (search is null)
-            return items;
-
-        if (search.DataPrevistaFrom.HasValue)
-            items = items.Where(p => p.DataPrevista >= search.DataPrevistaFrom.Value);
-        if (search.DataPrevistaTo.HasValue)
-            items = items.Where(p => p.DataPrevista <= search.DataPrevistaTo.Value);
-        if (search.Status.HasValue)
-            items = items.Where(p => p.Status == search.Status.Value);
-        if (search.SomenteObrigatorias == true)
-            items = items.Where(p => p.Obrigatoria);
-
-        return items;
-    }
-
-    private IEnumerable<ProtocoloVacinalPendenciaResponseDto> BuildPendingItems(AnimalProtocoloVacinal assignment)
-    {
-        if (assignment.ProtocoloVacinal is null || assignment.Animal is null)
-            return [];
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var items = new List<ProtocoloVacinalPendenciaResponseDto>();
-
-        foreach (var dose in assignment.ProtocoloVacinal.Doses.OrderBy(d => d.Ordem))
-        {
-            var application = assignment.Aplicacoes
-                .Where(a => a.ProtocoloVacinalDoseId == dose.Id)
-                .OrderByDescending(a => a.DataAplicacao)
-                .FirstOrDefault();
-
-            var dataPrevista = assignment.DataInicio.AddDays(dose.DiasAposInicio);
-            var status = StatusPendenciaVacinal.Pendente;
-
-            if (application is not null)
-            {
-                if (dose.IntervaloReforcoDias.HasValue)
-                {
-                    dataPrevista = application.DataAplicacao.AddDays(dose.IntervaloReforcoDias.Value);
-                }
-                else
-                {
-                    status = StatusPendenciaVacinal.Concluida;
-                }
-            }
-
-            if (status != StatusPendenciaVacinal.Concluida && dataPrevista < today)
-                status = StatusPendenciaVacinal.Atrasada;
-
-            items.Add(new ProtocoloVacinalPendenciaResponseDto
-            {
-                AnimalProtocoloVacinalId = assignment.Id,
-                AnimalId = assignment.AnimalId,
-                ProtocoloVacinalId = assignment.ProtocoloVacinalId,
-                ProtocoloVacinalDoseId = dose.Id,
-                Animal = AnimalMapper.MapToShort(assignment.Animal),
-                ProtocoloVacinal = ProtocoloVacinalMapper.MapToShort(assignment.ProtocoloVacinal),
-                Vacina = dose.Vacina is null ? null : VacinaMapper.MapToShort(dose.Vacina),
-                Ordem = dose.Ordem,
-                DataPrevista = dataPrevista,
-                DataAplicacao = application?.DataAplicacao,
-                AplicacaoVacinaId = application?.Id,
-                Obrigatoria = dose.Obrigatoria,
-                Status = status
-            });
-        }
-
-        return items;
-    }
 
     private static IQueryable<ProtocoloVacinal> ApplyFilters(IQueryable<ProtocoloVacinal> query,
         ProtocoloVacinalSearchDto? search)
     {
+        if (search?.IncluirVersoesAnteriores != true)
+            query = query.Where(p => p.VersaoAtual);
         if (search is null)
             return query;
+
+        if (search.FamiliaId.HasValue)
+            query = query.Where(p => p.FamiliaId == search.FamiliaId.Value);
 
         if (search.EspecieId.HasValue)
             query = query.Where(p => p.EspecieId == search.EspecieId.Value);
@@ -409,6 +426,23 @@ public sealed class ProtocoloVacinalService(ApiContext context) : IProtocoloVaci
         if (doses.Any(d => d.DiasAposInicio < 0 || d.IntervaloReforcoDias is <= 0))
             throw new ArgumentException("Os intervalos do protocolo devem ser válidos.");
     }
+
+    private void ValidateScheduleRange(IEnumerable<ProtocoloVacinalDoseCreateDto> doses)
+    {
+        var maxDelay = DateOnly.MaxValue.DayNumber - calendar.Today.DayNumber;
+        if (doses.Any(d => d.DiasAposInicio > maxDelay || d.IntervaloReforcoDias > maxDelay))
+            throw new ArgumentException("O prazo inicial ou o intervalo de reforço ultrapassa o limite do calendário.");
+    }
+
+    private static ProtocoloVacinalDoseCreateDto ToDoseDefinition(ProtocoloVacinalDose dose) => new()
+    {
+        VacinaId = dose.VacinaId,
+        Ordem = dose.Ordem,
+        DiasAposInicio = dose.DiasAposInicio,
+        IntervaloReforcoDias = dose.IntervaloReforcoDias,
+        Obrigatoria = dose.Obrigatoria,
+        Observacoes = dose.Observacoes
+    };
 
     private static ProtocoloVacinalDose CreateDose(ProtocoloVacinalDoseCreateDto dose) => new()
     {

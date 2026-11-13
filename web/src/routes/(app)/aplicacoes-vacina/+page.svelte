@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { formatDateOnly } from '$lib/utils/dates';
+    import VaccinationCorrectionActions from "$lib/components/VaccinationCorrectionActions.svelte";
     import { onMount } from "svelte";
     import FormModal from "$lib/components/FormModal.svelte";
     import Modal from "$lib/components/Modal.svelte";
@@ -20,6 +22,7 @@
         type AplicacaoVacinaCreateDto,
         type VacinaReadResponseDto,
         type AnimalReadResponseDto,
+        type AnimalProtocoloVacinalReadResponseDto,
         type ProtocoloVacinalReadResponseDto,
     } from "$lib/types";
 
@@ -43,6 +46,9 @@
     let vacinas = $state<VacinaReadResponseDto[]>([]);
     let animais = $state<AnimalReadResponseDto[]>([]);
     let protocolos = $state<ProtocoloVacinalReadResponseDto[]>([]);
+    let animalProtocolos = $state<AnimalProtocoloVacinalReadResponseDto[]>([]);
+    let isLoadingAnimalProtocolos = $state(false);
+    let applicationMode = $state<"avulsa" | "protocolo">("avulsa");
 
     // Filtros
     let filterVacinaId = $state("");
@@ -55,7 +61,6 @@
     let filterSomenteAtrasadas = $state("");
     let filterPendenteAssinatura = $state("");
     let filterProximas = $state("");
-    let filterCicloFinalizado = $state("");
     let filterStatusComprovante = $state("");
     let filterProtocoloId = $state("");
 
@@ -66,6 +71,8 @@
     let form = $state<AplicacaoVacinaCreateDto>({
         animalId: "",
         vacinaId: "",
+        animalProtocoloVacinalId: undefined,
+        protocoloVacinalDoseId: undefined,
         dataAplicacao: hoje(),
         dataProximaDose: "",
         numeroLote: "",
@@ -78,6 +85,8 @@
         form = {
             animalId: "",
             vacinaId: "",
+            animalProtocoloVacinalId: undefined,
+            protocoloVacinalDoseId: undefined,
             dataAplicacao: hoje(),
             dataProximaDose: "",
             numeroLote: "",
@@ -85,8 +94,53 @@
             laboratorioFabricante: "",
             observacoes: "",
         };
+        applicationMode = "avulsa";
         formError = "";
         showModal = true;
+    }
+
+    async function handleAnimalSelected(animalId: string) {
+        animalProtocolos = [];
+        form.animalProtocoloVacinalId = undefined;
+        form.protocoloVacinalDoseId = undefined;
+        form.vacinaId = "";
+
+        if (!animalId) return;
+
+        isLoadingAnimalProtocolos = true;
+        try {
+            animalProtocolos = (await protocoloVacinalService.getAnimalProtocols(animalId))
+                .filter((assignment) => assignment.ativo && !!assignment.protocoloVacinal?.id);
+        } catch (e: unknown) {
+            formError = e instanceof Error
+                ? e.message
+                : "Não foi possível carregar os protocolos do animal.";
+        } finally {
+            isLoadingAnimalProtocolos = false;
+        }
+    }
+
+    function handleApplicationModeChanged() {
+        form.animalProtocoloVacinalId = undefined;
+        form.protocoloVacinalDoseId = undefined;
+        form.vacinaId = "";
+        form.dataProximaDose = applicationMode === "protocolo" ? undefined : "";
+    }
+
+    function handleAnimalProtocolChanged(event: Event) {
+        form.animalProtocoloVacinalId = (event.target as HTMLSelectElement).value || undefined;
+        form.protocoloVacinalDoseId = undefined;
+        form.vacinaId = "";
+        form.dataProximaDose = undefined;
+    }
+
+    function handleProtocolDoseChanged(event: Event) {
+        const doseId = (event.target as HTMLSelectElement).value;
+        form.protocoloVacinalDoseId = doseId || undefined;
+        const assignment = animalProtocolos.find((item) => item.id === form.animalProtocoloVacinalId);
+        const dose = assignment?.doses?.find((item) => item.protocoloVacinalDoseId === doseId);
+        form.vacinaId = dose?.vacina?.id ?? "";
+        form.dataProximaDose = undefined;
     }
 
     async function submitForm() {
@@ -97,6 +151,10 @@
         }
         if (!form.vacinaId) {
             formError = "Selecione a vacina.";
+            return;
+        }
+        if (applicationMode === "protocolo" && (!form.animalProtocoloVacinalId || !form.protocoloVacinalDoseId)) {
+            formError = "Selecione o protocolo do animal e a dose que está sendo aplicada.";
             return;
         }
         if (!form.numeroLote?.trim()) {
@@ -155,10 +213,6 @@
                     : undefined,
             Proximas:
                 filterProximas !== "" ? filterProximas === "true" : undefined,
-            CicloFinalizado:
-                filterCicloFinalizado !== ""
-                    ? filterCicloFinalizado === "true"
-                    : undefined,
             StatusComprovante:
                 filterStatusComprovante !== ""
                     ? Number(filterStatusComprovante)
@@ -196,7 +250,6 @@
         filterSomenteAtrasadas = "";
         filterPendenteAssinatura = "";
         filterProximas = "";
-        filterCicloFinalizado = "";
         filterStatusComprovante = "";
         filterProtocoloId = "";
         currentPage = 1;
@@ -217,7 +270,7 @@
 
     function formatDate(d?: string | null): string {
         if (!d) return "—";
-        return new Date(d).toLocaleDateString("pt-BR");
+        return /^\d{4}-\d{2}-\d{2}$/.test(d) ? formatDateOnly(d) : new Date(d).toLocaleDateString("pt-BR");
     }
 </script>
 
@@ -294,10 +347,11 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs"
+                <label for="filtroStatusComprovanteAplicacoes" class="label label-text text-xs"
                     >Status do Comprovante</label
                 >
                 <select
+                    id="filtroStatusComprovanteAplicacoes"
                     class="select select-bordered select-sm w-full"
                     bind:value={filterStatusComprovante}
                     onchange={() => {
@@ -313,10 +367,11 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs"
+                <label for="filtroSomenteAtrasadasAplicacoes" class="label label-text text-xs"
                     >Filtro Rápido de Estado</label
                 >
                 <select
+                    id="filtroSomenteAtrasadasAplicacoes"
                     class="select select-bordered select-sm w-full"
                     bind:value={filterSomenteAtrasadas}
                     onchange={() => {
@@ -330,8 +385,9 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs">Aplicação de</label>
+                <label for="filtroDataFromAplicacoes" class="label label-text text-xs">Aplicação de</label>
                 <input
+                    id="filtroDataFromAplicacoes"
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterDataFrom}
@@ -343,8 +399,9 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs">Aplicação até</label>
+                <label for="filtroDataToAplicacoes" class="label label-text text-xs">Aplicação até</label>
                 <input
+                    id="filtroDataToAplicacoes"
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterDataTo}
@@ -356,8 +413,9 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs">Próxima Dose de</label>
+                <label for="filtroProxFromAplicacoes" class="label label-text text-xs">Próxima Dose de</label>
                 <input
+                    id="filtroProxFromAplicacoes"
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterProxFrom}
@@ -369,8 +427,9 @@
             </div>
 
             <div>
-                <label class="label label-text text-xs">Próxima Dose até</label>
+                <label for="filtroProxToAplicacoes" class="label label-text text-xs">Próxima Dose até</label>
                 <input
+                    id="filtroProxToAplicacoes"
                     type="date"
                     class="input input-bordered input-sm w-full"
                     bind:value={filterProxTo}
@@ -454,12 +513,13 @@
                                 >
                                 <td class="text-right">
                                     <div class="flex justify-end gap-1">
+                                        <VaccinationCorrectionActions application={apl} roles={data.session.roles} onchanged={load} />
                                         <a
                                             href="/prontuario/{apl.animalId}"
                                             class="btn btn-xs btn-ghost"
                                             >Prontuário</a
                                         >
-                                        {#if canDeleteApplications}<button
+                                        {#if canDeleteApplications && apl.statusComprovante !== 'Assinado' && (apl.situacaoRegistro ?? 'Ativo') === 'Ativo'}<button
                                             class="btn btn-xs btn-ghost text-error"
                                             onclick={() => {
                                                 deletingApl = apl;
@@ -523,13 +583,76 @@
             <AnimalSelect
                 label="Animal *"
                 bind:value={form.animalId}
+                onSelect={(animal) => handleAnimalSelected(animal?.id ?? "")}
                 required
             />
         </div>
         <div class="sm:col-span-2">
+            <label class="label label-text text-xs" for="origemAplicacaoVacina">Origem da aplicação *</label>
+            <select
+                id="origemAplicacaoVacina"
+                class="select select-bordered w-full"
+                bind:value={applicationMode}
+                onchange={handleApplicationModeChanged}
+            >
+                <option value="avulsa">Aplicação avulsa</option>
+                <option value="protocolo">Dose de protocolo vacinal</option>
+            </select>
+        </div>
+        {#if applicationMode === "protocolo"}
+            <div class="sm:col-span-2">
+                <label class="label label-text text-xs" for="protocoloAnimalAplicacao">Protocolo do animal *</label>
+                <select
+                    id="protocoloAnimalAplicacao"
+                    class="select select-bordered w-full"
+                    value={form.animalProtocoloVacinalId ?? ""}
+                    onchange={handleAnimalProtocolChanged}
+                    disabled={!form.animalId || isLoadingAnimalProtocolos}
+                >
+                    <option value="">
+                        {isLoadingAnimalProtocolos
+                            ? "Carregando protocolos..."
+                            : !form.animalId
+                              ? "Selecione o animal primeiro"
+                              : animalProtocolos.length === 0
+                                ? "Nenhum protocolo ativo atribuído"
+                                : "Selecione o protocolo"}
+                    </option>
+                    {#each animalProtocolos as assignment}
+                        <option value={assignment.id}>
+                            {assignment.protocoloVacinal?.nome ?? "Protocolo sem nome"}
+                        </option>
+                    {/each}
+                </select>
+                {#if form.animalId && !isLoadingAnimalProtocolos && animalProtocolos.length === 0}
+                    <p class="text-xs text-warning mt-1">Atribua um protocolo ao animal antes de registrar uma dose vinculada.</p>
+                {/if}
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label label-text text-xs" for="doseProtocoloAplicacao">Dose do protocolo *</label>
+                <select
+                    id="doseProtocoloAplicacao"
+                    class="select select-bordered w-full"
+                    value={form.protocoloVacinalDoseId ?? ""}
+                    onchange={handleProtocolDoseChanged}
+                    disabled={!form.animalProtocoloVacinalId}
+                >
+                    <option value="">Selecione a dose</option>
+                    {#each animalProtocolos.find((item) => item.id === form.animalProtocoloVacinalId)?.doses ?? [] as dose}
+                        <option value={dose.protocoloVacinalDoseId}>
+                            Dose {dose.ordem ?? "—"} · {dose.vacina?.name ?? "Vacina sem nome"} · {dose.status ?? "Pendente"}
+                        </option>
+                    {/each}
+                </select>
+                <p class="text-xs text-base-content/50 mt-1">A vacina e a próxima dose serão determinadas pelo protocolo.</p>
+            </div>
+        {/if}
+        <div class="sm:col-span-2">
             <VacinaSelect
+                onlyActive
                 label="Vacina *"
                 bind:value={form.vacinaId}
+                disabled={applicationMode === "protocolo" && !!form.protocoloVacinalDoseId}
                 required
             />
         </div>
@@ -546,9 +669,12 @@
                 label="Próxima Dose"
                 type="date"
                 bind:value={form.dataProximaDose}
+                disabled={applicationMode === "protocolo"}
             />
             <p class="text-xs text-base-content/50">
-                Opcional — calculado automaticamente.
+                {applicationMode === "protocolo"
+                    ? "Calculada automaticamente pela dose do protocolo."
+                    : "Opcional para aplicações avulsas."}
             </p>
         </div>
         <div>
@@ -560,8 +686,9 @@
             />
         </div>
         <div>
-            <label class="label label-text text-xs">Dose (mL)</label>
+            <label for="doseAplicacaoVacina" class="label label-text text-xs">Dose (mL)</label>
             <input
+                id="doseAplicacaoVacina"
                 type="number"
                 step="0.1"
                 min="0"
@@ -570,7 +697,7 @@
             />
         </div>
         <p class="sm:col-span-2 text-sm opacity-70">
-            O veterinário responsável e o aplicador serão preenchidos automaticamente com o usuário autenticado.
+            Quem lança fica identificado como aplicador. O veterinário responsável será identificado ao assinar.
         </p>
         <div>
             <Input
@@ -579,8 +706,9 @@
             />
         </div>
         <div class="sm:col-span-2">
-            <label class="label label-text text-xs">Observações</label>
+            <label for="observacoesAplicacaoVacina" class="label label-text text-xs">Observações</label>
             <textarea
+                id="observacoesAplicacaoVacina"
                 class="textarea textarea-bordered w-full"
                 rows="2"
                 bind:value={form.observacoes}

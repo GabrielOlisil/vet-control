@@ -12,4 +12,6 @@ public interface IMovimentacaoAnimalService
     Task<MovimentacaoAnimal?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<MovimentacaoAnimal> CreateAsync(Guid animalId, MovimentacaoAnimalCreateDto dto,
         CancellationToken cancellationToken = default);
+    Task<List<MovimentacaoAnimal>> CreateManyAsync(MovimentacaoAnimalLoteCreateDto dto,
+        CancellationToken cancellationToken = default);
 }

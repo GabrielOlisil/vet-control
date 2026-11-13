@@ -22,6 +22,7 @@
     let filterNome = $state("");
     let filterEspecieId = $state("");
     let filterAtivo = $state("");
+    let includeHistory = $state(false);
 
     let showModal = $state(false);
     let editingId = $state<string | null>(null);
@@ -51,6 +52,7 @@
             Nome: filterNome.trim() || undefined,
             EspecieId: filterEspecieId || undefined,
             Ativo: filterAtivo === "" ? undefined : filterAtivo === "true",
+            IncluirVersoesAnteriores: includeHistory,
         } as any;
     }
 
@@ -192,7 +194,8 @@
         <select class="select select-bordered select-sm" bind:value={filterAtivo} onchange={() => { page = 1; load(); }}>
             <option value="">Todos os status</option><option value="true">Ativos</option><option value="false">Inativos</option>
         </select>
-        <button class="btn btn-ghost btn-sm" onclick={() => { filterNome = ""; filterEspecieId = ""; filterAtivo = ""; page = 1; load(); }}>Limpar filtros</button>
+        <button class="btn btn-ghost btn-sm" onclick={() => { filterNome = ""; filterEspecieId = ""; filterAtivo = ""; includeHistory = false; page = 1; load(); }}>Limpar filtros</button>
+        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" class="checkbox checkbox-sm" bind:checked={includeHistory} onchange={() => { page = 1; load(); }} /><span>Incluir versões anteriores</span></label>
     </div>
 
     <div class="card bg-base-100 border border-base-300 overflow-x-auto">
@@ -201,10 +204,10 @@
         {:else}
             <table class="table table-zebra"><thead><tr><th>Protocolo</th><th>Espécie</th><th>Doses</th><th>Status</th><th></th></tr></thead>
                 <tbody>{#each protocolos as item}<tr>
-                    <td><div class="font-bold">{item.nome}</div><div class="text-xs text-base-content/60">{item.finalidade || "Sem finalidade"}</div></td>
+                    <td><div class="font-bold">{item.nome} · v{item.versao ?? 1}</div><div class="text-xs text-base-content/60">{item.versaoAtual === false ? 'Versão histórica · ' : ''}{item.finalidade || "Sem finalidade"}</div></td>
                     <td>{item.especie?.nome || "Todas"}</td><td>{item.doseCount}</td>
                     <td><span class="badge {item.ativo ? 'badge-success' : 'badge-ghost'}">{item.ativo ? "Ativo" : "Inativo"}</span></td>
-                    <td class="text-right"><button class="btn btn-ghost btn-sm" onclick={() => openEdit(item)} aria-label="Editar"><IconEdit width="18" /></button><button class="btn btn-ghost btn-sm text-error" onclick={() => { deleting = item; showDelete = true; }} aria-label="Excluir"><IconDelete width="18" /></button></td>
+                    <td class="text-right"><button class="btn btn-ghost btn-sm" disabled={item.versaoAtual === false} onclick={() => openEdit(item)} aria-label="Editar"><IconEdit width="18" /></button><button class="btn btn-ghost btn-sm text-error" disabled={item.versaoAtual === false} onclick={() => { deleting = item; showDelete = true; }} aria-label="Excluir"><IconDelete width="18" /></button></td>
                 </tr>{/each}</tbody>
             </table>
         {/if}
@@ -214,6 +217,7 @@
 </div>
 
 <FormModal isOpen={showModal} title={editingId ? "Editar protocolo vacinal" : "Novo protocolo vacinal"} isLoading={submitting} onClose={() => showModal = false} onSubmit={submit}>
+    {#if editingId}<p class="rounded-lg bg-base-200 p-3 text-sm">Se este protocolo já foi atribuído a um animal, salvar criará uma nova versão. Os animais permanecem no esquema original até uma migração explícita pelo prontuário.</p>{/if}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label class="form-control md:col-span-2"><span class="label-text">Nome *</span><input class="input input-bordered" bind:value={form.nome} /></label>
         <label class="form-control"><span class="label-text">Finalidade</span><input class="input input-bordered" bind:value={form.finalidade} placeholder="Ex.: bezerros, reprodução" /></label>
@@ -233,6 +237,7 @@
         <div class="rounded-xl border border-base-300 p-3 grid grid-cols-1 md:grid-cols-7 gap-2 items-end">
             <div class="md:col-span-2">
                 <VacinaSelect
+                    onlyActive
                     id={`protocoloDoseVacina${index}`}
                     label="Vacina *"
                     placeholder="Buscar vacina..."

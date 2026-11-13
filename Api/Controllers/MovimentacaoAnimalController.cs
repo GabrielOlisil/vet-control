@@ -35,6 +35,15 @@ public class MovimentacaoAnimalController(IMovimentacaoAnimalService service) : 
         return item is null ? NotFound() : Ok(MovimentacaoAnimalMapper.MapToResponse(item));
     }
 
+    [HttpPost("lote")]
+    [Authorize(Policy = ClinicalPolicies.ManageMovements)]
+    public async Task<ActionResult<List<MovimentacaoAnimalResponseDto>>> CreateBatch(
+        MovimentacaoAnimalLoteCreateDto dto, CancellationToken cancellationToken)
+    {
+        var items = await service.CreateManyAsync(dto, cancellationToken);
+        return Ok(items.Select(MovimentacaoAnimalMapper.MapToResponse).ToList());
+    }
+
     [HttpGet("~/api/v1/animais/{animalId:guid}/movimentacoes")]
     public async Task<ActionResult<List<MovimentacaoAnimalResponseDto>>> GetByAnimal(Guid animalId,
         [FromQuery] int? page, CancellationToken cancellationToken)

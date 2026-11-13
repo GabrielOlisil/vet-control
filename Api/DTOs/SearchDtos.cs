@@ -13,6 +13,7 @@ public sealed record AnimalSearchDto
     public DateOnly? DataNascimentoFrom { get; init; }
     public DateOnly? DataNascimentoTo { get; init; }
     public string? LoteOuPasto { get; init; }
+    public Guid? AmbienteId { get; init; }
     public bool? Ativo { get; init; }
     public string? Identificador { get; init; }
     public TipoIdentificador? TipoIdentificador { get; init; }
@@ -22,6 +23,7 @@ public sealed record AnimalSearchDto
 
 public sealed record AplicacaoVacinaSearchDto
 {
+    public SituacaoRegistroVacina? SituacaoRegistro { get; init; }
     public Guid? VacinaId { get; init; }
     public Guid? AnimalId { get; init; }
     public DateOnly? DataAplicacaoFrom { get; init; }
@@ -32,7 +34,6 @@ public sealed record AplicacaoVacinaSearchDto
     public bool? SomenteAtrasadas { get; init; }
     public bool? PendenteAssinatura { get; init; }
     public bool? Proximas { get; init; }
-    public bool? CicloFinalizado { get; init; }
     public StatusComprovanteVacina? StatusComprovante { get; init; }
     public Guid? AnimalProtocoloVacinalId { get; init; }
     public Guid? ProtocoloVacinalDoseId { get; init; }
@@ -41,6 +42,8 @@ public sealed record AplicacaoVacinaSearchDto
 
 public sealed record ProtocoloVacinalSearchDto
 {
+    public Guid? FamiliaId { get; init; }
+    public bool IncluirVersoesAnteriores { get; init; }
     public Guid? EspecieId { get; init; }
     public bool? Ativo { get; init; }
     public string? Nome { get; init; }
@@ -66,6 +69,8 @@ public sealed record MovimentacaoAnimalSearchDto
     public DateOnly? DataMovimentacaoTo { get; init; }
     public string? LocalOrigem { get; init; }
     public string? LocalDestino { get; init; }
+    public Guid? AmbienteOrigemId { get; init; }
+    public Guid? AmbienteDestinoId { get; init; }
 }
 
 public sealed record RacaSearchDto
@@ -75,10 +80,9 @@ public sealed record RacaSearchDto
 
 public sealed record VacinaSearchDto
 {
+    public bool? Ativo { get; init; }
     public Guid? EspecieId { get; init; }
     public bool? ObrigatorioOrgaoSanitario { get; init; }
-    public uint? ReaplicarEmXDiasMin { get; init; }
-    public uint? ReaplicarEmXDiasMax { get; init; }
 }
 
 public sealed record EspecieSearchDto

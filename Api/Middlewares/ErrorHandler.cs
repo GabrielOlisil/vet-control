@@ -82,7 +82,7 @@ public class ErrorHandler(ILogger<ErrorHandler> logger) : IExceptionHandler
             {
                 PostgresErrorCodes.UniqueViolation => new ErrorResponse(StatusCodes.Status409Conflict, "Conflict.",
                     "A resource with the same value already exists."),
-                PostgresErrorCodes.ForeignKeyViolation => new ErrorResponse(StatusCodes.Status409Conflict, "Conflict.",
+                PostgresErrorCodes.ForeignKeyViolation or PostgresErrorCodes.RestrictViolation => new ErrorResponse(StatusCodes.Status409Conflict, "Conflict.",
                     "The operation conflicts with a related resource."),
                 PostgresErrorCodes.NotNullViolation => new ErrorResponse(StatusCodes.Status400BadRequest,
                     "Invalid request.",

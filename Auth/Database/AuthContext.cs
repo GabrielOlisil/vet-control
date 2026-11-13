@@ -54,6 +54,13 @@ public sealed class AuthContext(DbContextOptions<AuthContext> options)
 
 public sealed class AuthContextFactory : IDesignTimeDbContextFactory<AuthContext>
 {
-    public AuthContext CreateDbContext(string[] args) => new(new DbContextOptionsBuilder<AuthContext>()
-        .UseNpgsql(AuthContext.ConnectionString).UseOpenIddict().Options);
+    public AuthContext CreateDbContext(string[] args)
+    {
+        var config = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        var production = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+        var connection = config.GetConnectionString("AuthContext") ?? (production
+            ? throw new InvalidOperationException("Configure ConnectionStrings:AuthContext para executar migrations em produção.")
+            : AuthContext.ConnectionString);
+        return new AuthContext(new DbContextOptionsBuilder<AuthContext>().UseNpgsql(connection).UseOpenIddict().Options);
+    }
 }

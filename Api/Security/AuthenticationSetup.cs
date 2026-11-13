@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 namespace Api.Security;
 
@@ -9,10 +11,27 @@ public static class AuthenticationSetup
 {
     public static void AddVetAuthentication(this WebApplicationBuilder builder)
     {
-        builder.Services.AddMemoryCache();
+        builder.Services.AddSingleton(sp =>
+        {
+            var provider = sp.GetRequiredService<IDataProtectionProvider>();
+            var protector = provider.CreateProtector(
+                "Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationMiddleware",
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                "v2");
+            return new TicketDataFormat(protector);
+        });
         builder.Services.AddSingleton<ServerTicketStore>();
         builder.Services.AddScoped<VetSessionValidator>();
-        builder.Services.AddHttpClient("identity", client => client.Timeout = TimeSpan.FromSeconds(15));
+        var identityClient = builder.Services.AddHttpClient("identity", client => client.Timeout = TimeSpan.FromSeconds(15));
+        var backchannelUrl = builder.Configuration["Authentication:BackchannelBaseUrl"];
+        Func<HttpMessageHandler>? createBackchannel = null;
+        if (!string.IsNullOrWhiteSpace(backchannelUrl))
+        {
+            var authority = new Uri(builder.Configuration["Authentication:Authority"]!, UriKind.Absolute);
+            var destination = new Uri(backchannelUrl, UriKind.Absolute);
+            createBackchannel = () => new AuthorityBackchannelHandler(authority, destination) { InnerHandler = new HttpClientHandler() };
+            identityClient.ConfigurePrimaryHttpMessageHandler(createBackchannel);
+        }
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -36,6 +55,7 @@ public static class AuthenticationSetup
         }).AddOpenIdConnect(options =>
         {
             options.Authority = builder.Configuration["Authentication:Authority"]!;
+            if (createBackchannel is not null) options.BackchannelHttpHandler = createBackchannel();
             options.ClientId = builder.Configuration["Authentication:ClientId"]!;
             options.ClientSecret = builder.Configuration["Authentication:ClientSecret"]!;
             options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
@@ -67,7 +87,8 @@ public static class AuthenticationSetup
         builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "VetControl.Session.Csrf"; });
         builder.Services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser()
+                .RequireRole("admin", "medico_veterinario", "manejador_animal", "aplicador", "estagiario_medvet").Build();
 
             AddPolicy(options, ClinicalPolicies.ManageAnimals, "admin", "medico_veterinario", "manejador_animal", "estagiario_medvet");
             AddPolicy(options, ClinicalPolicies.ManageSpeciesAndBreeds, "admin", "medico_veterinario", "manejador_animal", "estagiario_medvet");
