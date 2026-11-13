@@ -73,7 +73,7 @@ As roles atribuídas são persistidas separadamente das roles efetivas:
 
 A expansão ocorre na sessão Identity, nos tokens e em UserInfo, sem atribuir a role `medico_veterinario` ao estagiário. O filtro por role considera roles efetivas. A busca textual paginada usa índices GIN com `pg_trgm` em nome, usuário e e-mail. Não foram criadas roles adicionais porque as cinco já descrevem as responsabilidades pedidas; novas roles devem representar necessidades reais.
 
-O Vet Control exige uma sessão autenticada, mas ainda não distingue acesso a animais, protocolos, vacinação ou assinatura por role. A consulta pública de comprovantes permanece anônima. No provedor, endpoints administrativos exigem `admin` no servidor, inclusive se forem chamados fora da interface. Usuários podem trocar a própria senha.
+O Vet Control exige uma sessão autenticada e aplica políticas clínicas por role nas operações de escrita. A assinatura exige `medico_veterinario`; ser apenas `admin` não permite assinar. A matriz está em `Api/Security/AuthenticationSetup.cs` e é refletida em `web/src/lib/auth/permissions.ts`. A consulta pública de comprovantes permanece anônima. No provedor, endpoints administrativos exigem `admin` no servidor, inclusive se forem chamados fora da interface. Usuários podem trocar a própria senha.
 
 ## Sessões, senhas e auditoria
 
@@ -95,10 +95,22 @@ O Vet Control exige uma sessão autenticada, mas ainda não distingue acesso a a
 dotnet test Auth.Tests
 ```
 
-Requer o PostgreSQL local da conexão configurada. Cada teste cria uma base `vet_auth_tests_<uuid>` e a remove ao finalizar. Não altera `AppUsers` ou `vacinas`. Verifica primeiro acesso, criação concorrente de administrador, confirmação/força da senha, fechamento do cadastro inicial, login por nome/e-mail, antiforgery, painel exclusivo do admin, composição de roles, último administrador, PKCE, código de uso único, reset/revogação, auditoria e sessão OIDC da API clínica, inclusive renovação concorrente.
+Requer PostgreSQL e as dependências de `web` instaladas (`npm ci`), pois um teste executa o gerador de contrato contra uma API temporária. Cada teste cria bases `vet_auth_tests_<uuid>` e `vet_api_tests_<uuid>` e as remove ao finalizar. A API clínica também utiliza exclusivamente a base temporária, inclusive para sessões. Não altera `AppUsers` ou `vacinas`. Verifica primeiro acesso, criação concorrente de administrador, confirmação/força da senha, fechamento do cadastro inicial, login por nome/e-mail, antiforgery, painel exclusivo do admin, composição de roles, último administrador, PKCE, código de uso único, reset/revogação, auditoria e sessão OIDC da API clínica, inclusive renovação concorrente. A variável `VET_TEST_POSTGRES` permite configurar o servidor de testes. Veja `Testing/README.md` na raiz para a execução completa e os limites da validação.
 
 ## Configuração de produção
 
 O segredo compartilhado de desenvolvimento só é carregado em `Development`. Configure `OpenId__ClientSecret` no provedor e `Authentication__ClientSecret` na API com o mesmo segredo. Configure issuer, callbacks e origem HTTPS. O provedor exige arquivos de certificados de assinatura e criptografia em `OpenId__SigningCertificatePath` / `OpenId__EncryptionCertificatePath`, com suas respectivas passwords; certificados de desenvolvimento e HTTP só são habilitados em Development.
 
-As chaves de Data Protection e os certificados devem ser persistidos. O `ServerTicketStore` atual é em memória: reiniciar a API encerra suas sessões. Para múltiplas instâncias, substitua-o por um store distribuído e compartilhe as chaves de proteção. O Dockerfile da API clínica foi mantido com build de projeto explícito, para não exigir os projetos do provedor e de testes nesse estágio.
+As chaves de Data Protection e os certificados devem ser persistidos. As sessões clínicas são armazenadas na tabela `ServerSessions` do PostgreSQL, portanto podem ser reutilizadas após reinício e por múltiplas instâncias. Todas as instâncias precisam apontar para o mesmo banco e compartilhar o diretório configurado em `DataProtection:KeysPath` (em contêineres, use um volume persistente). O Dockerfile da API clínica foi mantido com build de projeto explícito, para não exigir os projetos do provedor e de testes nesse estágio.
+
+Em produção, ambas as aplicações exigem HTTPS, segredo exclusivo com pelo menos
+32 caracteres e certificado PFX para cifrar o diretório Data Protection. O Auth
+aceita `ConnectionStrings__AuthContext`; a conexão fixa permanece somente como
+fallback de desenvolvimento. A coordenação de refresh usa trava transacional no
+PostgreSQL entre instâncias; renovar um ticket removido pelo logout não o recria.
+
+`compose.prod.yml` prepara PostgreSQL, migrations das duas bases, Auth, Api/web e
+proxy HTTPS. `compose.dev.yml` preserva o compose anterior. Primeiro administrador
+continua sendo criado pela interface. Procedimento completo, certificados,
+monitoramento, backup e restauração: [deployment/README.md](../deployment/README.md).
+Nenhum ambiente real foi publicado nesta entrega.
