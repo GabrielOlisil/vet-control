@@ -1,0 +1,131 @@
+name: vet-control-dev
+
+# Ambiente local de demonstração. Não usa vacinas/AppUsers nem volumes antigos.
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: vet-control-local-only
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - dev-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  migrations:
+    build:
+      context: .
+      target: migrations
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ApiContext: "Host=db;Database=vet_control_dev;Username=postgres;Password=vet-control-local-only"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  auth-migrations:
+    build:
+      context: .
+      target: auth-migrations
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AuthContext: "Host=db;Database=vet_control_auth_dev;Username=postgres;Password=vet-control-local-only"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: postgres:18-alpine
+    environment:
+      PGHOST: db
+      PGDATABASE: vet_control_dev
+      PGUSER: postgres
+      PGPASSWORD: vet-control-local-only
+    volumes:
+      - ./seed.sql:/seed.sql:ro
+    command: ["psql", "-v", "ON_ERROR_STOP=1", "-f", "/seed.sql"]
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    restart: "no"
+
+  auth:
+    build:
+      context: .
+      target: auth
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AuthContext: "Host=db;Database=vet_control_auth_dev;Username=postgres;Password=vet-control-local-only"
+      Frontend__Origin: http://localhost:8080
+      OpenId__Issuer: http://localhost:8081/
+      OpenId__ClientId: vet-control
+      OpenId__ClientSecret: vet-control-development-demo-secret-local-only
+      OpenId__RedirectUri: http://localhost:8080/signin-oidc
+      OpenId__PostLogoutRedirectUri: http://localhost:8080/signout-callback-oidc
+      DataProtection__KeysPath: /var/lib/vet-control/keys
+      DevelopmentSeed__Enabled: "true"
+      DevelopmentSeed__Password: "Demonstracao123!"
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - dev-auth-keys:/var/lib/vet-control/keys
+      - dev-auth-certificates:/var/lib/vet-control/.dotnet/corefx/cryptography/x509stores
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    depends_on:
+      auth-migrations:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: .
+      target: api
+      args:
+        VITE_API_URL: http://localhost:8080
+        VITE_IDENTITY_URL: http://localhost:8081
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ApiContext: "Host=db;Database=vet_control_dev;Username=postgres;Password=vet-control-local-only"
+      Authentication__Authority: http://localhost:8081/
+      Authentication__BackchannelBaseUrl: http://auth:8081/
+      Authentication__FrontendOrigin: http://localhost:8080
+      Authentication__ClientId: vet-control
+      Authentication__ClientSecret: vet-control-development-demo-secret-local-only
+      DataProtection__KeysPath: /var/lib/vet-control/keys
+      Clinic__TimeZone: America/Manaus
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - dev-api-keys:/var/lib/vet-control/keys
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+
+volumes:
+  dev-db-data:
+  dev-api-keys:
+  dev-auth-keys:
+  dev-auth-certificates:

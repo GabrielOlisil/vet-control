@@ -697,6 +697,14 @@
           "OpenIddict.Validation.AspNetCore": "[7.7.2, )",
           "OpenIddict.Validation.ServerIntegration": "[7.7.2, )"
         }
+      },
+      "vetcontrol.testing": {
+        "type": "Project",
+        "dependencies": {
+          "Api": "[1.0.0, )",
+          "Microsoft.AspNetCore.Mvc.Testing": "[10.0.10, )",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.10, )"
+        }
       }
     }
   }

@@ -25,51 +25,63 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
+using VetControl.Testing;
 using Xunit;
 
 namespace Auth.Tests;
 
 public sealed class AuthenticationTests : IAsyncLifetime
 {
-    private readonly string database = "vet_auth_tests_" + Guid.NewGuid().ToString("N");
+    private readonly PostgresTestDatabase identityDatabase = new("auth");
+    private readonly PostgresTestDatabase clinicalDatabase = new("api");
+    private string database => identityDatabase.Name;
     private string connection = "";
     private AuthFactory factory = null!;
     private HttpClient admin = null!;
-    private bool created;
     private const string Password = "Integration-Test1!";
 
     public async Task InitializeAsync()
     {
-        var setup = new NpgsqlConnectionStringBuilder(AuthContext.ConnectionString) { Database = "postgres" };
-        await using var connectionAdmin = new NpgsqlConnection(setup.ConnectionString);
-        await connectionAdmin.OpenAsync();
-        await using (var command = new NpgsqlCommand($"CREATE DATABASE \"{database}\"", connectionAdmin)) await command.ExecuteNonQueryAsync();
-        created = true;
-        setup.Database = database; connection = setup.ConnectionString;
-        await using var db = new AuthContext(new DbContextOptionsBuilder<AuthContext>().UseNpgsql(connection).UseOpenIddict().Options);
-        await db.Database.MigrateAsync();
-        factory = new AuthFactory(connection);
-        admin = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost:8081"), AllowAutoRedirect = false });
-        Assert.True((await admin.GetFromJsonAsync<SetupStatusResponse>("/api/auth/setup"))!.Required);
-        var setupResponse = await Mutate(admin, HttpMethod.Post, "/api/auth/setup",
-            new InitialSetupRequest("Admin de teste", "testadmin", "admin@test.local", Password, Password, null));
-        Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
-        Assert.False((await admin.GetFromJsonAsync<SetupStatusResponse>("/api/auth/setup"))!.Required);
+        try
+        {
+            await identityDatabase.CreateAsync();
+            await clinicalDatabase.CreateAsync();
+            connection = identityDatabase.ConnectionString;
+            await using (var clinical = new VetApi::Api.Database.ApiContext(
+                new DbContextOptionsBuilder<VetApi::Api.Database.ApiContext>().UseNpgsql(clinicalDatabase.ConnectionString).Options,
+                new Microsoft.AspNetCore.Http.HttpContextAccessor()))
+                await clinical.Database.MigrateAsync();
+            await using var db = new AuthContext(new DbContextOptionsBuilder<AuthContext>().UseNpgsql(connection).UseOpenIddict().Options);
+            await db.Database.MigrateAsync();
+            factory = new AuthFactory(connection);
+            admin = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost:8081"), AllowAutoRedirect = false });
+            Assert.True((await admin.GetFromJsonAsync<SetupStatusResponse>("/api/auth/setup"))!.Required);
+            var setupResponse = await Mutate(admin, HttpMethod.Post, "/api/auth/setup",
+                new InitialSetupRequest("Admin de teste", "testadmin", "admin@test.local", Password, Password, null));
+            Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
+            Assert.False((await admin.GetFromJsonAsync<SetupStatusResponse>("/api/auth/setup"))!.Required);
+        }
+        catch
+        {
+            await DisposeAsync();
+            throw;
+        }
     }
 
     public async Task DisposeAsync()
     {
-        admin?.Dispose(); if (factory is not null) await factory.DisposeAsync();
-        if (!created) return;
-        // Only delete the unique database created by this fixture, never AppUsers or vacinas.
-        Assert.Matches("^vet_auth_tests_[a-f0-9]{32}$", database);
-        NpgsqlConnection.ClearAllPools();
-        var setup = new NpgsqlConnectionStringBuilder(AuthContext.ConnectionString) { Database = "postgres" };
-        await using var connectionAdmin = new NpgsqlConnection(setup.ConnectionString); await connectionAdmin.OpenAsync();
-        await using var command = new NpgsqlCommand($"DROP DATABASE \"{database}\" WITH (FORCE)", connectionAdmin);
-        await command.ExecuteNonQueryAsync();
+        try
+        {
+            admin?.Dispose();
+            if (factory is not null) await factory.DisposeAsync();
+        }
+        finally
+        {
+            try { await clinicalDatabase.DisposeAsync(); }
+            finally { await identityDatabase.DisposeAsync(); }
+        }
     }
 
     private static async Task<HttpResponseMessage> Mutate(HttpClient client, HttpMethod method, string path, object body)
@@ -81,6 +93,26 @@ public sealed class AuthenticationTests : IAsyncLifetime
     }
     private static Task<HttpResponseMessage> Login(HttpClient client, string login, string password) =>
         Mutate(client, HttpMethod.Post, "/api/auth/login", new LoginRequest(login, password, null));
+
+    [Fact]
+    public async Task ContainerBackchannelDiscoveryKeepsPublicBrowserEndpoints()
+    {
+        using var client = new HttpClient(new VetApi::Api.Security.AuthorityBackchannelHandler(
+            new Uri("http://localhost:8081/"), new Uri("http://auth:8081/"))
+        { InnerHandler = factory.Server.CreateHandler() });
+        using var discovery = await client.GetAsync("http://localhost:8081/.well-known/openid-configuration");
+        discovery.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await discovery.Content.ReadAsStringAsync());
+        Assert.Equal("http://localhost:8081/", document.RootElement.GetProperty("issuer").GetString());
+        foreach (var endpoint in new[]
+        {
+            (Name: "authorization_endpoint", Path: "/connect/authorize"),
+            (Name: "token_endpoint", Path: "/connect/token"),
+            (Name: "userinfo_endpoint", Path: "/connect/userinfo"),
+            (Name: "end_session_endpoint", Path: "/connect/logout")
+        })
+            Assert.Equal("http://localhost:8081" + endpoint.Path, document.RootElement.GetProperty(endpoint.Name).GetString());
+    }
 
     private async Task<UserResponse> Create(string username, string[] roles, bool mustChange = false)
     {
@@ -160,6 +192,56 @@ public sealed class AuthenticationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DuplicateAccountMessagesAreInPortuguese()
+    {
+        var existing = await Create("localized-duplicate", [RoleCatalog.Applicator]);
+        using var duplicate = await Mutate(admin, HttpMethod.Post, "/api/auth/admin/users",
+            new CreateUserRequest(existing.FullName, existing.UserName, "other@test.local", Password, [RoleCatalog.Applicator]));
+        Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
+        var detail = (await duplicate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString();
+        Assert.Contains("O nome de usuário", detail);
+        Assert.Contains("já está em uso", detail);
+    }
+
+    [Fact]
+    public async Task ActiveAccountsRequireRolesOnCreateAndUpdate()
+    {
+        var existing = await Create("existing-with-role", [RoleCatalog.Applicator]);
+        using var invalidCreate = await Mutate(admin, HttpMethod.Post, "/api/auth/admin/users",
+            new CreateUserRequest("Sem papel", "without-role", "without-role@test.local", Password, []));
+        Assert.Equal(HttpStatusCode.BadRequest, invalidCreate.StatusCode);
+        using var invalidUpdate = await Mutate(admin, HttpMethod.Put, $"/api/auth/admin/users/{existing.Id}",
+            new UpdateUserRequest(existing.FullName, existing.UserName, existing.Email, [], true, existing.ConcurrencyStamp));
+        Assert.Equal(HttpStatusCode.BadRequest, invalidUpdate.StatusCode);
+    }
+
+    [Fact]
+    public async Task FifthFailedPasswordLocksTheAccountUntilAnAdministratorUnlocksIt()
+    {
+        var account = await Create("unlock-applicator", [RoleCatalog.Applicator]);
+        using var client = factory.CreateClient();
+        var path = $"/api/auth/admin/users/{account.Id}";
+        for (var attempt = 1; attempt <= 5; attempt++)
+        {
+            using var rejected = await Login(client, account.UserName, "Incorrect-Password1!");
+            Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+            var current = (await admin.GetFromJsonAsync<UserResponse>(path))!;
+            Assert.Equal(attempt == 5, current.IsLockedOut);
+        }
+
+        using var locked = await Login(client, account.Email, Password);
+        Assert.Equal(HttpStatusCode.Unauthorized, locked.StatusCode);
+        var detail = (await admin.GetFromJsonAsync<UserResponse>(path))!;
+        using var unlock = await Mutate(admin, HttpMethod.Post, $"{path}/unlock", new VersionRequest(detail.ConcurrencyStamp));
+        Assert.Equal(HttpStatusCode.OK, unlock.StatusCode);
+        Assert.False((await unlock.Content.ReadFromJsonAsync<UserResponse>())!.IsLockedOut);
+        using var success = await Login(client, account.Email, Password);
+        Assert.Equal(HttpStatusCode.OK, success.StatusCode);
+        var audit = (await admin.GetFromJsonAsync<AuditPageResponse>($"{path}/audit"))!;
+        Assert.Contains(audit.Items, entry => entry.Action == "user.unlocked");
+    }
+
+    [Fact]
     public async Task OidcPkce_UserInfo_PasswordResetAndAuditWork()
     {
         var intern = await Create("oidcintern", [RoleCatalog.Intern]);
@@ -219,7 +301,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
         var user = await Create("vetuser", [RoleCatalog.Applicator]);
         var providerClient = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost:8081"), AllowAutoRedirect = false });
         await Login(providerClient, user.UserName, Password);
-        await using var api = new VetFactory(factory);
+        await using var api = new VetFactory(factory, clinicalDatabase);
         var client = api.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost:8080"), AllowAutoRedirect = false });
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/animais/count")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/v1/validacao-vacinacao/not-a-guid")).StatusCode);
@@ -237,13 +319,18 @@ public sealed class AuthenticationTests : IAsyncLifetime
         var session = await client.GetFromJsonAsync<JsonElement>("/api/v1/auth/session");
         Assert.True(session.GetProperty("authenticated").GetBoolean());
         Assert.Contains(RoleCatalog.Applicator, session.GetProperty("roles").EnumerateArray().Select(x => x.GetString()));
-        var cache = (MemoryCache)api.Services.GetRequiredService<IMemoryCache>();
-        var key = cache.Keys.OfType<string>().Single(x => x.StartsWith("vet-session:", StringComparison.Ordinal));
+        using var scope = api.Services.CreateScope();
+        var clinical = scope.ServiceProvider.GetRequiredService<VetApi::Api.Database.ApiContext>();
+        Assert.Equal(clinicalDatabase.Name, new NpgsqlConnectionStringBuilder(clinical.Database.GetConnectionString()).Database);
+        var key = await clinical.ServerSessions.Select(x => x.Id).SingleAsync();
         var tickets = api.Services.GetRequiredService<VetApi::Api.Security.ServerTicketStore>();
-        tickets.Find(key)!.Ticket.Properties.UpdateTokenValue("expires_at", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("o"));
+        var ticket = (await tickets.RetrieveAsync(key))!;
+        ticket.Properties.UpdateTokenValue("expires_at", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("o"));
+        await tickets.RenewAsync(key, ticket);
         var concurrent = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => client.GetFromJsonAsync<JsonElement>("/api/v1/auth/session")));
         Assert.All(concurrent, item => Assert.True(item.GetProperty("authenticated").GetBoolean()));
-        Assert.True(DateTimeOffset.Parse(tickets.Find(key)!.Ticket.Properties.GetTokenValue("expires_at")!) > DateTimeOffset.UtcNow);
+        var renewed = (await tickets.RetrieveAsync(key))!;
+        Assert.True(DateTimeOffset.Parse(renewed.Properties.GetTokenValue("expires_at")!) > DateTimeOffset.UtcNow);
         user = (await admin.GetFromJsonAsync<UserResponse>($"/api/auth/admin/users/{user.Id}"))!;
         var disabled = await Mutate(admin, HttpMethod.Put, $"/api/auth/admin/users/{user.Id}",
             new UpdateUserRequest(user.FullName, user.UserName, user.Email, user.Roles, false, user.ConcurrencyStamp));
@@ -256,7 +343,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
     [Fact]
     public async Task ClinicLogoutRejectsMissingOrInvalidCsrfWithoutEndingSession()
     {
-        await using var api = new VetFactory(factory);
+        await using var api = new VetFactory(factory, clinicalDatabase);
         using var client = await LoginToClinic(api);
         var missing = await client.PostAsync("/api/v1/auth/logout", new FormUrlEncodedContent(new Dictionary<string, string>()));
         Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
@@ -271,14 +358,15 @@ public sealed class AuthenticationTests : IAsyncLifetime
     [InlineData(true)]
     public async Task BrowserLogoutEndsBothAppsThroughOidc(bool fromAccountPanel)
     {
-        await using var api = new VetFactory(factory);
+        await using var api = new VetFactory(factory, clinicalDatabase);
         using var client = await LoginToClinic(api);
         using var otherDevice = await LoginToClinic(api);
         var session = await client.GetFromJsonAsync<JsonElement>("/api/v1/auth/session");
         var token = session.GetProperty("csrfToken").GetString()!;
         var store = api.Services.GetRequiredService<VetApi::Api.Security.ServerTicketStore>();
-        var cache = (MemoryCache)api.Services.GetRequiredService<IMemoryCache>();
-        var sessionsBefore = cache.Keys.OfType<string>().Where(x => x.StartsWith("vet-session:", StringComparison.Ordinal)).ToArray();
+        using var scope = api.Services.CreateScope();
+        var clinical = scope.ServiceProvider.GetRequiredService<VetApi::Api.Database.ApiContext>();
+        var sessionsBefore = await clinical.ServerSessions.Select(x => x.Id).ToArrayAsync();
         Assert.Equal(2, sessionsBefore.Length);
 
         if (fromAccountPanel)
@@ -302,7 +390,9 @@ public sealed class AuthenticationTests : IAsyncLifetime
         Assert.False((await client.GetFromJsonAsync<JsonElement>("/api/v1/auth/session")).GetProperty("authenticated").GetBoolean());
         Assert.False((await admin.GetFromJsonAsync<AuthSessionResponse>("/api/auth/session"))!.Authenticated);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/animais/count")).StatusCode);
-        Assert.Single(sessionsBefore, key => store.Find(key) is not null);
+        var remainingSessions = await Task.WhenAll(sessionsBefore.Select(store.RetrieveAsync));
+        Assert.Single(remainingSessions, ticket => ticket is not null);
+        Assert.Single(await clinical.ServerSessions.AsNoTracking().ToListAsync());
         Assert.True((await otherDevice.GetFromJsonAsync<JsonElement>("/api/v1/auth/session")).GetProperty("authenticated").GetBoolean());
     }
 
@@ -343,9 +433,8 @@ public sealed class AuthenticationTests : IAsyncLifetime
         await using var live = new AuthFactory(connection);
         live.UseKestrel(0);
         using var client = live.CreateClient();
-        var output = Environment.GetEnvironmentVariable("AUTH_GENERATE_PROJECT_CONTRACT") == "1"
-            ? Path.Combine(root, "web", "src", "lib", "types", "auth-contract.d.ts")
-            : Path.Combine(root, "artifacts", "auth-contract-test.d.ts");
+        // Tests must never rewrite either generated application contract.
+        var output = Path.Combine(root, "artifacts", "tests", database, "auth-contract.d.ts");
         var start = new ProcessStartInfo("node", "scripts/generate-auth-contract.mjs")
         { WorkingDirectory = Path.Combine(root, "web"), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
         start.Environment["AUTH_API_URL"] = client.BaseAddress!.ToString();
@@ -364,24 +453,30 @@ public sealed class AuthenticationTests : IAsyncLifetime
 
     private sealed class AuthFactory(string connection) : WebApplicationFactory<Program>
     {
+        private readonly TemporaryKeyDirectory keys = new();
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
             builder.ConfigureLogging(logging => logging.ClearProviders());
             builder.ConfigureTestServices(services =>
             {
+                services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keys.Path));
                 services.RemoveAll<DbContextOptions<AuthContext>>(); services.RemoveAll<AuthContext>();
                 services.RemoveAll<Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsConfiguration<AuthContext>>();
                 services.AddDbContext<AuthContext>(options => options.UseNpgsql(connection).UseOpenIddict());
             });
         }
+        public override async ValueTask DisposeAsync()
+        {
+            try { await base.DisposeAsync(); }
+            finally { keys.Dispose(); }
+        }
     }
-    private sealed class VetFactory(AuthFactory provider) : WebApplicationFactory<VetApi::Program>
+    private sealed class VetFactory(AuthFactory provider, PostgresTestDatabase database) : ClinicalApiFactory(database)
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseEnvironment("Development");
-            builder.ConfigureLogging(logging => logging.ClearProviders());
+            base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
                 services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>

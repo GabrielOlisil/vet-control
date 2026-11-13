@@ -10,17 +10,24 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:all": "node scripts/compose-suite.mjs",
+		"test:compose": "playwright test --config compose.playwright.config.ts",
+		"test:e2e": "dotnet build ../Testing/BrowserHost/VetControl.BrowserHost.csproj --no-restore -m:1 && playwright test",
 		"types:g": "openapi-typescript http://localhost:8080/openapi/v1.json -o ./src/lib/types/contract.d.ts ",
 		"types:g:auth": "node scripts/generate-auth-contract.mjs"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.64.1",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"openapi-typescript": "^7.13.0",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"typescript": "5.9",
-		"vite": "^8.0.16"
+		"vite": "^8.0.16",
+		"vitest": "^5.1.0"
 	},
 	"dependencies": {
 		"@iconify-svelte/material-symbols": "^1.0.49",

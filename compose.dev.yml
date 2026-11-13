@@ -1,0 +1,4 @@
+# Compatibilidade com comandos antigos: o ambiente padrão está em compose.yaml.
+name: vet-control-dev
+include:
+  - compose.yaml

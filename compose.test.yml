@@ -1,0 +1,26 @@
+# Execute com compose.yaml e um nome exclusivo de projeto.
+services:
+  db:
+    restart: "no"
+    ports: !override
+      - "127.0.0.1::5432"
+  auth:
+    restart: "no"
+    environment:
+      Frontend__Origin: http://localhost:${VET_COMPOSE_API_PORT:?}
+      OpenId__Issuer: http://localhost:${VET_COMPOSE_AUTH_PORT:?}/
+      OpenId__RedirectUri: http://localhost:${VET_COMPOSE_API_PORT:?}/signin-oidc
+      OpenId__PostLogoutRedirectUri: http://localhost:${VET_COMPOSE_API_PORT:?}/signout-callback-oidc
+    ports: !override
+      - "127.0.0.1:${VET_COMPOSE_AUTH_PORT:?}:8081"
+  api:
+    restart: "no"
+    build:
+      args:
+        VITE_API_URL: http://localhost:${VET_COMPOSE_API_PORT:?}
+        VITE_IDENTITY_URL: http://localhost:${VET_COMPOSE_AUTH_PORT:?}
+    environment:
+      Authentication__Authority: http://localhost:${VET_COMPOSE_AUTH_PORT:?}/
+      Authentication__FrontendOrigin: http://localhost:${VET_COMPOSE_API_PORT:?}
+    ports: !override
+      - "127.0.0.1:${VET_COMPOSE_API_PORT:?}:8080"

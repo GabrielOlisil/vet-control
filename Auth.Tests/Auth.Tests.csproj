@@ -14,5 +14,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
     <ProjectReference Include="../Auth/Auth.csproj" />
     <ProjectReference Include="../Api/Api.csproj" Aliases="VetApi" />
+    <ProjectReference Include="../Testing/Support/VetControl.Testing.csproj" />
   </ItemGroup>
 </Project>
